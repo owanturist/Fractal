@@ -1,0 +1,12 @@
+{
+  "name": "Maybe",
+  "version": "0.0.1",
+  "description": "Maybe monad",
+  "main": "index.js",
+  "repository": {},
+  "author": "Anton Ovechkin <owanturist@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^2.2.2"
+  }
+}
