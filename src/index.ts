@@ -1,22 +1,9 @@
-interface Functor<T> {
-    map<U>(f: (a: T) => U): Functor<U>;
+interface Maybe<T> {
+    map<U>(f: (a: T) => U): Maybe<U>;
+    ap<U>(b: Maybe<U>): Maybe<U>;
+    of<U>(a: U): Maybe<U>;
+    chain<U>(f: (a: T) => Maybe<U>): Maybe<U>;
 }
-
-interface Apply<T> extends Functor<T> {
-    ap<U>(b: Apply<U>): Apply<U>;
-}
-
-interface Applicative<T> extends Apply<T> {
-    of(a: T): Applicative<T>;
-}
-
-interface Chain<T> extends Apply<T> {
-    chain<U>(f: (a: T) => Chain<U>): Chain<U>;
-}
-
-interface Monad<T> extends Applicative<T>, Chain<T> {}
-
-interface Maybe<T> extends Monad<T> {}
 
 class Just<T> implements Maybe<T> {
     constructor(private readonly value: T) {}
@@ -35,30 +22,49 @@ class Just<T> implements Maybe<T> {
         return f(this.value);
     }
 
-    ap<U>(b: Maybe<U>): Maybe<U> {
+    ap<U>(b: Maybe<U>): Maybe<U> {     
         return b.map(this.value);
     }
 }
 
 class Nothing<T> implements Maybe<T> {
-    of(): Maybe<T> {
+    of<U>(): Maybe<U> {
         return new Nothing();
     }
 
-    map(): Maybe<T> {
+    map<U>(): Maybe<U> {
         return this;
     }
 
-    chain(): Maybe<T> {
+    chain<U>(): Maybe<U> {
         return this;
     }
 
-    ap(): Maybe<T> {
+    ap<U>(): Maybe<U> {
         return this;
     }
 }
 
-const bar = new Just(1);
+const bar = new Just((a: number) => a + 2);
+bar.map(a => a(1))
 
 const t = new Nothing();
+
+type Foo = Maybe<{
+    bar: {
+        baz: Maybe<number>
+    }
+}>
+
+const foo: Foo = new Just({
+    bar: {
+        baz: new Nothing()
+    }
+});
+
+const mBaz = foo
+    .chain(b => b.bar.baz)
+    .map(a => (b: number) => a * b)
+    .ap()
+
 
