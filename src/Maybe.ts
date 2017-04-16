@@ -13,7 +13,7 @@ export interface MaybePattern<T, R> {
     Just(a: T): R;
 }
 
-class Just<T> implements Maybe<T> {
+export class Just<T> implements Maybe<T> {
     constructor(private readonly value: T) {}
 
     of<R>(a: R): Maybe<R> {
@@ -47,7 +47,7 @@ class Just<T> implements Maybe<T> {
     }
 }
 
-class Nothing<T> implements Maybe<T> {
+export class Nothing<T> implements Maybe<T> {
     of(): Maybe<T> {
         return this;
     }
@@ -76,7 +76,3 @@ class Nothing<T> implements Maybe<T> {
         return pattern.Nothing();
     }
 }
-
-export const _Just = <T>(value: T): Maybe<T> => new Just(value);
-
-export const _Nothing: Maybe<any> = new Nothing();
