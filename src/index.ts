@@ -3,63 +3,49 @@ export interface Functor<T> {
 }
 
 export interface Apply<T> extends Functor<T> {
-    map<R>(f: (a: T) => R): Apply<R>;
     of<R>(a: R): Apply<R>;
 }
 
 export interface Applicative<T> extends Apply<T> {
-    map<R>(f: (a: T) => R): Applicative<R>;
-    of<R>(a: R): Applicative<R>;
     ap<R>(f: Applicative<(a: T) => R>): Applicative<R>;
 }
 
 export interface Chain<T> extends Apply<T> {
-    map<R>(f: (a: T) => R): Chain<R>;
-    of<R>(a: R): Chain<R>;
     chain<R>(f: (a: T) => Chain<R>): Chain<R>;
 }
 
-export interface Monad<T> extends Applicative<T>, Chain<T> {
-    map<R>(f: (a: T) => R): Monad<R>;
-    of<R>(a: R): Monad<R>;
-    ap<R>(f: Monad<(a: T) => R>): Monad<R>;
-    chain<R>(f: (a: T) => Monad<R>): Monad<R>;
-}
+export interface Monad<T> extends Applicative<T>, Chain<T> {}
 
 export interface Maybe<T> extends Monad<T> {
-    of<U>(a: U): Maybe<U>;
-    map<U>(f: (a: T) => U): Maybe<U>;
-    ap<U>(b: Maybe<(a: T) => U>): Maybe<U>;
-    chain<U>(f: (a: T) => Maybe<U>): Maybe<U>;
     orElse(f: () => Maybe<T>): Maybe<T>;
     getOrElse(defaults: T): T;
-    cata<U>(pattern: MaybePattern<T, U>): U;
+    cata<R>(pattern: MaybePattern<T, R>): R;
 }
 
-export interface MaybePattern<T, U> {
-    Nothing(): U;
-    Just(a: T): U;
+export interface MaybePattern<T, R> {
+    Nothing(): R;
+    Just(a: T): R;
 }
 
 class Just<T> implements Maybe<T> {
     constructor(private readonly value: T) {}
 
-    of<U>(a: U): Maybe<U> {
-        return new Just(a);
+    of<R>(a: R): Maybe<R> {
+        return new Just(a) as Maybe<R>;
     }
 
-    map<U>(f: (a: T) => U): Maybe<U> {
+    map<R>(f: (a: T) => R): Maybe<R> {
         return this.of(
             f(this.value)
-        );
+        ) as Maybe<R>;
     }
 
-    chain<U>(f: (a: T) => Maybe<U>): Maybe<U> {
-        return f(this.value);
+    chain<R>(f: (a: T) => Maybe<R>): Maybe<R> {
+        return f(this.value) as Maybe<R>;
     }
 
-    ap<U>(b: Maybe<(a: T) => U>): Maybe<U> {
-        return b.map(f => f(this.value));
+    ap<R>(b: Maybe<(a: T) => R>): Maybe<R> {
+        return b.map(f => f(this.value)) as Maybe<R>;
     }
 
     orElse(): Maybe<T> {
@@ -70,7 +56,7 @@ class Just<T> implements Maybe<T> {
         return this.value;
     }
 
-    cata<U>(pattern: MaybePattern<T, U>): U {
+    cata<R>(pattern: MaybePattern<T, R>): R {
         return pattern.Just(this.value);
     }
 }
@@ -100,11 +86,31 @@ class Nothing<T> implements Maybe<T> {
         return defaults;
     }
 
-    cata<U>(pattern: MaybePattern<T, U>): U {
+    cata<R>(pattern: MaybePattern<T, R>): R {
         return pattern.Nothing();
     }
 }
 
-export const _Just = <T>(value: T) => new Just(value);
+export const _Just = <T>(value: T): Maybe<T> => new Just(value);
 
-export const _Nothing = () => new Nothing();
+export const _Nothing: Maybe<any> = new Nothing();
+
+type Foo = {
+    bar: Maybe<string>
+    baz: {
+        foo: Maybe<number>
+    },
+    foo: Maybe<{
+        bar: Maybe<number>
+    }>
+};
+
+const foo: Foo = {
+    bar: _Just('asd'),
+    baz: {
+        foo: _Nothing
+    },
+    foo: _Just({
+        bar: _Nothing
+    })
+};
