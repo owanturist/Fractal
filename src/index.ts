@@ -1,16 +1,16 @@
+export interface Maybe<T> {
+    of<U>(a: U): Maybe<U>,
+    map<U>(f: (a: T) => U): Maybe<U>,
+    ap<U>(b: Maybe<(a: T) => U>): Maybe<U>,
+    chain<U>(f: (a: T) => Maybe<U>): Maybe<U>,
+    orElse(f: () => Maybe<T>): Maybe<T>,
+    getOrElse(defaults: T): T,
+    cata<U>(pattern: MaybePattern<T, U>): U
+}
+
 export interface MaybePattern<T, U> {
     Nothing(): U,
     Just(a: T): U
-}
-
-export interface Maybe<T> {
-    of<U>(a: U): Maybe<U>;
-    map<U>(f: (a: T) => U): Maybe<U>;
-    ap<U>(b: Maybe<(a: T) => U>): Maybe<U>;
-    chain<U>(f: (a: T) => Maybe<U>): Maybe<U>;
-    orElse(f: () => Maybe<T>): Maybe<T>;
-    getOrElse(defaults: T): T;
-    cata<U>(pattern: MaybePattern<T, U>): U;
 }
 
 class Just<T> implements Maybe<T> {
