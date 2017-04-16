@@ -1,6 +1,5 @@
 export interface Maybe<T> {
     map<R>(f: (a: T) => R): Maybe<R>;
-    of<R>(a: R): Maybe<R>;
     ap<R>(f: Maybe<(a: T) => R>): Maybe<R>;
     chain<R>(f: (a: T) => Maybe<R>): Maybe<R>;
     orElse(f: () => Maybe<T>): Maybe<T>;
@@ -16,12 +15,8 @@ export interface MaybePattern<T, R> {
 export class Just<T> implements Maybe<T> {
     constructor(private readonly value: T) {}
 
-    of<R>(a: R): Maybe<R> {
-        return new Just(a);
-    }
-
-    map<R>(f: (a: T) => R): Maybe<R> {
-        return this.of(
+    map<R>(f: (a: T) => R): Just<R> {
+        return new Just(
             f(this.value)
         );
     }
@@ -31,7 +26,7 @@ export class Just<T> implements Maybe<T> {
     }
 
     ap<R>(b: Maybe<(a: T) => R>): Maybe<R> {
-        return b.map(f => f(this.value));
+        return b.chain(this.map)
     }
 
     orElse(): Maybe<T> {
@@ -48,19 +43,15 @@ export class Just<T> implements Maybe<T> {
 }
 
 export class Nothing<T> implements Maybe<T> {
-    of(): Maybe<T> {
+    map(): Nothing<T> {
         return this;
     }
 
-    map(): Maybe<T> {
+    chain(): Nothing<T> {
         return this;
     }
 
-    chain(): Maybe<T> {
-        return this;
-    }
-
-    ap(): Maybe<T> {
+    ap(): Nothing<T> {
         return this;
     }
 
