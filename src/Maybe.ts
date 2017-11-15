@@ -1,10 +1,4 @@
 export abstract class Maybe<T> {
-    public static Nothing: Maybe<any> = new Nothing();
-
-    public static Just<T>(value: T): Maybe<T> {
-        return new Just(value);
-    }
-
     public static map<T, R>(f: (a: T) => R, m: Maybe<T>): Maybe<R> {
         return m.map(f);
     }
@@ -17,8 +11,8 @@ export abstract class Maybe<T> {
         return m.withDefault(defaults);
     }
 
-    public static caseOf<T, R>(pattern: MaybePattern<T, R>, m: Maybe<T>): R {
-        return m.caseOf(pattern);
+    public static cata<T, R>(pattern: Pattern<T, R>, m: Maybe<T>): R {
+        return m.cata(pattern);
     }
 
     protected abstract map<R>(f: (a: T) => R): Maybe<R>;
@@ -27,15 +21,15 @@ export abstract class Maybe<T> {
 
     protected abstract withDefault(defaults: T): T;
 
-    protected abstract caseOf<R>(pattern: MaybePattern<T, R>): R;
+    protected abstract cata<R>(pattern: Pattern<T, R>): R;
 }
 
-export interface MaybePattern<T, R> {
+export interface Pattern<T, R> {
     Nothing(): R;
     Just(a: T): R;
 }
 
-class Just<T> extends Maybe<T> {
+export class Just<T> extends Maybe<T> {
     constructor(private readonly value: T) {
         super();
     }
@@ -54,25 +48,25 @@ class Just<T> extends Maybe<T> {
         return this.value;
     }
 
-    protected caseOf<R>(pattern: MaybePattern<T, R>): R {
+    protected cata<R>(pattern: Pattern<T, R>): R {
         return pattern.Just(this.value);
     }
 }
 
-class Nothing<T> extends Maybe<T> {
-    protected map(): Maybe<T> {
+export class Nothing extends Maybe<any> {
+    protected map(): Maybe<any> {
         return this;
     }
 
-    protected andThen(): Maybe<T> {
+    protected andThen(): Maybe<any> {
         return this;
     }
 
-    protected withDefault(defaults: T): T {
+    protected withDefault<T>(defaults: T): T {
         return defaults;
     }
 
-    protected caseOf<R>(pattern: MaybePattern<T, R>): R {
+    protected cata<R>(pattern: Pattern<any, R>): R {
         return pattern.Nothing();
     }
 }

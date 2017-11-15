@@ -6,7 +6,12 @@
   "repository": {},
   "author": "Anton Ovechkin <owanturist@gmail.com>",
   "license": "MIT",
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "prebuild": "npm run clean",
+    "build": "tsc"
+  },
   "devDependencies": {
-    "typescript": "^2.2.2"
+    "typescript": "^2.6.1"
   }
 }
