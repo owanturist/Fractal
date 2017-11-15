@@ -2,8 +2,8 @@
   "compilerOptions": {
     "allowJs": true,
     "outDir": "dist",
-    "module": "commonjs",
-    "target": "es2015",
+    "module": "none",
+    "target": "es3",
     "sourceMap": true,
     "inlineSourceMap": false,
     "inlineSources": false,
