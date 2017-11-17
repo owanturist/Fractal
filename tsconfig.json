@@ -11,8 +11,7 @@
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "noImplicitThis": true,
-    "strict": true,
-    "moduleResolution": "node"
+    "strict": true
   },
   "include": [
     "./src/**/*"
