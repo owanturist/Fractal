@@ -250,3 +250,60 @@ test('Maybe.map5', t => {
         Just(9)
     );
 });
+
+test('Maybe.andThen', t => {
+    t.deepEqual(
+        Maybe.andThen(() => Nothing, Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.andThen(() => Nothing, Just(1)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.andThen(() => Just(2), Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.andThen(() => Just(2), Just(1)),
+        Just(2)
+    );
+
+    t.deepEqual(
+        Maybe.andThen(a => Just(2 * a), Just(3)),
+        Just(6)
+    );
+});
+
+test('Maybe.withDefault', t => {
+    t.is(
+        Maybe.withDefault(1, Nothing),
+        1
+    );
+
+    t.is(
+        Maybe.withDefault(1, Just(2)),
+        2
+    );
+});
+
+test('Maybe.cata', t => {
+    t.is(
+        Maybe.cata({
+            Nothing: () => 1,
+            Just: a => a * 2
+        }, Nothing),
+        1
+    );
+
+    t.is(
+        Maybe.cata({
+            Nothing: () => 1,
+            Just: a => a * 2
+        }, Just(3)),
+        6
+    );
+})
