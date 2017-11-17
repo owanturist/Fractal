@@ -8,12 +8,10 @@ export abstract class Maybe<T> {
         m1: Maybe<T1>,
         m2: Maybe<T2>
     ): Maybe<R> {
-        return Maybe.andThen(
-            t1 => Maybe.map(
-                t2 => fn(t1, t2),
-                m2
-            ),
-            m1
+        return m1.andThen(
+            t1 => m2.map(
+                t2 => fn(t1, t2)
+            )
         );
     }
 
@@ -23,13 +21,12 @@ export abstract class Maybe<T> {
         m2: Maybe<T2>,
         m3: Maybe<T3>
     ): Maybe<R> {
-        return Maybe.andThen(
-            t1 => Maybe.map2(
-                (t2, t3) => fn(t1, t2, t3),
-                m2,
-                m3
-            ),
-            m1
+        return m1.andThen(
+            t1 => m2.andThen(
+                t2 => m3.map(
+                    t3 => fn(t1, t2, t3)
+                )
+            )
         );
     }
 
@@ -40,14 +37,14 @@ export abstract class Maybe<T> {
         m3: Maybe<T3>,
         m4: Maybe<T4>
     ): Maybe<R> {
-        return Maybe.andThen(
-            t1 => Maybe.map3(
-                (t2, t3, t4) => fn(t1, t2, t3, t4),
-                m2,
-                m3,
-                m4
-            ),
-            m1
+        return m1.andThen(
+            t1 => m2.andThen(
+                t2 => m3.andThen(
+                    t3 => m4.map(
+                        t4 => fn(t1, t2, t3, t4)
+                    )
+                )
+            )
         );
     }
 
@@ -59,15 +56,16 @@ export abstract class Maybe<T> {
         m4: Maybe<T4>,
         m5: Maybe<T5>
     ): Maybe<R> {
-        return Maybe.andThen(
-            t1 => Maybe.map4(
-                (t2, t3, t4, t5) => fn(t1, t2, t3, t4, t5),
-                m2,
-                m3,
-                m4,
-                m5
-            ),
-            m1
+        return m1.andThen(
+            t1 => m2.andThen(
+                t2 => m3.andThen(
+                    t3 => m4.andThen(
+                        t4 => m5.map(
+                            t5 => fn(t1, t2, t3, t4, t5)
+                        )
+                    )
+                )
+            )
         );
     }
 
