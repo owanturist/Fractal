@@ -1,15 +1,17 @@
 {
   "compilerOptions": {
-    "allowJs": true,
+    "allowJs": false,
     "outDir": "dist",
-    "module": "none",
+    "module": "commonjs",
     "target": "es3",
-    "sourceMap": true,
+    "sourceMap": false,
     "inlineSourceMap": false,
     "inlineSources": false,
     "noImplicitAny": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
+    "noImplicitThis": true,
+    "strict": true,
     "moduleResolution": "node"
   },
   "include": [
@@ -20,8 +22,5 @@
     "build",
     "typings/main",
     "typings/main.d.ts"
-  ],
-  "awesomeTypescriptLoaderOptions": {
-    "useCache": true
-  }
+  ]
 }
