@@ -20,18 +20,30 @@ test('Maybe.map', t => {
 
 test('Maybe.map2', t => {
     t.deepEqual(
-        Maybe.map2((a: number, b: number) => a * 2 + b, Nothing, Nothing),
+        Maybe.map2(
+            (a: number, b: number) => a * 2 + b,
+            Nothing,
+            Nothing
+        ),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.map2((a: number, b) => a * 2 + b, Nothing, Just(1)),
+        Maybe.map2(
+            (a: number, b) => a * 2 + b,
+            Just(1),
+            Nothing
+        ),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.map2((a, b) => a * 2 + b, Just(2), Just(1)),
-        Just(5)
+        Maybe.map2(
+            (a, b) => a * 2 + b,
+            Just(1),
+            Just(2)
+        ),
+        Just(4)
     );
 });
 
@@ -41,26 +53,6 @@ test('Maybe.map3', t => {
             (a: number, b: number, c: number) => a * 2 + b - c,
             Nothing,
             Nothing,
-            Nothing
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map3(
-            (a: number, b: number, c) => a * 2 + b - c,
-            Nothing,
-            Nothing,
-            Just(1)
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map3(
-            (a: number, b, c: number) => a * 2 + b - c,
-            Nothing,
-            Just(2),
             Nothing
         ),
         Nothing
@@ -78,9 +70,9 @@ test('Maybe.map3', t => {
 
     t.deepEqual(
         Maybe.map3(
-            (a, b: number, c: number) => a * 2 + b - c,
-            Just(3),
-            Nothing,
+            (a, b, c: number) => a * 2 + b - c,
+            Just(1),
+            Just(2),
             Nothing
         ),
         Nothing
@@ -89,11 +81,11 @@ test('Maybe.map3', t => {
     t.deepEqual(
         Maybe.map3(
             (a, b, c) => a * 2 + b - c,
-            Just(3),
+            Just(1),
             Just(2),
-            Just(1)
+            Just(3)
         ),
-        Just(7)
+        Just(1)
     );
 });
 
@@ -111,43 +103,32 @@ test('Maybe.map4', t => {
 
     t.deepEqual(
         Maybe.map4(
-            (a: number, b: number, c: number, d) => a * 2 + b - c * d,
-            Nothing,
-            Nothing,
-            Nothing,
-            Just(1)
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map4(
-            (a: number, b: number, c, d: number) => a * 2 + b - c * d,
-            Nothing,
-            Nothing,
-            Just(2),
-            Nothing
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map4(
-            (a: number, b, c: number, d: number) => a * 2 + b - c * d,
-            Nothing,
-            Just(3),
-            Nothing,
-            Nothing
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map4(
             (a, b: number, c: number, d: number) => a * 2 + b - c * d,
-            Just(4),
+            Just(1),
             Nothing,
             Nothing,
+            Nothing
+        ),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.map4(
+            (a, b, c: number, d: number) => a * 2 + b - c * d,
+            Just(1),
+            Just(2),
+            Nothing,
+            Nothing
+        ),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.map4(
+            (a, b, c, d: number) => a * 2 + b - c * d,
+            Just(1),
+            Just(2),
+            Just(3),
             Nothing
         ),
         Nothing
@@ -156,12 +137,12 @@ test('Maybe.map4', t => {
     t.deepEqual(
         Maybe.map4(
             (a, b, c, d) => a * 2 + b - c * d,
-            Just(4),
-            Just(3),
+            Just(1),
             Just(2),
-            Just(1)
+            Just(3),
+            Just(4)
         ),
-        Just(9)
+        Just(-8)
     );
 });
 
@@ -180,23 +161,11 @@ test('Maybe.map5', t => {
 
     t.deepEqual(
         Maybe.map5(
-            (a: number, b: number, c: number, d: number, e) => a * 2 + b - c * d + e,
+            (a, b: number, c: number, d: number, e: number) => a * 2 + b - c * d + e,
+            Just(1),
             Nothing,
             Nothing,
             Nothing,
-            Nothing,
-            Just(1)
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map5(
-            (a: number, b: number, c: number, d, e: number) => a * 2 + b - c * d + e,
-            Nothing,
-            Nothing,
-            Nothing,
-            Just(2),
             Nothing
         ),
         Nothing
@@ -204,9 +173,21 @@ test('Maybe.map5', t => {
 
     t.deepEqual(
         Maybe.map5(
-            (a: number, b: number, c, d: number, e: number) => a * 2 + b - c * d + e,
+            (a, b, c: number, d: number, e: number) => a * 2 + b - c * d + e,
+            Just(1),
+            Just(2),
             Nothing,
             Nothing,
+            Nothing
+        ),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.map5(
+            (a, b, c, d: number, e: number) => a * 2 + b - c * d + e,
+            Just(1),
+            Just(2),
             Just(3),
             Nothing,
             Nothing
@@ -216,23 +197,11 @@ test('Maybe.map5', t => {
 
     t.deepEqual(
         Maybe.map5(
-            (a: number, b, c: number, d: number, e: number) => a * 2 + b - c * d + e,
-            Nothing,
+            (a, b, c, d, e: number) => a * 2 + b - c * d + e,
+            Just(1),
+            Just(2),
+            Just(3),
             Just(4),
-            Nothing,
-            Nothing,
-            Nothing
-        ),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.map5(
-            (a, b: number, c: number, d: number, e: number) => a * 2 + b - c * d + e,
-            Just(5),
-            Nothing,
-            Nothing,
-            Nothing,
             Nothing
         ),
         Nothing
@@ -241,13 +210,13 @@ test('Maybe.map5', t => {
     t.deepEqual(
         Maybe.map5(
             (a, b, c, d, e) => a * 2 + b - c * d + e,
-            Just(5),
-            Just(4),
-            Just(3),
+            Just(1),
             Just(2),
-            Just(1)
+            Just(3),
+            Just(4),
+            Just(5)
         ),
-        Just(9)
+        Just(-3)
     );
 });
 
