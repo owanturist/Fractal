@@ -232,18 +232,13 @@ test('Maybe.andThen', t => {
     );
 
     t.deepEqual(
-        Maybe.andThen(() => Just(2), Nothing),
+        Maybe.andThen(a => Just(a * 3), Nothing),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.andThen(() => Just(2), Just(1)),
-        Just(2)
-    );
-
-    t.deepEqual(
-        Maybe.andThen(a => Just(2 * a), Just(3)),
-        Just(6)
+        Maybe.andThen(a => Just(a * 3), Just(1)),
+        Just(3)
     );
 });
 
