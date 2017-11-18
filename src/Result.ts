@@ -96,7 +96,7 @@ export abstract class Result<E, T> {
     public static fromMaybe<E, T>(msg: E, maybe: Maybe<T>): Result<E, T> {
         return Maybe.cata({
             Nothing: () => Err(msg),
-            Just: () => Err(msg)
+            Just: Ok
         }, maybe)
     }
 
