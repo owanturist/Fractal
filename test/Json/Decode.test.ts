@@ -101,7 +101,24 @@ test.todo('Json.Decode.oneOf');
 
 test.todo('Json.Decode.value');
 
-test.todo('Json.Decode.nil');
+test('Json.Decode.nul', t => {
+    const decoder = Decode.nul('value');
+
+    t.deepEqual(
+        decodeValue(decoder, 'str'),
+        Err('Value `"str"` is not a null.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, undefined),
+        Err('Value `undefined` is not a null.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, null),
+        Ok('value')
+    );
+});
 
 test('Json.Decode.fail', t => {
     t.deepEqual(
@@ -792,6 +809,3 @@ test('Json.Decode.decodeString', t => {
         })
     );
 });
-
-test.todo('Json.Decode.fromResult');
-

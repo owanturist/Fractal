@@ -8,6 +8,7 @@ import {
 export type Decoder<T>
     = Primitive<T>
     | Field<T>
+    | Nul<T>
     | Fail
     | Succeed<T>
     | Map<any, T>
@@ -55,6 +56,16 @@ export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => ({
     ctor: '@Json/Decode|Decoder#Field',
     _0: key,
     _1: decoder
+});
+
+interface Nul<T> {
+    readonly ctor: '@Json/Decode|Decoder#Nul';
+    readonly _0: T;
+}
+
+export const nul = <T>(value: T): Decoder<T> => ({
+    ctor: '@Json/Decode|Decoder#Nul',
+    _0: value
 });
 
 interface Fail {
@@ -308,6 +319,12 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 : Err('Field `' + decoder._0 + '` doesn\'t exist in an object ' + JSON.stringify(value) + '.');
         }
 
+        case '@Json/Decode|Decoder#Nul': {
+            return value === null
+                ? Ok(decoder._0)
+                : Err('Value `' + JSON.stringify(value) + '` is not a null.');
+        }
+
         case '@Json/Decode|Decoder#Fail': {
             return Err(decoder._0);
         }
@@ -423,6 +440,7 @@ export const Decode = {
     number,
     succeed,
     field,
+    nul,
     fail,
     map,
     map2,
