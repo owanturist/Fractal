@@ -112,3 +112,13 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
         }
     }
 }
+
+export const Decode = {
+    string,
+    bool,
+    number,
+    field,
+    map,
+    map2,
+    decodeValue
+};

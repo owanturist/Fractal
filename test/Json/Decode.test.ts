@@ -4,11 +4,14 @@ import {
     Err,
     Ok
 } from '../../src/Result';
-import * as Decode from '../../src/Json/Decode';
+import {
+    decodeValue,
+    Decode
+} from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
     t.deepEqual(
-        Decode.decodeValue(
+        decodeValue(
             Decode.string,
             1
         ),
@@ -16,7 +19,7 @@ test('Json.Decode.string', t => {
     );
 
     t.deepEqual(
-        Decode.decodeValue(
+        decodeValue(
             Decode.string,
             'str'
         ),
@@ -26,7 +29,7 @@ test('Json.Decode.string', t => {
 
 test('Json.Decode.bool', t => {
     t.deepEqual(
-        Decode.decodeValue(
+        decodeValue(
             Decode.bool,
             1
         ),
@@ -34,7 +37,7 @@ test('Json.Decode.bool', t => {
     );
 
     t.deepEqual(
-        Decode.decodeValue(
+        decodeValue(
             Decode.bool,
             false
         ),
@@ -44,7 +47,7 @@ test('Json.Decode.bool', t => {
 
 test('Json.Decode.number', t => {
     t.deepEqual(
-        Decode.decodeValue(
+        decodeValue(
             Decode.number,
             'str'
         ),
@@ -52,7 +55,7 @@ test('Json.Decode.number', t => {
     );
 
     t.deepEqual(
-        Decode.decodeValue(
+        decodeValue(
             Decode.number,
             1
         ),
@@ -72,22 +75,22 @@ test('Json.Decode.field', t => {
     const decoder = Decode.field('foo', Decode.string);
 
     t.deepEqual(
-        Decode.decodeValue(decoder, null),
+        decodeValue(decoder, null),
         Err('Value `null` is not an object.')
     );
 
     t.deepEqual(
-        Decode.decodeValue(decoder, { bar: 'str' }),
+        decodeValue(decoder, { bar: 'str' }),
         Err('Field `foo` doesn\'t exist in an object {"bar":"str"}.')
     );
 
     t.deepEqual(
-        Decode.decodeValue(decoder, { foo: 1 }),
+        decodeValue(decoder, { foo: 1 }),
         Err('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        Decode.decodeValue(decoder, { foo: 'str' }),
+        decodeValue(decoder, { foo: 'str' }),
         Ok('str')
     );
 });
@@ -115,12 +118,12 @@ test('Json.Decode.map', t => {
     );
 
     t.deepEqual(
-        Decode.decodeValue(decoder, 1),
+        decodeValue(decoder, 1),
         Err('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        Decode.decodeValue(decoder, 'str'),
+        decodeValue(decoder, 'str'),
         Ok({
             t1: 'str'
         })
