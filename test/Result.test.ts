@@ -233,7 +233,7 @@ test('Result.map6', t => {
             Err('msg3'),
             Err('msg4'),
             Err('msg5'),
-            Err('msg6'),
+            Err('msg6')
         ),
         Err('msg1')
     );
@@ -246,7 +246,7 @@ test('Result.map6', t => {
             Err('msg3'),
             Err('msg4'),
             Err('msg5'),
-            Err('msg6'),
+            Err('msg6')
         ),
         Err('msg2')
     );
@@ -259,7 +259,7 @@ test('Result.map6', t => {
             Err('msg3'),
             Err('msg4'),
             Err('msg5'),
-            Err('msg6'),
+            Err('msg6')
         ),
         Err('msg3')
     );
@@ -272,7 +272,7 @@ test('Result.map6', t => {
             Ok(3),
             Err('msg4'),
             Err('msg5'),
-            Err('msg6'),
+            Err('msg6')
         ),
         Err('msg4')
     );
@@ -285,7 +285,7 @@ test('Result.map6', t => {
             Ok(3),
             Ok(4),
             Err('msg5'),
-            Err('msg6'),
+            Err('msg6')
         ),
         Err('msg5')
     );
@@ -298,7 +298,7 @@ test('Result.map6', t => {
             Ok(3),
             Ok(4),
             Ok(5),
-            Err('msg6'),
+            Err('msg6')
         ),
         Err('msg6')
     );
@@ -314,6 +314,257 @@ test('Result.map6', t => {
             Ok(6)
         ),
         Ok(22)
+    );
+});
+
+test('Result.map7', t => {
+    t.deepEqual(
+        Result.map7(
+            (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
+            Err('msg1'),
+            Err('msg2'),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7')
+        ),
+        Err('msg1')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b: number, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Err('msg2'),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7')
+        ),
+        Err('msg2')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Ok(2),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7')
+        ),
+        Err('msg3')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b, c, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7')
+        ),
+        Err('msg4')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b, c, d, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7')
+        ),
+        Err('msg5')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b, c, d, e, f: number, g: number) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Err('msg6'),
+            Err('msg7')
+        ),
+        Err('msg6')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b, c, d, e, f, g: number) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Ok(6),
+            Err('msg7')
+        ),
+        Err('msg7')
+    );
+
+    t.deepEqual(
+        Result.map7(
+            (a, b, c, d, e, f, g) => a * 2 + b - c * d + e * f - g,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Ok(6),
+            Ok(7)
+        ),
+        Ok(15)
+    );
+});
+
+test('Result.map8', t => {
+    t.deepEqual(
+        Result.map8(
+            (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Err('msg1'),
+            Err('msg2'),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg1')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Err('msg2'),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg2')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg3')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg4')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c, d, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Err('msg5'),
+            Err('msg6'),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg5')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c, d, e, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Err('msg6'),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg6')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c, d, e, f, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Ok(6),
+            Err('msg7'),
+            Err('msg8')
+        ),
+        Err('msg7')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c, d, e, f, g, h: number) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Ok(6),
+            Ok(7),
+            Err('msg8')
+        ),
+        Err('msg8')
+    );
+
+    t.deepEqual(
+        Result.map8(
+            (a, b, c, d, e, f, g, h) => a * 2 + b - c * d + e * f - g * h,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Ok(6),
+            Ok(7),
+            Ok(8)
+        ),
+        Ok(-34)
     );
 });
 
