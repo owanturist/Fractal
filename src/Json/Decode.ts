@@ -409,6 +409,14 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
     }
 }
 
+export const decodeString = <T>(decoder: Decoder<T>, str: string): Result<string, T> => {
+    try {
+        return decodeValue(decoder, JSON.parse(str));
+    } catch (err) {
+        return Err(err.message);
+    }
+};
+
 export const Decode = {
     string,
     bool,
@@ -425,5 +433,6 @@ export const Decode = {
     map7,
     map8,
     andThen,
-    decodeValue
+    decodeValue,
+    decodeString
 };
