@@ -10,6 +10,7 @@ export type Decoder<T>
     | Field<T>
     | Map<any, T>
     | Map2<any, any, T>
+    | Map3<any, any, any, T>
     ;
 
 interface Primitive<T> {
@@ -76,7 +77,28 @@ export const map2 = <T1, T2, R>(
     _0: fn,
     _1: d1,
     _2: d2
-})
+});
+
+interface Map3<T1, T2, T3, R> {
+    readonly ctor: '@Json/Decode|Decoder#Map3';
+    readonly _0: (t1: T1, t2: T2, t3: T3) => R;
+    readonly _1: Decoder<T1>;
+    readonly _2: Decoder<T2>;
+    readonly _3: Decoder<T3>;
+}
+
+export const map3 = <T1, T2, T3, R>(
+    fn: (t1: T1, t2: T2, t3: T3) => R,
+    d1: Decoder<T1>,
+    d2: Decoder<T2>,
+    d3: Decoder<T3>
+): Decoder<R> => ({
+    ctor: '@Json/Decode|Decoder#Map3',
+    _0: fn,
+    _1: d1,
+    _2: d2,
+    _3: d3
+});
 
 export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, T> => {
     switch (decoder.ctor) {
@@ -110,6 +132,15 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 decodeValue(decoder._2, value)
             );
         }
+
+        case '@Json/Decode|Decoder#Map3': {
+            return Result.map3(
+                decoder._0,
+                decodeValue(decoder._1, value),
+                decodeValue(decoder._2, value),
+                decodeValue(decoder._3, value)
+            );
+        }
     }
 }
 
@@ -120,5 +151,6 @@ export const Decode = {
     field,
     map,
     map2,
+    map3,
     decodeValue
 };

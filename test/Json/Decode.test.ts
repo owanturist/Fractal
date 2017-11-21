@@ -160,7 +160,54 @@ test('Json.Decode.map2', t => {
     );
 });
 
-test.todo('Json.Decode.map3');
+test('Json.Decode.map3', t => {
+    const decoder = Decode.map3(
+        (t1, t2, t3) => ({ t1, t2, t3 }),
+        Decode.field('s1', Decode.string),
+        Decode.field('s2', Decode.string),
+        Decode.field('s3', Decode.string)
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 1,
+            s2: 2,
+            s3: 3
+        }),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 2,
+            s3: 3
+        }),
+        Err('Value `2` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 3
+        }),
+        Err('Value `3` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3'
+        }),
+        Ok({
+            t1: 'str1',
+            t2: 'str2',
+            t3: 'str3'
+        })
+    );
+});
 
 test.todo('Json.Decode.map4');
 
