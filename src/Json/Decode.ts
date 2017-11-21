@@ -58,6 +58,16 @@ export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => ({
     _1: decoder
 });
 
+export const at = <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
+    let tmp = decoder;
+
+    for (let i = keys.length - 1; i >= 0; i--) {
+        tmp = field(keys[ i ], tmp);
+    }
+
+    return tmp;
+};
+
 interface Nul<T> {
     readonly ctor: '@Json/Decode|Decoder#Nul';
     readonly _0: T;
@@ -440,6 +450,7 @@ export const Decode = {
     number,
     succeed,
     field,
+    at,
     nul,
     fail,
     map,
