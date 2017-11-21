@@ -18,8 +18,9 @@ export abstract class Result<E, T> {
         r2: Result<E, T2>
     ): Result<E, R> {
         return r1.andThen(
-            t1 => r2.map(
-                t2 => fn(t1, t2)
+            t1 => Result.map(
+                t2 => fn(t1, t2),
+                r2
             )
         );
     }
@@ -31,10 +32,10 @@ export abstract class Result<E, T> {
         r3: Result<E, T3>
     ): Result<E, R> {
         return r1.andThen(
-            t1 => r2.andThen(
-                t2 => r3.map(
-                    t3 => fn(t1, t2, t3)
-                )
+            t1 => Result.map2(
+                (t2, t3) => fn(t1, t2, t3),
+                r2,
+                r3
             )
         );
     }
@@ -63,7 +64,7 @@ export abstract class Result<E, T> {
         r2: Result<E, T2>,
         r3: Result<E, T3>,
         r4: Result<E, T4>,
-        r5: Result<E, T5>,
+        r5: Result<E, T5>
     ): Result<E, R> {
         return r1.andThen(
             t1 => r2.andThen(
@@ -71,6 +72,87 @@ export abstract class Result<E, T> {
                     t3 => r4.andThen(
                         t4 => r5.map(
                             t5 => fn(t1, t2, t3, t4, t5)
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    public static map6<E, T1, T2, T3, T4, T5, T6, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
+        r1: Result<E, T1>,
+        r2: Result<E, T2>,
+        r3: Result<E, T3>,
+        r4: Result<E, T4>,
+        r5: Result<E, T5>,
+        r6: Result<E, T6>
+    ): Result<E, R> {
+        return r1.andThen(
+            t1 => r2.andThen(
+                t2 => r3.andThen(
+                    t3 => r4.andThen(
+                        t4 => r5.andThen(
+                            t5 => r6.map(
+                                t6 => fn(t1, t2, t3, t4, t5, t6)
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    public static map7<E, T1, T2, T3, T4, T5, T6, T7, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
+        r1: Result<E, T1>,
+        r2: Result<E, T2>,
+        r3: Result<E, T3>,
+        r4: Result<E, T4>,
+        r5: Result<E, T5>,
+        r6: Result<E, T6>,
+        r7: Result<E, T7>
+    ): Result<E, R> {
+        return r1.andThen(
+            t1 => r2.andThen(
+                t2 => r3.andThen(
+                    t3 => r4.andThen(
+                        t4 => r5.andThen(
+                            t5 => r6.andThen(
+                                t6 => r7.map(
+                                    t7 => fn(t1, t2, t3, t4, t5, t6, t7)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    public static map8<E, T1, T2, T3, T4, T5, T6, T7, T8, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
+        r1: Result<E, T1>,
+        r2: Result<E, T2>,
+        r3: Result<E, T3>,
+        r4: Result<E, T4>,
+        r5: Result<E, T5>,
+        r6: Result<E, T6>,
+        r7: Result<E, T7>,
+        r8: Result<E, T8>
+    ): Result<E, R> {
+        return r1.andThen(
+            t1 => r2.andThen(
+                t2 => r3.andThen(
+                    t3 => r4.andThen(
+                        t4 => r5.andThen(
+                            t5 => r6.andThen(
+                                t6 => r7.andThen(
+                                    t7 => r8.map(
+                                        t8 => fn(t1, t2, t3, t4, t5, t6, t7, t8)
+                                    )
+                                )
+                            )
                         )
                     )
                 )

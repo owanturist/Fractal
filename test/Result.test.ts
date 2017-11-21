@@ -224,6 +224,99 @@ test('Result.map5', t => {
     );
 });
 
+test('Result.map6', t => {
+    t.deepEqual(
+        Result.map6(
+            (a: number, b: number, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
+            Err('msg1'),
+            Err('msg2'),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+        ),
+        Err('msg1')
+    );
+
+    t.deepEqual(
+        Result.map6(
+            (a, b: number, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
+            Ok(1),
+            Err('msg2'),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+        ),
+        Err('msg2')
+    );
+
+    t.deepEqual(
+        Result.map6(
+            (a, b, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
+            Ok(1),
+            Ok(2),
+            Err('msg3'),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+        ),
+        Err('msg3')
+    );
+
+    t.deepEqual(
+        Result.map6(
+            (a, b, c, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Err('msg4'),
+            Err('msg5'),
+            Err('msg6'),
+        ),
+        Err('msg4')
+    );
+
+    t.deepEqual(
+        Result.map6(
+            (a, b, c, d, e: number, f: number) => a * 2 + b - c * d + e * f,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Err('msg5'),
+            Err('msg6'),
+        ),
+        Err('msg5')
+    );
+
+    t.deepEqual(
+        Result.map6(
+            (a, b, c, d, e, f: number) => a * 2 + b - c * d + e * f,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Err('msg6'),
+        ),
+        Err('msg6')
+    );
+
+    t.deepEqual(
+        Result.map6(
+            (a, b, c, d, e, f) => a * 2 + b - c * d + e * f,
+            Ok(1),
+            Ok(2),
+            Ok(3),
+            Ok(4),
+            Ok(5),
+            Ok(6)
+        ),
+        Ok(22)
+    );
+});
+
 test('Result.andThen', t => {
     t.deepEqual(
         Result.andThen(() => Err('msg2'), Err('msg1')),
