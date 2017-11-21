@@ -124,7 +124,29 @@ test('Json.Decode.at', t => {
     );
 });
 
-test.todo('Json.Decode.index');
+test('Json.Decode.index', t => {
+    const decoder = Decode.index(1, Decode.string);
+
+    t.deepEqual(
+        decodeValue(decoder, {}),
+        Err('Value `{}` is not an array.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, []),
+        Err('Need index 1 but there are only 0 entries.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, [0, 1]),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, [0, 'str']),
+        Ok('str')
+    );
+});
 
 test.todo('Json.Decode.maybe');
 

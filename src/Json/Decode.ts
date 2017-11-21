@@ -8,6 +8,7 @@ import {
 export type Decoder<T>
     = Primitive<T>
     | Field<T>
+    | Index<T>
     | Nul<T>
     | Fail
     | Succeed<T>
@@ -67,6 +68,18 @@ export const at = <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
 
     return tmp;
 };
+
+interface Index<T> {
+    readonly ctor: '@Json/Decode|Decoder#Index';
+    readonly _0: number;
+    readonly _1: Decoder<T>;
+}
+
+export const index = <T>(i: number, decoder: Decoder<T>): Decoder<T> => ({
+    ctor: '@Json/Decode|Decoder#Index',
+    _0: i,
+    _1: decoder
+});
 
 interface Nul<T> {
     readonly ctor: '@Json/Decode|Decoder#Nul';
@@ -329,6 +342,18 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 : Err('Field `' + decoder._0 + '` doesn\'t exist in an object ' + JSON.stringify(value) + '.');
         }
 
+        case '@Json/Decode|Decoder#Index': {
+            if (!(value instanceof Array)) {
+                return Err('Value `' + JSON.stringify(value) + '` is not an array.');
+            }
+
+            if (decoder._0 >= value.length) {
+                return Err('Need index ' + decoder._0 + ' but there are only ' + value.length + ' entries.');
+            }
+
+            return decodeValue(decoder._1, value[ decoder._0 ]);
+        }
+
         case '@Json/Decode|Decoder#Nul': {
             return value === null
                 ? Ok(decoder._0)
@@ -451,6 +476,7 @@ export const Decode = {
     succeed,
     field,
     at,
+    index,
     nul,
     fail,
     map,
