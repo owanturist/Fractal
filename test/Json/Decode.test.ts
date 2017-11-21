@@ -102,9 +102,19 @@ test.todo('Json.Decode.value');
 
 test.todo('Json.Decode.nil');
 
-test.todo('Json.Decode.succeed');
+test('Json.Decode.fail', t => {
+    t.deepEqual(
+        Decode.decodeValue(Decode.fail('msg'), null),
+        Err('msg')
+    )
+});
 
-test.todo('Json.Decode.fail');
+test('Json.Decode.succeed', t => {
+    t.deepEqual(
+        Decode.decodeValue(Decode.succeed(1), null),
+        Ok(1)
+    )
+});
 
 test('Json.Decode.map', t => {
     const decoder = Decode.map(
@@ -734,7 +744,27 @@ test('Json.Decode.map8', t => {
     );
 });
 
-test.todo('Json.Decode.andThen');
+test('Json.Decode.andThen', t => {
+    const decoder = Decode.andThen(
+        t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg'),
+        Decode.number
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, 'str'),
+        Err('Value `"str"` is not a number.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, 1),
+        Err('msg')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, 2),
+        Ok(1)
+    );
+});
 
 test.todo('Json.Decode.decodeString');
 

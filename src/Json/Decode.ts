@@ -8,6 +8,8 @@ import {
 export type Decoder<T>
     = Primitive<T>
     | Field<T>
+    | Fail
+    | Succeed<T>
     | Map<any, T>
     | Map2<any, any, T>
     | Map3<any, any, any, T>
@@ -16,6 +18,7 @@ export type Decoder<T>
     | Map6<any, any, any, any, any, any, T>
     | Map7<any, any, any, any, any, any, any, T>
     | Map8<any, any, any, any, any, any, any, any, T>
+    | AndThen<any, T>
     ;
 
 interface Primitive<T> {
@@ -52,6 +55,26 @@ export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => ({
     ctor: '@Json/Decode|Decoder#Field',
     _0: key,
     _1: decoder
+});
+
+interface Fail {
+    readonly ctor: '@Json/Decode|Decoder#Fail';
+    readonly _0: string;
+}
+
+export const fail = (msg: string): Decoder<any> => ({
+    ctor: '@Json/Decode|Decoder#Fail',
+    _0: msg
+});
+
+interface Succeed<T> {
+    readonly ctor: '@Json/Decode|Decoder#Succeed';
+    readonly _0: T;
+}
+
+export const succeed = <T>(value: T): Decoder<T> => ({
+    ctor: '@Json/Decode|Decoder#Succeed',
+    _0: value
 });
 
 interface Map<T, R> {
@@ -255,6 +278,18 @@ export const map8 = <T1, T2, T3, T4, T5, T6, T7, T8, R>(
     _8: d8
 });
 
+interface AndThen<T, R> {
+    readonly ctor: '@Json/Decode|Decoder#AndThen';
+    readonly _0: (value: T) => Decoder<R>;
+    readonly _1: Decoder<T>;
+}
+
+export const andThen = <T, R>(fn: (value: T) => Decoder<R>, decoder: Decoder<T>): Decoder<R> => ({
+    ctor: '@Json/Decode|Decoder#AndThen',
+    _0: fn,
+    _1: decoder
+});
+
 export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, T> => {
     switch (decoder.ctor) {
         case '@Json/Decode|Decoder#Primitive': {
@@ -271,6 +306,14 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
             return decoder._0 in value
                 ? decodeValue(decoder._1, value[ decoder._0 ])
                 : Err('Field `' + decoder._0 + '` doesn\'t exist in an object ' + JSON.stringify(value) + '.');
+        }
+
+        case '@Json/Decode|Decoder#Fail': {
+            return Err(decoder._0);
+        }
+
+        case '@Json/Decode|Decoder#Succeed': {
+            return Ok(decoder._0);
         }
 
         case '@Json/Decode|Decoder#Map': {
@@ -356,6 +399,13 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 decodeValue(decoder._8, value)
             );
         }
+
+        case '@Json/Decode|Decoder#AndThen': {
+            return Result.andThen(
+                result => decodeValue(decoder._0(result), value),
+                decodeValue(decoder._1, value)
+            );
+        }
     }
 }
 
@@ -363,7 +413,9 @@ export const Decode = {
     string,
     bool,
     number,
+    succeed,
     field,
+    fail,
     map,
     map2,
     map3,
@@ -372,5 +424,6 @@ export const Decode = {
     map6,
     map7,
     map8,
+    andThen,
     decodeValue
 };
