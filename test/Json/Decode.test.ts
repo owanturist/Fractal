@@ -460,9 +460,279 @@ test('Json.Decode.map6', t => {
     );
 });
 
-test.todo('Json.Decode.map7');
+test('Json.Decode.map7', t => {
+    const decoder = Decode.map7(
+        (t1, t2, t3, t4, t5, t6, t7) => ({ t1, t2, t3, t4, t5, t6, t7 }),
+        Decode.field('s1', Decode.string),
+        Decode.field('s2', Decode.string),
+        Decode.field('s3', Decode.string),
+        Decode.field('s4', Decode.string),
+        Decode.field('s5', Decode.string),
+        Decode.field('s6', Decode.string),
+        Decode.field('s7', Decode.string)
+    );
 
-test.todo('Json.Decode.map8');
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 1,
+            s2: 2,
+            s3: 3,
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7
+        }),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 2,
+            s3: 3,
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7
+        }),
+        Err('Value `2` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 3,
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7
+        }),
+        Err('Value `3` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7
+        }),
+        Err('Value `4` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 5,
+            s6: 6,
+            s7: 7
+        }),
+        Err('Value `5` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 6,
+            s7: 7
+        }),
+        Err('Value `6` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 'str6',
+            s7: 7
+        }),
+        Err('Value `7` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 'str6',
+            s7: 'str7'
+        }),
+        Ok({
+            t1: 'str1',
+            t2: 'str2',
+            t3: 'str3',
+            t4: 'str4',
+            t5: 'str5',
+            t6: 'str6',
+            t7: 'str7'
+        })
+    );
+});
+
+test('Json.Decode.map8', t => {
+    const decoder = Decode.map8(
+        (t1, t2, t3, t4, t5, t6, t7, t8) => ({ t1, t2, t3, t4, t5, t6, t7, t8 }),
+        Decode.field('s1', Decode.string),
+        Decode.field('s2', Decode.string),
+        Decode.field('s3', Decode.string),
+        Decode.field('s4', Decode.string),
+        Decode.field('s5', Decode.string),
+        Decode.field('s6', Decode.string),
+        Decode.field('s7', Decode.string),
+        Decode.field('s8', Decode.string)
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 1,
+            s2: 2,
+            s3: 3,
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 2,
+            s3: 3,
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `2` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 3,
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `3` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 4,
+            s5: 5,
+            s6: 6,
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `4` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 5,
+            s6: 6,
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `5` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 6,
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `6` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 'str6',
+            s7: 7,
+            s8: 8
+        }),
+        Err('Value `7` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 'str6',
+            s7: 'str7',
+            s8: 8
+        }),
+        Err('Value `8` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            s1: 'str1',
+            s2: 'str2',
+            s3: 'str3',
+            s4: 'str4',
+            s5: 'str5',
+            s6: 'str6',
+            s7: 'str7',
+            s8: 'str8'
+        }),
+        Ok({
+            t1: 'str1',
+            t2: 'str2',
+            t3: 'str3',
+            t4: 'str4',
+            t5: 'str5',
+            t6: 'str6',
+            t7: 'str7',
+            t8: 'str8'
+        })
+    );
+});
 
 test.todo('Json.Decode.andThen');
 

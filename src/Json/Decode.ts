@@ -14,6 +14,8 @@ export type Decoder<T>
     | Map4<any, any, any, any, T>
     | Map5<any, any, any, any, any, T>
     | Map6<any, any, any, any, any, any, T>
+    | Map7<any, any, any, any, any, any, any, T>
+    | Map8<any, any, any, any, any, any, any, any, T>
     ;
 
 interface Primitive<T> {
@@ -184,6 +186,75 @@ export const map6 = <T1, T2, T3, T4, T5, T6, R>(
     _6: d6
 });
 
+interface Map7<T1, T2, T3, T4, T5, T6, T7, R> {
+    readonly ctor: '@Json/Decode|Decoder#Map7';
+    readonly _0: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R;
+    readonly _1: Decoder<T1>;
+    readonly _2: Decoder<T2>;
+    readonly _3: Decoder<T3>;
+    readonly _4: Decoder<T4>;
+    readonly _5: Decoder<T5>;
+    readonly _6: Decoder<T6>;
+    readonly _7: Decoder<T7>;
+}
+
+export const map7 = <T1, T2, T3, T4, T5, T6, T7, R>(
+    fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
+    d1: Decoder<T1>,
+    d2: Decoder<T2>,
+    d3: Decoder<T3>,
+    d4: Decoder<T4>,
+    d5: Decoder<T5>,
+    d6: Decoder<T6>,
+    d7: Decoder<T7>
+): Decoder<R> => ({
+    ctor: '@Json/Decode|Decoder#Map7',
+    _0: fn,
+    _1: d1,
+    _2: d2,
+    _3: d3,
+    _4: d4,
+    _5: d5,
+    _6: d6,
+    _7: d7
+});
+
+interface Map8<T1, T2, T3, T4, T5, T6, T7, T8, R> {
+    readonly ctor: '@Json/Decode|Decoder#Map8';
+    readonly _0: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R;
+    readonly _1: Decoder<T1>;
+    readonly _2: Decoder<T2>;
+    readonly _3: Decoder<T3>;
+    readonly _4: Decoder<T4>;
+    readonly _5: Decoder<T5>;
+    readonly _6: Decoder<T6>;
+    readonly _7: Decoder<T7>;
+    readonly _8: Decoder<T8>;
+}
+
+export const map8 = <T1, T2, T3, T4, T5, T6, T7, T8, R>(
+    fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
+    d1: Decoder<T1>,
+    d2: Decoder<T2>,
+    d3: Decoder<T3>,
+    d4: Decoder<T4>,
+    d5: Decoder<T5>,
+    d6: Decoder<T6>,
+    d7: Decoder<T7>,
+    d8: Decoder<T8>
+): Decoder<R> => ({
+    ctor: '@Json/Decode|Decoder#Map8',
+    _0: fn,
+    _1: d1,
+    _2: d2,
+    _3: d3,
+    _4: d4,
+    _5: d5,
+    _6: d6,
+    _7: d7,
+    _8: d8
+});
+
 export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, T> => {
     switch (decoder.ctor) {
         case '@Json/Decode|Decoder#Primitive': {
@@ -258,6 +329,33 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 decodeValue(decoder._6, value)
             );
         }
+
+        case '@Json/Decode|Decoder#Map7': {
+            return Result.map7(
+                decoder._0,
+                decodeValue(decoder._1, value),
+                decodeValue(decoder._2, value),
+                decodeValue(decoder._3, value),
+                decodeValue(decoder._4, value),
+                decodeValue(decoder._5, value),
+                decodeValue(decoder._6, value),
+                decodeValue(decoder._7, value)
+            );
+        }
+
+        case '@Json/Decode|Decoder#Map8': {
+            return Result.map8(
+                decoder._0,
+                decodeValue(decoder._1, value),
+                decodeValue(decoder._2, value),
+                decodeValue(decoder._3, value),
+                decodeValue(decoder._4, value),
+                decodeValue(decoder._5, value),
+                decodeValue(decoder._6, value),
+                decodeValue(decoder._7, value),
+                decodeValue(decoder._8, value)
+            );
+        }
     }
 }
 
@@ -272,5 +370,7 @@ export const Decode = {
     map4,
     map5,
     map6,
+    map7,
+    map8,
     decodeValue
 };
