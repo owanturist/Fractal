@@ -78,6 +78,25 @@ class Field<T> extends Decoder<T> {
     }
 }
 
+class Index<T> extends Decoder<T> {
+    constructor(
+        private readonly index: number,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, T> {
+        if (!(input instanceof Array)) {
+            return Err('Value `' + JSON.stringify(input) + '` is not an array.');
+        }
+
+        return this.index >= input.length
+            ? Err('Need index ' + this.index + ' but there are only ' + input.length + ' entries.')
+            : decodeValue(this.decoder, input[ this.index ]);
+    }
+}
+
 class Fail extends Decoder<any> {
     constructor(private readonly msg: string) {
         super();
@@ -159,6 +178,8 @@ export const Decode = {
 
         return acc;
     },
+
+    index: <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Index(index, decoder),
 
     fail: (msg: string): Decoder<any> => new Fail(msg),
 
