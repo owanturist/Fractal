@@ -149,6 +149,43 @@ test('Json.Decode.dict', t => {
     );
 });
 
+test('Json.Decode.keyValuePairs', t => {
+    const decoder = Decode.keyValuePairs(Decode.string);
+
+    t.deepEqual(
+        decodeValue(decoder, 1),
+        Err('Value `1` is not an object.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, null),
+        Err('Value `null` is not an object.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, []),
+        Err('Value `[]` is not an object.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, { s1: 1 }),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, { s1: 'str1', s2: 2 }),
+        Err('Value `2` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, { s1: 'str1', s2: 'str2' }),
+        Ok([
+            [ 's1', 'str1' ],
+            [ 's2', 'str2' ]
+        ])
+    );
+});
+
 test('Json.Decode.field', t => {
     const decoder = Decode.field('foo', Decode.string);
 
