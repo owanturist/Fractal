@@ -97,3 +97,12 @@ class Object extends Value {
 export function object(value: Array<[ string, Value ]>): Value {
     return new Object(value);
 }
+
+export const Encode = {
+    string,
+    number,
+    bool,
+    nul,
+    list,
+    object
+};
