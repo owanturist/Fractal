@@ -1,6 +1,10 @@
 import test from 'ava';
 
 import {
+    Nothing,
+    Just
+} from '../../src/Maybe';
+import {
     Err,
     Ok
 } from '../../src/Result';
@@ -60,6 +64,30 @@ test('Json.Foo.bool', t => {
             false
         ),
         Ok(false)
+    );
+});
+
+test('Json.Decode.nullable', t => {
+    const decoder = Decode.nullable(Decode.string);
+
+    t.deepEqual(
+        decodeValue(decoder, undefined),
+        Err('Value `undefined` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, null),
+        Ok(Nothing)
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, 1),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, 'str'),
+        Ok(Just('str'))
     );
 });
 

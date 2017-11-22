@@ -1,4 +1,9 @@
 import {
+    Maybe,
+    Nothing,
+    Just
+} from '../Maybe';
+import {
     Result,
     Err,
     Ok
@@ -26,6 +31,20 @@ class Primitive<T> extends Decoder<T> {
         return this.check(input)
             ? Ok(input)
             : Err('Value `' + JSON.stringify(input) + '` is not a ' + this.title + '.')
+    }
+}
+
+class Nullable<T> extends Decoder<Maybe<T>> {
+    constructor(
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, Maybe<T>> {
+        return input === null
+            ? Ok(Nothing)
+            : Result.map(Just, decodeValue(this.decoder, input))
     }
 }
 
@@ -164,6 +183,8 @@ export const Decode = {
         'bool',
         (value: any): value is boolean => typeof value === 'boolean'
     ) as Decoder<boolean>,
+
+    nullable: <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new Nullable(decoder),
 
     list: <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder),
 
