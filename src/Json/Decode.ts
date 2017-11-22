@@ -227,6 +227,16 @@ class OneOf<T> extends Decoder<T> {
     }
 }
 
+class Lazy<T> extends Decoder<T> {
+    constructor(private readonly callDecoder: () => Decoder<T>) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, T> {
+        return decodeValue(this.callDecoder(), input);
+    }
+}
+
 class Nul<T> extends Decoder<T> {
     constructor(private readonly defaults: T) {
         super();
@@ -332,6 +342,8 @@ export const Decode = {
     maybe: <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Maybe(decoder),
 
     oneOf: <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders),
+
+    lazy: <T>(callDecoder: () => Decoder<T>): Decoder<T> => new Lazy(callDecoder),
 
     nul: <T>(defaults: T): Decoder<T> => new Nul(defaults),
 

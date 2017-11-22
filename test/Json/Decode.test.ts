@@ -11,7 +11,8 @@ import {
 import {
     decodeValue,
     decodeString,
-    Decode
+    Decode,
+    Decoder
 } from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
@@ -331,6 +332,69 @@ test('Json.Decode.oneOf', t => {
             Decode.nul(0)
         ])), input),
         Ok([ 1, 2, 0, 3 ])
+    );
+});
+
+test('Json.Decode.lazy', t => {
+    interface Comment {
+        message: string;
+        responses: Array<Comment>
+    }
+
+    const decoder: Decoder<Comment> = Decode.map2(
+        (message, responses) => ({ message, responses }),
+        Decode.field('message', Decode.string),
+        Decode.field('responses', Decode.lazy(() => Decode.list(decoder)))
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            message: 'msg',
+            responces: [{
+                message: 'msg-1'
+            }]
+        }),
+        Err(
+            'Field `responses` doesn\'t exist in an object '
+            + '{"message":"msg","responces":['
+            + '{"message":"msg-1"}'
+            + ']}.'
+        )
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, {
+            message: 'msg',
+            responses: [{
+                message: 'msg-1',
+                responses: []
+            }, {
+                message: 'msg-2',
+                responses: [{
+                    message: 'msg-2-1',
+                    responses: []
+                }, {
+                    message: 'msg-2-2',
+                    responses: []
+                }]
+            }]
+        }),
+        Ok({
+            message: 'msg',
+            responses: [{
+                message: 'msg-1',
+                responses: []
+            }, {
+                message: 'msg-2',
+                responses: [{
+                    message: 'msg-2-1',
+                    responses: []
+                }, {
+                    message: 'msg-2-2',
+                    responses: []
+                }]
+            }]
+        })
     );
 });
 
