@@ -150,6 +150,16 @@ export const Decode = {
 
     field: <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Field(key, decoder),
 
+    at: <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
+        let acc = decoder;
+
+        for (let i = keys.length - 1; i >= 0; i--) {
+            acc = new Field(keys[ i ], acc);
+        }
+
+        return acc;
+    },
+
     fail: (msg: string): Decoder<any> => new Fail(msg),
 
     succeed: <T>(value: T): Decoder<T> => new Succeed(value),
