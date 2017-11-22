@@ -19,6 +19,14 @@ export abstract class Decoder<T> {
 
 export const decodeValue = Decoder.decodeValue;
 
+export const decodeString = <T>(decoder: Decoder<T>, str: string): Result<string, T> => {
+    try {
+        return decodeValue(decoder, JSON.parse(str));
+    } catch (err) {
+        return Err(err.message);
+    }
+};
+
 class Primitive<T> extends Decoder<T> {
     constructor(
         private readonly title: string,

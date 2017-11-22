@@ -10,6 +10,7 @@ import {
 } from '../../src/Result';
 import {
     decodeValue,
+    decodeString,
     Decode
 } from '../../src/Json/Foo';
 
@@ -1013,5 +1014,31 @@ test('Json.Decode.andThen', t => {
     t.deepEqual(
         decodeValue(decoder, 2),
         Ok(1)
+    );
+});
+
+test('Json.Decode.decodeString', t => {
+    const decoder = Decode.map2(
+        (t1, t2) => ({ t1, t2 }),
+        Decode.field('s1', Decode.string),
+        Decode.field('s2', Decode.string)
+    );
+
+    t.deepEqual(
+        decodeString(decoder, 'invalid'),
+        Err('Unexpected token i in JSON at position 0')
+    );
+
+    t.deepEqual(
+        decodeString(decoder, '{"s1":1}'),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeString(decoder, '{"s1":"str1","s2":"str2"}'),
+        Ok({
+            t1: 'str1',
+            t2: 'str2'
+        })
     );
 });
