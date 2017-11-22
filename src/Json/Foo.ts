@@ -1,5 +1,5 @@
 import {
-    Maybe,
+    Maybe as Maybe_,
     Nothing,
     Just
 } from '../Maybe';
@@ -34,14 +34,14 @@ class Primitive<T> extends Decoder<T> {
     }
 }
 
-class Nullable<T> extends Decoder<Maybe<T>> {
+class Nullable<T> extends Decoder<Maybe_<T>> {
     constructor(
         private readonly decoder: Decoder<T>
     ) {
         super();
     }
 
-    protected decode(input: any): Result<string, Maybe<T>> {
+    protected decode(input: any): Result<string, Maybe_<T>> {
         return input === null
             ? Ok(Nothing)
             : Result.map(Just, decodeValue(this.decoder, input))
@@ -180,6 +180,22 @@ class Index<T> extends Decoder<T> {
     }
 }
 
+class Maybe<T> extends Decoder<Maybe_<T>> {
+    constructor(
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, Maybe_<T>> {
+        return Ok(
+            Result.toMaybe(
+                decodeValue(this.decoder, input)
+            )
+        );
+    }
+}
+
 class Fail extends Decoder<any> {
     constructor(private readonly msg: string) {
         super();
@@ -248,7 +264,7 @@ export const Decode = {
         (value: any): value is boolean => typeof value === 'boolean'
     ) as Decoder<boolean>,
 
-    nullable: <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new Nullable(decoder),
+    nullable: <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Nullable(decoder),
 
     list: <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder),
 
@@ -269,6 +285,8 @@ export const Decode = {
     },
 
     index: <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Index(index, decoder),
+
+    maybe: <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Maybe(decoder),
 
     fail: (msg: string): Decoder<any> => new Fail(msg),
 

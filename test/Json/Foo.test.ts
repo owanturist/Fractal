@@ -272,6 +272,43 @@ test('Json.Decode.index', t => {
     );
 });
 
+test('Json.Decode.maybe', t => {
+    const input = {
+        s1: 'str',
+        s2: 1
+    };
+
+    t.deepEqual(
+        decodeValue(Decode.maybe(Decode.field('s1', Decode.number)), input),
+        Ok(Nothing)
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.maybe(Decode.field('s2', Decode.number)), input),
+        Ok(Just(1))
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.maybe(Decode.field('s3', Decode.number)), input),
+        Ok(Nothing)
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.field('s1', Decode.maybe(Decode.number)), input),
+        Ok(Nothing)
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.field('s2', Decode.maybe(Decode.number)), input),
+        Ok(Just(1))
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.field('s3', Decode.maybe(Decode.number)), input),
+        Err('Field `s3` doesn\'t exist in an object {"s1":"str","s2":1}.')
+    );
+});
+
 test('Json.Decode.fail', t => {
     t.deepEqual(
         decodeValue(Decode.fail('msg'), null),
