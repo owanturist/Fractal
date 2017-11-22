@@ -12,12 +12,12 @@ import {
 export abstract class Decoder<T> {
     protected abstract decode(input: any): Result<string, T>;
 
-    public static decodeValue<T>(decoder: Decoder<T>, input: any): Result<string, T> {
+    public static decode<T>(decoder: Decoder<T>, input: any): Result<string, T> {
         return decoder.decode(input);
     }
 }
 
-export const decodeValue = Decoder.decodeValue;
+export const decodeValue = Decoder.decode;
 
 export const decodeString = <T>(decoder: Decoder<T>, str: string): Result<string, T> => {
     try {
@@ -42,6 +42,21 @@ class Primitive<T> extends Decoder<T> {
     }
 }
 
+export const string: Decoder<string> = new Primitive(
+    'string',
+    (value: any): value is string => typeof value === 'string'
+);
+
+export const number: Decoder<number> = new Primitive(
+    'number',
+    (value: any): value is number => typeof value === 'number'
+);
+
+export const bool: Decoder<boolean> = new Primitive(
+    'bool',
+    (value: any): value is boolean => typeof value === 'boolean'
+);
+
 class Nullable<T> extends Decoder<Maybe_<T>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
@@ -52,6 +67,10 @@ class Nullable<T> extends Decoder<Maybe_<T>> {
             ? Ok(Nothing)
             : Result.map(Just, decodeValue(this.decoder, input))
     }
+}
+
+export function nullable<T>(decoder: Decoder<T>): Decoder<Maybe_<T>> {
+    return new Nullable(decoder);
 }
 
 class List<T> extends Decoder<Array<T>> {
@@ -82,6 +101,10 @@ class List<T> extends Decoder<Array<T>> {
 
         return acc;
     }
+}
+
+export function list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
+    return new List(decoder);
 }
 
 class Dict<T> extends Decoder<{[ key: string ]: T}> {
@@ -116,6 +139,10 @@ class Dict<T> extends Decoder<{[ key: string ]: T}> {
     }
 }
 
+export function dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}> {
+    return new Dict(decoder);
+}
+
 class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
@@ -148,6 +175,10 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
     }
 }
 
+export function keyValuePairs<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> {
+    return new KeyValuePairs(decoder)
+}
+
 class Field<T> extends Decoder<T> {
     constructor(
         private readonly key: string,
@@ -165,6 +196,20 @@ class Field<T> extends Decoder<T> {
             ? decodeValue(this.decoder, input[ this.key ])
             : Err('Field `' + this.key + '` doesn\'t exist in an object ' + JSON.stringify(input) + '.');
     }
+}
+
+export function field<T>(key: string, decoder: Decoder<T>): Decoder<T> {
+    return new Field(key, decoder);
+}
+
+export function at<T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> {
+    let acc = decoder;
+
+    for (let i = keys.length - 1; i >= 0; i--) {
+        acc = new Field(keys[ i ], acc);
+    }
+
+    return acc;
 }
 
 class Index<T> extends Decoder<T> {
@@ -186,6 +231,10 @@ class Index<T> extends Decoder<T> {
     }
 }
 
+export function index<T>(index: number, decoder: Decoder<T>): Decoder<T> {
+    return new Index(index, decoder);
+}
+
 class Maybe<T> extends Decoder<Maybe_<T>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
@@ -198,6 +247,10 @@ class Maybe<T> extends Decoder<Maybe_<T>> {
             )
         );
     }
+}
+
+export function maybe<T>(decoder: Decoder<T>): Decoder<Maybe_<T>> {
+    return new Maybe(decoder);
 }
 
 class OneOf<T> extends Decoder<T> {
@@ -227,6 +280,10 @@ class OneOf<T> extends Decoder<T> {
     }
 }
 
+export function oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
+    return new OneOf(decoders);
+}
+
 class Lazy<T> extends Decoder<T> {
     constructor(private readonly callDecoder: () => Decoder<T>) {
         super();
@@ -235,6 +292,10 @@ class Lazy<T> extends Decoder<T> {
     protected decode(input: any): Result<string, T> {
         return decodeValue(this.callDecoder(), input);
     }
+}
+
+export function lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
+    return new Lazy(callDecoder);
 }
 
 class Nul<T> extends Decoder<T> {
@@ -249,6 +310,10 @@ class Nul<T> extends Decoder<T> {
     }
 }
 
+export function nul<T>(defaults: T): Decoder<T> {
+    return new Nul(defaults);
+}
+
 class Fail extends Decoder<any> {
     constructor(private readonly msg: string) {
         super();
@@ -259,6 +324,10 @@ class Fail extends Decoder<any> {
     }
 }
 
+export function fail(msg: string): Decoder<any> {
+    return new Fail(msg);
+}
+
 class Succeed<T> extends Decoder<T> {
     constructor(private readonly value: T) {
         super();
@@ -267,6 +336,10 @@ class Succeed<T> extends Decoder<T> {
     protected decode(): Result<string, T> {
         return Ok(this.value);
     }
+}
+
+export function succeed<T>(value: T): Decoder<T> {
+    return new Succeed(value);
 }
 
 class Map<T, R> extends Decoder<R> {
@@ -285,11 +358,11 @@ class Map<T, R> extends Decoder<R> {
     }
 }
 
-function map<T, R>(fn: (value: T) => R, decoder: Decoder<T>): Decoder<R> {
+export function map<T, R>(fn: (value: T) => R, decoder: Decoder<T>): Decoder<R> {
     return new Map(fn, decoder);
 }
 
-function map2<T1, T2, R>(
+export function map2<T1, T2, R>(
         fn: (t1: T1, t2: T2) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>
@@ -303,7 +376,7 @@ function map2<T1, T2, R>(
     );
 }
 
-function map3<T1, T2, T3, R>(
+export function map3<T1, T2, T3, R>(
         fn: (t1: T1, t2: T2, t3: T3) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>,
@@ -319,7 +392,7 @@ function map3<T1, T2, T3, R>(
     );
 }
 
-function map4<T1, T2, T3, T4, R>(
+export function map4<T1, T2, T3, T4, R>(
         fn: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>,
@@ -337,7 +410,7 @@ function map4<T1, T2, T3, T4, R>(
     );
 }
 
-function map5<T1, T2, T3, T4, T5, R>(
+export function map5<T1, T2, T3, T4, T5, R>(
         fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>,
@@ -357,7 +430,7 @@ function map5<T1, T2, T3, T4, T5, R>(
     );
 }
 
-function map6<T1, T2, T3, T4, T5, T6, R>(
+export function map6<T1, T2, T3, T4, T5, T6, R>(
         fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>,
@@ -379,7 +452,7 @@ function map6<T1, T2, T3, T4, T5, T6, R>(
     );
 }
 
-function map7<T1, T2, T3, T4, T5, T6, T7, R>(
+export function map7<T1, T2, T3, T4, T5, T6, T7, R>(
         fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>,
@@ -403,7 +476,7 @@ function map7<T1, T2, T3, T4, T5, T6, T7, R>(
     );
 }
 
-function map8<T1, T2, T3, T4, T5, T6, T7, T8, R>(
+export function map8<T1, T2, T3, T4, T5, T6, T7, T8, R>(
         fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
         d1: Decoder<T1>,
         d2: Decoder<T2>,
@@ -445,59 +518,28 @@ class AndThen <T, R> extends Decoder<R> {
     }
 }
 
-function andThen<T, R>(fn: (value: T) => Decoder<R>, decoder: Decoder<T>): Decoder<R> {
+export function andThen<T, R>(fn: (value: T) => Decoder<R>, decoder: Decoder<T>): Decoder<R> {
     return new AndThen(fn, decoder);
 }
 
 export const Decode = {
-    string: new Primitive(
-        'string',
-        (value: any): value is string => typeof value === 'string'
-    ) as Decoder<string>,
+    string,
+    number,
+    bool,
 
-    number: new Primitive(
-        'number',
-        (value: any): value is number => typeof value === 'number'
-    ) as Decoder<number>,
-
-    bool: new Primitive(
-        'bool',
-        (value: any): value is boolean => typeof value === 'boolean'
-    ) as Decoder<boolean>,
-
-    nullable: <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Nullable(decoder),
-
-    list: <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder),
-
-    dict: <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}> => new Dict(decoder),
-
-    keyValuePairs: <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new KeyValuePairs(decoder),
-
-    field: <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Field(key, decoder),
-
-    at: <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
-        let acc = decoder;
-
-        for (let i = keys.length - 1; i >= 0; i--) {
-            acc = new Field(keys[ i ], acc);
-        }
-
-        return acc;
-    },
-
-    index: <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Index(index, decoder),
-
-    maybe: <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Maybe(decoder),
-
-    oneOf: <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders),
-
-    lazy: <T>(callDecoder: () => Decoder<T>): Decoder<T> => new Lazy(callDecoder),
-
-    nul: <T>(defaults: T): Decoder<T> => new Nul(defaults),
-
-    fail: (msg: string): Decoder<any> => new Fail(msg),
-
-    succeed: <T>(value: T): Decoder<T> => new Succeed(value),
+    nullable,
+    list,
+    dict,
+    keyValuePairs,
+    field,
+    at,
+    index,
+    maybe,
+    oneOf,
+    lazy,
+    nul,
+    fail,
+    succeed,
 
     map,
     map2,
