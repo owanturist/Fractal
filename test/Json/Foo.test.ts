@@ -87,6 +87,25 @@ test('Json.Decode.list', t => {
     );
 });
 
+test('Json.Decode.field', t => {
+    const decoder = Decode.field('foo', Decode.string);
+
+    t.deepEqual(
+        decodeValue(decoder, null),
+        Err('Value `null` is not an object.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, { bar: 'str' }),
+        Err('Field `foo` doesn\'t exist in an object {"bar":"str"}.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, { foo: 'str' }),
+        Ok('str')
+    );
+});
+
 test('Json.Decode.fail', t => {
     t.deepEqual(
         decodeValue(Decode.fail('msg'), null),

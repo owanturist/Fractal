@@ -59,6 +59,25 @@ class List<T> extends Decoder<Array<T>> {
     }
 }
 
+class Field<T> extends Decoder<T> {
+    constructor(
+        private readonly key: string,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, T> {
+        if (typeof input !== 'object' || input === null) {
+            return Err('Value `' + JSON.stringify(input) + '` is not an object.');
+        }
+
+        return this.key in input
+            ? decodeValue(this.decoder, input[ this.key ])
+            : Err('Field `' + this.key + '` doesn\'t exist in an object ' + JSON.stringify(input) + '.');
+    }
+}
+
 class Fail extends Decoder<any> {
     constructor(private readonly msg: string) {
         super();
@@ -128,6 +147,8 @@ export const Decode = {
     ) as Decoder<boolean>,
 
     list: <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder),
+
+    field: <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Field(key, decoder),
 
     fail: (msg: string): Decoder<any> => new Fail(msg),
 
