@@ -194,50 +194,50 @@ interface Pattern<E, T, R> {
 }
 
 const result = {
-    Err: class Err<E> extends Result<E, any> {
+    Err: class Err<E, T> extends Result<E, T> {
         constructor(private readonly msg: E) {
             super();
         }
 
-        protected map(): Result<E, any> {
-            return this;
+        protected map<R>(): Result<E, R> {
+            return new Err(this.msg);
         }
 
-        protected andThen(): Result<E, any> {
-            return this;
+        protected andThen<R>(): Result<E, R> {
+            return new Err(this.msg);
         }
 
         protected withDefault<T>(defaults: T): T {
             return defaults;
         }
 
-        protected toMaybe(): Maybe<any> {
+        protected toMaybe(): Maybe<T> {
             return Nothing;
         }
 
-        protected mapError<R>(fn: (msg: E) => R): Result<R, any> {
+        protected mapError<R>(fn: (msg: E) => R): Result<R, T> {
             return new Err(
                 fn(this.msg)
             );
         }
 
-        protected cata<R>(pattern: Pattern<E, any, R>): R {
+        protected cata<R>(pattern: Pattern<E, T, R>): R {
             return pattern.Err(this.msg);
         }
     },
 
-    Ok: class Ok<T> extends Result<T, any> {
+    Ok: class Ok<E, T> extends Result<E, T> {
         constructor(private readonly value: T) {
             super();
         }
 
-        protected map<R>(fn: (value: T) => R): Result<any, R> {
+        protected map<R>(fn: (value: T) => R): Result<E, R> {
             return new Ok(
                 fn(this.value)
             );
         }
 
-        protected andThen<R>(fn: (value: T) => Result<any, R>): Result<any, R> {
+        protected andThen<R>(fn: (value: T) => Result<E, R>): Result<E, R> {
             return fn(this.value);
         }
 
@@ -249,11 +249,11 @@ const result = {
             return Just(this.value);
         }
 
-        protected mapError(): Result<any, T> {
-            return this;
+        protected mapError<R>(): Result<R, T> {
+            return new Ok(this.value);
         }
 
-        protected cata<R>(pattern: Pattern<any, T, R>): R {
+        protected cata<R>(pattern: Pattern<E, T, R>): R {
             return pattern.Ok(this.value);
         }
     }

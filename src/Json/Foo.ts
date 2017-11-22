@@ -35,9 +35,7 @@ class Primitive<T> extends Decoder<T> {
 }
 
 class Nullable<T> extends Decoder<Maybe_<T>> {
-    constructor(
-        private readonly decoder: Decoder<T>
-    ) {
+    constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
@@ -181,9 +179,7 @@ class Index<T> extends Decoder<T> {
 }
 
 class Maybe<T> extends Decoder<Maybe_<T>> {
-    constructor(
-        private readonly decoder: Decoder<T>
-    ) {
+    constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
@@ -193,6 +189,45 @@ class Maybe<T> extends Decoder<Maybe_<T>> {
                 decodeValue(this.decoder, input)
             )
         );
+    }
+}
+
+class OneOf<T> extends Decoder<T> {
+    constructor(private readonly decoders: Array<Decoder<T>>) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, T> {
+        if (this.decoders.length === 1) {
+            return decodeValue(this.decoders[ 0 ], input);
+        }
+
+        let acc: Result<string, T> = Err('OneOf Decoder shouldn\'t be empty.');
+
+        for (const decoder of this.decoders) {
+            acc = Result.cata({
+                Err: accErr => Result.mapError(
+                    err => accErr + '\n' + err,
+                    decodeValue(decoder, input)
+                ),
+
+                Ok: Ok
+            }, acc)
+        }
+
+        return acc;
+    }
+}
+
+class Nul<T> extends Decoder<T> {
+    constructor(private readonly defaults: T) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, T> {
+        return input === null
+            ? Ok(this.defaults)
+            : Err('Value `' + JSON.stringify(input) + '` is not a null.')
     }
 }
 
@@ -287,6 +322,10 @@ export const Decode = {
     index: <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Index(index, decoder),
 
     maybe: <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Maybe(decoder),
+
+    oneOf: <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders),
+
+    nul: <T>(defaults: T): Decoder<T> => new Nul(defaults),
 
     fail: (msg: string): Decoder<any> => new Fail(msg),
 

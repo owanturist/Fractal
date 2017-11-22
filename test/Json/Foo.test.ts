@@ -13,7 +13,7 @@ import {
     Decode
 } from '../../src/Json/Foo';
 
-test('Json.Foo.string', t => {
+test('Json.Decode.string', t => {
     t.deepEqual(
         decodeValue(
             Decode.string,
@@ -31,7 +31,7 @@ test('Json.Foo.string', t => {
     );
 });
 
-test('Json.Foo.number', t => {
+test('Json.Decode.number', t => {
     t.deepEqual(
         decodeValue(
             Decode.number,
@@ -49,7 +49,7 @@ test('Json.Foo.number', t => {
     );
 });
 
-test('Json.Foo.bool', t => {
+test('Json.Decode.bool', t => {
     t.deepEqual(
         decodeValue(
             Decode.bool,
@@ -306,6 +306,49 @@ test('Json.Decode.maybe', t => {
     t.deepEqual(
         decodeValue(Decode.field('s3', Decode.maybe(Decode.number)), input),
         Err('Field `s3` doesn\'t exist in an object {"s1":"str","s2":1}.')
+    );
+});
+
+test('Json.Decode.oneOf', t => {
+    const input = [ 1, 2, null, 3 ];
+
+    t.deepEqual(
+        decodeValue(Decode.list(Decode.oneOf([])), input),
+        Err('OneOf Decoder shouldn\'t be empty.')
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.list(Decode.oneOf([
+            Decode.number
+        ])), input),
+        Err('Value `null` is not a number.')
+    );
+
+    t.deepEqual(
+        decodeValue(Decode.list(Decode.oneOf([
+            Decode.number,
+            Decode.nul(0)
+        ])), input),
+        Ok([ 1, 2, 0, 3 ])
+    );
+});
+
+test('Json.Decode.nul', t => {
+    const decoder = Decode.nul(0);
+
+    t.deepEqual(
+        decodeValue(decoder, 0),
+        Err('Value `0` is not a null.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, '0'),
+        Err('Value `"0"` is not a null.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, null),
+        Ok(0)
     );
 });
 
