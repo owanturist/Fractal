@@ -66,7 +66,29 @@ test('Json.Decode.number', t => {
 
 test.todo('Json.Decode.nullable');
 
-test.todo('Json.Decode.list');
+test('Json.Decode.list', t => {
+    const decoder = Decode.list(Decode.string);
+
+    t.deepEqual(
+        decodeValue(decoder, {}),
+        Err('Value `{}` is not an array.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, [ 1, 2 ]),
+        Err('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, [ 'str1', 2 ]),
+        Err('Value `2` is not a string.')
+    );
+
+    t.deepEqual(
+        decodeValue(decoder, [ 'str1', 'str2' ]),
+        Ok([ 'str1', 'str2' ])
+    );
+});
 
 test.todo('Json.Decode.dict');
 

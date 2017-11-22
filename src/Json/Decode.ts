@@ -7,6 +7,7 @@ import {
 
 export type Decoder<T>
     = Primitive<T>
+    | List<T>
     | Field<T>
     | Index<T>
     | Nul<T>
@@ -46,6 +47,16 @@ export const number: Decoder<number> = {
     _0: 'number',
     _1: (value: any): value is number => typeof value === 'number'
 };
+
+interface List<T> {
+    readonly ctor: '@Json/Decode|Decoder#List';
+    readonly _0: Decoder<T>;
+}
+
+export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => ({
+    ctor: '@Json/Decode|Decoder#List',
+    _0: decoder as Decoder<Array<T>>
+});
 
 interface Field<T> {
     readonly ctor: '@Json/Decode|Decoder#Field';
@@ -332,6 +343,27 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 : Err('Value `' + JSON.stringify(value) + '` is not a ' + decoder._0 + '.')
         }
 
+        case '@Json/Decode|Decoder#List': {
+            if (!(value instanceof Array)) {
+                return Err('Value `' + JSON.stringify(value) + '` is not an array.');
+            }
+
+            return value.reduce(
+                (acc: Result<string, Array<T>>, item: any) => Result.andThen(
+                    accResult => Result.map(
+                        itemResult => {
+                            accResult.push(itemResult);
+
+                            return accResult;
+                        },
+                        decodeValue(decoder._0, item)
+                    ),
+                    acc
+                ),
+                Ok([])
+            );
+        }
+
         case '@Json/Decode|Decoder#Field': {
             if (typeof value !== 'object' || value === null) {
                 return Err('Value `' + JSON.stringify(value) + '` is not an object.');
@@ -351,7 +383,7 @@ export const decodeValue = <T>(decoder: Decoder<T>, value: any): Result<string, 
                 return Err('Need index ' + decoder._0 + ' but there are only ' + value.length + ' entries.');
             }
 
-            return decodeValue(decoder._1, value[ decoder._0 ]);
+            return decodeValue(decoder._1, value[decoder._0]);
         }
 
         case '@Json/Decode|Decoder#Nul': {
@@ -473,6 +505,7 @@ export const Decode = {
     string,
     bool,
     number,
+    list,
     succeed,
     field,
     at,
