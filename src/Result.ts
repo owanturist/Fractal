@@ -17,11 +17,12 @@ export abstract class Result<E, T> {
         r1: Result<E, T1>,
         r2: Result<E, T2>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map(
+        return this.andThen(
+            t1 => this.map(
                 t2 => fn(t1, t2),
                 r2
-            )
+            ),
+            r1
         );
     }
 
@@ -31,12 +32,13 @@ export abstract class Result<E, T> {
         r2: Result<E, T2>,
         r3: Result<E, T3>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map2(
+        return this.andThen(
+            t1 => this.map2(
                 (t2, t3) => fn(t1, t2, t3),
                 r2,
                 r3
-            )
+            ),
+            r1
         );
     }
 
@@ -47,13 +49,14 @@ export abstract class Result<E, T> {
         r3: Result<E, T3>,
         r4: Result<E, T4>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map3(
+        return this.andThen(
+            t1 => this.map3(
                 (t2, t3, t4) => fn(t1, t2, t3, t4),
                 r2,
                 r3,
                 r4
-            )
+            ),
+            r1
         );
     }
 
@@ -65,14 +68,15 @@ export abstract class Result<E, T> {
         r4: Result<E, T4>,
         r5: Result<E, T5>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map4(
+        return this.andThen(
+            t1 => this.map4(
                 (t2, t3, t4, t5) => fn(t1, t2, t3, t4, t5),
                 r2,
                 r3,
                 r4,
                 r5
-            )
+            ),
+            r1
         );
     }
 
@@ -85,15 +89,16 @@ export abstract class Result<E, T> {
         r5: Result<E, T5>,
         r6: Result<E, T6>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map5(
+        return this.andThen(
+            t1 => this.map5(
                 (t2, t3, t4, t5, t6) => fn(t1, t2, t3, t4, t5, t6),
                 r2,
                 r3,
                 r4,
                 r5,
                 r6
-            )
+            ),
+            r1
         );
     }
 
@@ -107,8 +112,8 @@ export abstract class Result<E, T> {
         r6: Result<E, T6>,
         r7: Result<E, T7>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map6(
+        return this.andThen(
+            t1 => this.map6(
                 (t2, t3, t4, t5, t6, t7) => fn(t1, t2, t3, t4, t5, t6, t7),
                 r2,
                 r3,
@@ -116,7 +121,8 @@ export abstract class Result<E, T> {
                 r5,
                 r6,
                 r7
-            )
+            ),
+            r1
         );
     }
 
@@ -131,8 +137,8 @@ export abstract class Result<E, T> {
         r7: Result<E, T7>,
         r8: Result<E, T8>
     ): Result<E, R> {
-        return r1.andThen(
-            t1 => Result.map7(
+        return this.andThen(
+            t1 => this.map7(
                 (t2, t3, t4, t5, t6, t7, t8) => fn(t1, t2, t3, t4, t5, t6, t7, t8),
                 r2,
                 r3,
@@ -141,7 +147,8 @@ export abstract class Result<E, T> {
                 r6,
                 r7,
                 r8
-            )
+            ),
+            r1
         );
     }
 
