@@ -12,7 +12,7 @@ import {
     decodeValue,
     decodeString,
     Decode
-} from '../../src/Json/Foo';
+} from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
     t.deepEqual(
