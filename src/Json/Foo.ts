@@ -78,6 +78,36 @@ class List<T> extends Decoder<Array<T>> {
     }
 }
 
+class Dict<T> extends Decoder<{[ key: string ]: T}> {
+    constructor(private readonly decoder: Decoder<T>) {
+        super();
+    }
+
+    protected decode(input: any): Result<string, {[ key: string ]: T}> {
+        if (typeof input !== 'object' || input === null || input instanceof Array) {
+            return Err('Value `' + JSON.stringify(input) + '` is not an object.');
+        }
+
+        let acc: Result<string, {[ key: string ]: T}> = Ok({});
+
+        for (const key in input) {
+            acc = Result.andThen(
+                accResult => Result.map(
+                    itemResult => {
+                        accResult[ key ] = itemResult;
+
+                        return accResult;
+                    },
+                    decodeValue(this.decoder, input[ key ])
+                ),
+                acc
+            );
+        }
+
+        return acc;
+    }
+}
+
 class Field<T> extends Decoder<T> {
     constructor(
         private readonly key: string,
@@ -87,7 +117,7 @@ class Field<T> extends Decoder<T> {
     }
 
     protected decode(input: any): Result<string, T> {
-        if (typeof input !== 'object' || input === null) {
+        if (typeof input !== 'object' || input === null || input instanceof Array) {
             return Err('Value `' + JSON.stringify(input) + '` is not an object.');
         }
 
@@ -187,6 +217,8 @@ export const Decode = {
     nullable: <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new Nullable(decoder),
 
     list: <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder),
+
+    dict: <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}> => new Dict(decoder),
 
     field: <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Field(key, decoder),
 
