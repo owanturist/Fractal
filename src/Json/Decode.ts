@@ -285,6 +285,150 @@ class Map<T, R> extends Decoder<R> {
     }
 }
 
+function map<T, R>(fn: (value: T) => R, decoder: Decoder<T>): Decoder<R> {
+    return new Map(fn, decoder);
+}
+
+function map2<T1, T2, R>(
+        fn: (t1: T1, t2: T2) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map(
+            t2 => fn(t1, t2),
+            d2
+        ),
+        d1
+    );
+}
+
+function map3<T1, T2, T3, R>(
+        fn: (t1: T1, t2: T2, t3: T3) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>,
+        d3: Decoder<T3>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map2(
+            (t2, t3) => fn(t1, t2, t3),
+            d2,
+            d3
+        ),
+        d1
+    );
+}
+
+function map4<T1, T2, T3, T4, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>,
+        d3: Decoder<T3>,
+        d4: Decoder<T4>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map3(
+            (t2, t3, t4) => fn(t1, t2, t3, t4),
+            d2,
+            d3,
+            d4
+        ),
+        d1
+    );
+}
+
+function map5<T1, T2, T3, T4, T5, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>,
+        d3: Decoder<T3>,
+        d4: Decoder<T4>,
+        d5: Decoder<T5>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map4(
+            (t2, t3, t4, t5) => fn(t1, t2, t3, t4, t5),
+            d2,
+            d3,
+            d4,
+            d5
+        ),
+        d1
+    );
+}
+
+function map6<T1, T2, T3, T4, T5, T6, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>,
+        d3: Decoder<T3>,
+        d4: Decoder<T4>,
+        d5: Decoder<T5>,
+        d6: Decoder<T6>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map5(
+            (t2, t3, t4, t5, t6) => fn(t1, t2, t3, t4, t5, t6),
+            d2,
+            d3,
+            d4,
+            d5,
+            d6
+        ),
+        d1
+    );
+}
+
+function map7<T1, T2, T3, T4, T5, T6, T7, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>,
+        d3: Decoder<T3>,
+        d4: Decoder<T4>,
+        d5: Decoder<T5>,
+        d6: Decoder<T6>,
+        d7: Decoder<T7>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map6(
+            (t2, t3, t4, t5, t6, t7) => fn(t1, t2, t3, t4, t5, t6, t7),
+            d2,
+            d3,
+            d4,
+            d5,
+            d6,
+            d7
+        ),
+        d1
+    );
+}
+
+function map8<T1, T2, T3, T4, T5, T6, T7, T8, R>(
+        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
+        d1: Decoder<T1>,
+        d2: Decoder<T2>,
+        d3: Decoder<T3>,
+        d4: Decoder<T4>,
+        d5: Decoder<T5>,
+        d6: Decoder<T6>,
+        d7: Decoder<T7>,
+        d8: Decoder<T8>
+    ): Decoder<R> {
+    return andThen(
+        t1 => map7(
+            (t2, t3, t4, t5, t6, t7, t8) => fn(t1, t2, t3, t4, t5, t6, t7, t8),
+            d2,
+            d3,
+            d4,
+            d5,
+            d6,
+            d7,
+            d8
+        ),
+        d1
+    );
+}
+
 class AndThen <T, R> extends Decoder<R> {
     constructor(
         private readonly fn: (value: T) => Decoder<R>,
@@ -299,6 +443,10 @@ class AndThen <T, R> extends Decoder<R> {
             decodeValue(this.decoder, input)
         );
     }
+}
+
+function andThen<T, R>(fn: (value: T) => Decoder<R>, decoder: Decoder<T>): Decoder<R> {
+    return new AndThen(fn, decoder);
 }
 
 export const Decode = {
@@ -351,175 +499,13 @@ export const Decode = {
 
     succeed: <T>(value: T): Decoder<T> => new Succeed(value),
 
-    map: <T, R>(fn: (value: T) => R, decoder: Decoder<T>): Decoder<R> => new Map(fn, decoder),
-
-    map2: <T1, T2, R>(
-        fn: (t1: T1, t2: T2) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>
-    ): Decoder<R> => new AndThen(
-        t1 => new Map(
-            t2 => fn(t1, t2),
-            d2
-        ),
-        d1
-    ),
-
-    map3: <T1, T2, T3, R>(
-        fn: (t1: T1, t2: T2, t3: T3) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>,
-        d3: Decoder<T3>
-    ): Decoder<R> => new AndThen(
-        t1 => new AndThen(
-            t2 => new Map(
-                t3 => fn(t1, t2, t3),
-                d3
-            ),
-            d2
-        ),
-        d1
-    ),
-
-    map4: <T1, T2, T3, T4, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>,
-        d3: Decoder<T3>,
-        d4: Decoder<T4>
-    ): Decoder<R> => new AndThen(
-        t1 => new AndThen(
-            t2 => new AndThen(
-                t3 => new Map(
-                    t4 => fn(t1, t2, t3, t4),
-                    d4
-                ),
-                d3
-            ),
-            d2
-        ),
-        d1
-    ),
-
-    map5: <T1, T2, T3, T4, T5, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>,
-        d3: Decoder<T3>,
-        d4: Decoder<T4>,
-        d5: Decoder<T5>
-    ): Decoder<R> => new AndThen(
-        t1 => new AndThen(
-            t2 => new AndThen(
-                t3 => new AndThen(
-                    t4 => new Map(
-                        t5 => fn(t1, t2, t3, t4, t5),
-                        d5
-                    ),
-                    d4
-                ),
-                d3
-            ),
-            d2
-        ),
-        d1
-    ),
-
-    map6: <T1, T2, T3, T4, T5, T6, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>,
-        d3: Decoder<T3>,
-        d4: Decoder<T4>,
-        d5: Decoder<T5>,
-        d6: Decoder<T6>
-    ): Decoder<R> => new AndThen(
-        t1 => new AndThen(
-            t2 => new AndThen(
-                t3 => new AndThen(
-                    t4 => new AndThen(
-                        t5 => new Map(
-                            t6 => fn(t1, t2, t3, t4, t5, t6),
-                            d6
-                        ),
-                        d5
-                    ),
-                    d4
-                ),
-                d3
-            ),
-            d2
-        ),
-        d1
-    ),
-
-    map7: <T1, T2, T3, T4, T5, T6, T7, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>,
-        d3: Decoder<T3>,
-        d4: Decoder<T4>,
-        d5: Decoder<T5>,
-        d6: Decoder<T6>,
-        d7: Decoder<T7>
-    ): Decoder<R> => new AndThen(
-        t1 => new AndThen(
-            t2 => new AndThen(
-                t3 => new AndThen(
-                    t4 => new AndThen(
-                        t5 => new AndThen(
-                            t6 => new Map(
-                                t7 => fn(t1, t2, t3, t4, t5, t6, t7),
-                                d7
-                            ),
-                            d6
-                        ),
-                        d5
-                    ),
-                    d4
-                ),
-                d3
-            ),
-            d2
-        ),
-        d1
-    ),
-
-    map8: <T1, T2, T3, T4, T5, T6, T7, T8, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
-        d1: Decoder<T1>,
-        d2: Decoder<T2>,
-        d3: Decoder<T3>,
-        d4: Decoder<T4>,
-        d5: Decoder<T5>,
-        d6: Decoder<T6>,
-        d7: Decoder<T7>,
-        d8: Decoder<T8>
-    ): Decoder<R> => new AndThen(
-        t1 => new AndThen(
-            t2 => new AndThen(
-                t3 => new AndThen(
-                    t4 => new AndThen(
-                        t5 => new AndThen(
-                            t6 => new AndThen(
-                                t7 => new Map(
-                                    t8 => fn(t1, t2, t3, t4, t5, t6, t7, t8),
-                                    d8
-                                ),
-                                d7
-                            ),
-                            d6
-                        ),
-                        d5
-                    ),
-                    d4
-                ),
-                d3
-            ),
-            d2
-        ),
-        d1
-    ),
-
-    andThen: <T, R>(fn: (value: T) => Decoder<R>, decoder: Decoder<T>): Decoder<R> => new AndThen(fn, decoder)
+    map,
+    map2,
+    map3,
+    map4,
+    map5,
+    map6,
+    map7,
+    map8,
+    andThen
 };
