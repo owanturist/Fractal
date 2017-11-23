@@ -8,6 +8,9 @@ import {
     Err,
     Ok
 } from '../Result';
+import {
+    Value as Value_
+} from './Encode';
 
 export abstract class Decoder<T> {
     protected abstract decode(input: any): Result<string, T>;
@@ -298,6 +301,14 @@ export function lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
     return new Lazy(callDecoder);
 }
 
+class Value extends Decoder<any> {
+    protected decode(input: any): Result<string, Value_> {
+        return Ok(new Value_(input));
+    }
+}
+
+export const value = new Value();
+
 class Nul<T> extends Decoder<T> {
     constructor(private readonly defaults: T) {
         super();
@@ -537,6 +548,7 @@ export const Decode = {
     maybe,
     oneOf,
     lazy,
+    value,
     nul,
     fail,
     succeed,

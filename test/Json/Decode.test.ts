@@ -5,9 +5,14 @@ import {
     Just
 } from '../../src/Maybe';
 import {
+    Result,
     Err,
     Ok
 } from '../../src/Result';
+import {
+    Value,
+    encode
+} from '../../src/Json/Encode';
 import {
     decodeValue,
     decodeString,
@@ -396,6 +401,25 @@ test('Json.Decode.lazy', t => {
             }]
         })
     );
+});
+
+test('Json.Decode.value', t => {
+    t.deepEqual(
+        decodeValue(Decode.value, { foo: 'bar' }),
+        Ok(new Value({ foo: 'bar' }))
+    );
+
+    Result.cata({
+        Err: err => {
+            t.fail(err);
+        },
+        Ok: value => {
+            t.deepEqual(
+                encode(0, value),
+                '{"foo":"bar"}'
+            );
+        }
+    }, decodeValue(Decode.value, { foo: 'bar' }));
 });
 
 test('Json.Decode.nul', t => {
