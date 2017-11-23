@@ -36,19 +36,15 @@ export function list(value: Array<Value>): Value {
     return new Identity(value);
 }
 
-class Object_ extends Value {
-    constructor(private readonly value: Array<[ string, Value ]>) {
-        super();
-    }
+class Object_ extends Identity<{[ key: string ]: Value }> {
+    constructor(list: Array<[ string, Value ]>) {
+        const result: {[ key: string ]: Value } = {};
 
-    protected toJSON(): {[ key: string ]: Value } {
-        const acc: {[ key: string ]: Value } = {};
-
-        for (const [ key, value ] of this.value) {
-            acc[ key ] = value;
+        for (const [ key, value ] of list) {
+            result[ key ] = value;
         }
 
-        return acc;
+        super(result);
     }
 }
 
