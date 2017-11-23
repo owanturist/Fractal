@@ -1,5 +1,9 @@
-export abstract class Value {
-    protected abstract toJSON(): any;
+export class Value {
+    constructor(private readonly value: any) {}
+
+    protected toJSON(): any {
+        return this.value;
+    }
 
     public static encode(indent: number, value: Value): string {
         return JSON.stringify(value, null, indent);
@@ -8,32 +12,22 @@ export abstract class Value {
 
 export const encode = Value.encode;
 
-class Identity<T> extends Value {
-    constructor(private readonly value: T) {
-        super();
-    }
-
-    protected toJSON(): T {
-        return this.value;
-    }
-}
-
 export function string(value: string): Value {
-    return new Identity(value);
+    return new Value(value);
 }
 
 export function number(value: number): Value {
-    return new Identity(value);
+    return new Value(value);
 }
 
 export function bool(value: boolean): Value {
-    return new Identity(value);
+    return new Value(value);
 }
 
-export const nul: Value = new Identity(null);
+export const nul: Value = new Value(null);
 
 export function list(value: Array<Value>): Value {
-    return new Identity(value);
+    return new Value(value);
 }
 
 export function object(config: Array<[ string, Value ]>): Value {
@@ -43,7 +37,7 @@ export function object(config: Array<[ string, Value ]>): Value {
         result[ key ] = value;
     }
 
-    return new Identity(result);
+    return new Value(result);
 }
 
 export const Encode = {
