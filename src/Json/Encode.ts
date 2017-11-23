@@ -36,20 +36,14 @@ export function list(value: Array<Value>): Value {
     return new Identity(value);
 }
 
-class Object_ extends Identity<{[ key: string ]: Value }> {
-    constructor(list: Array<[ string, Value ]>) {
-        const result: {[ key: string ]: Value } = {};
+export function object(config: Array<[ string, Value ]>): Value {
+    const result: {[ key: string ]: Value } = {};
 
-        for (const [ key, value ] of list) {
-            result[ key ] = value;
-        }
-
-        super(result);
+    for (const [ key, value ] of config) {
+        result[ key ] = value;
     }
-}
 
-export function object(value: Array<[ string, Value ]>): Value {
-    return new Object_(value);
+    return new Identity(result);
 }
 
 export const Encode = {
