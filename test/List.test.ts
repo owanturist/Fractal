@@ -334,7 +334,17 @@ test('List.append', t => {
     t.deepEqual(right, [ 3, 4 ]);
 });
 
-test.todo('List.concat');
+test('List.concat', t => {
+    t.deepEqual(
+        List.concat([]),
+        []
+    );
+
+    t.deepEqual(
+        List.concat([[ 1, 2 ], [3, 4]]),
+        [ 1, 2, 3, 4]
+    );
+});
 
 test.todo('List.intersperse');
 

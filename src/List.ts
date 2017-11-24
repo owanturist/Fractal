@@ -163,4 +163,8 @@ export abstract class List<T> extends Array<T> {
 
         return left.concat(right);
     }
+
+    public static concat<T>(listOfLists: List<List<T>>): List<T> {
+        return [].concat.apply([], listOfLists);
+    }
 }
