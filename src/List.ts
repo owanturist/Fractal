@@ -149,6 +149,18 @@ export abstract class List<T> extends Array<T> {
     }
 
     public static cons<T>(value: T, list: List<T>): List<T> {
-        return [ value ].concat(list);
+        return this.append([ value ], list);
+    }
+
+    public static append<T>(left: List<T>, right: List<T>): List<T> {
+        if (this.isEmpty(left)) {
+            return right;
+        }
+
+        if (this.isEmpty(right)) {
+            return left;
+        }
+
+        return left.concat(right);
     }
 }

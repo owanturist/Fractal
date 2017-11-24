@@ -300,7 +300,39 @@ test('List.cons', t => {
     );
 });
 
-test.todo('List.append');
+test('List.append', t => {
+    const left = [ 1, 2 ];
+    const right = [ 3, 4 ];
+
+    t.is(
+        List.append([], left),
+        left
+    );
+
+    t.deepEqual(
+        List.append([], left),
+        [ 1, 2 ]
+    );
+
+    t.is(
+        List.append([], right),
+        right
+    );
+
+    t.deepEqual(
+        List.append([], right),
+        [ 3, 4 ]
+    );
+
+    t.deepEqual(
+        List.append(left, right),
+        [ 1, 2, 3, 4 ]
+    );
+
+    t.deepEqual(left, [ 1, 2 ]);
+
+    t.deepEqual(right, [ 3, 4 ]);
+});
 
 test.todo('List.concat');
 
