@@ -194,20 +194,20 @@ const maybe = {
         }
     },
 
-    Nothing: class Nothing extends Maybe<any> {
-        protected map(): Maybe<any> {
-            return this;
+    Nothing: class Nothing<T> extends Maybe<T> {
+        protected map<R>(): Maybe<R> {
+            return new Nothing();
         }
 
-        protected andThen(): Maybe<any> {
-            return this;
+        protected andThen<R>(): Maybe<R> {
+            return new Nothing();
         }
 
         protected withDefault<T>(defaults: T): T {
             return defaults;
         }
 
-        protected cata<R>(pattern: Pattern<any, R>): R {
+        protected cata<R>(pattern: Pattern<T, R>): R {
             return pattern.Nothing();
         }
     }
