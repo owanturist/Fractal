@@ -167,45 +167,70 @@ test('List.filter', t => {
     );
 });
 
-test.todo('List.take');
+test('List.take', t => {
+    const list = [ 1, 2, 3, 4 ];
 
-test('List.drop', t => {
-    const list1 = [ 1 ];
-
-    t.is(
-        List.drop(0, list1),
-        list1
+    t.not(
+        List.take(0, list),
+        list
     );
 
     t.deepEqual(
-        List.drop(0, list1),
-        [ 1 ]
-    );
-
-    t.deepEqual(
-        List.drop(100, list1),
+        List.take(0, list),
         []
     );
 
-    t.deepEqual(
-        list1,
-        [ 1 ]
+    t.is(
+        List.take(100, list),
+        list
     );
 
-    const list2 = [ 1, 2, 3, 4 ];
+    t.deepEqual(
+        List.take(100, list),
+        [ 1, 2, 3, 4 ]
+    );
+
+    t.deepEqual(
+        List.take(2, list),
+        [ 1, 2 ]
+    );
+
+    t.deepEqual(
+        list,
+        [ 1, 2, 3, 4 ]
+    );
+});
+
+test('List.drop', t => {
+    const list = [ 1, 2, 3, 4 ];
+
+    t.is(
+        List.drop(0, list),
+        list
+    );
+
+    t.deepEqual(
+        List.drop(0, list),
+        [ 1, 2, 3, 4 ]
+    );
+
+    t.deepEqual(
+        List.drop(100, list),
+        []
+    );
 
     t.not(
-        List.drop(2, list2),
-        list2
+        List.drop(2, list),
+        list
     );
 
     t.deepEqual(
-        List.drop(2, list2),
+        List.drop(2, list),
         [ 3, 4 ]
     );
 
     t.deepEqual(
-        list2,
+        list,
         [ 1, 2, 3, 4 ]
     );
 });

@@ -91,4 +91,16 @@ export abstract class List<T> extends Array<T> {
 
         return list.slice(count);
     }
+
+    public static take<T>(count: number, list: List<T>): List<T> {
+        if (count === 0) {
+            return [];
+        }
+
+        if (count >= this.size(list)) {
+            return list;
+        }
+
+        return list.slice(0, count);
+    }
 }
