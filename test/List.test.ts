@@ -1,6 +1,10 @@
 import test from 'ava';
 
 import {
+    Nothing,
+    Just
+} from '../src/Maybe';
+import {
     List
 } from '../src/List';
 
@@ -83,15 +87,86 @@ test('List.member', t => {
     );
 });
 
-test.todo('List.head');
+test('List.head', t => {
+    t.deepEqual(
+        List.head([]),
+        Nothing
+    );
 
-test.todo('List.tail');
+    t.deepEqual(
+        List.head([ 1, 2, 3 ]),
+        Just(1)
+    );
+});
+
+test('List.tail', t => {
+   t.deepEqual(
+       List.tail([]),
+       Nothing
+   );
+
+   const list = [ 1 ];
+
+   t.deepEqual(
+       List.tail(list),
+       Just([])
+   );
+
+   t.deepEqual(
+       list,
+       [ 1 ]
+   );
+
+   t.deepEqual(
+       List.tail([ 1, 2, 3 ]),
+       Just([ 2, 3 ])
+   );
+});
 
 test.todo('List.filter');
 
 test.todo('List.take');
 
-test.todo('List.drop');
+test('List.drop', t => {
+    const list1 = [ 1 ];
+
+    t.is(
+        List.drop(0, list1),
+        list1
+    );
+
+    t.deepEqual(
+        List.drop(0, list1),
+        [ 1 ]
+    );
+
+    t.deepEqual(
+        List.drop(100, list1),
+        []
+    );
+
+    t.deepEqual(
+        list1,
+        [ 1 ]
+    );
+
+    const list2 = [ 1, 2, 3, 4 ];
+
+    t.not(
+        List.drop(2, list2),
+        list2
+    );
+
+    t.deepEqual(
+        List.drop(2, list2),
+        [ 3, 4 ]
+    );
+
+    t.deepEqual(
+        list2,
+        [ 1, 2, 3, 4 ]
+    );
+});
 
 test.todo('List.singleton');
 

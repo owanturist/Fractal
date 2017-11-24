@@ -1,3 +1,9 @@
+import {
+    Maybe,
+    Nothing,
+    Just
+} from './Maybe';
+
 export abstract class List<T> extends Array<T> {
     public static isEmpty<T>(list: List<T>): boolean {
         return list.length === 0;
@@ -8,7 +14,9 @@ export abstract class List<T> extends Array<T> {
     }
 
     public static reverse<T>(list: List<T>): List<T> {
-        switch (list.length) {
+        const size = this.size(list);
+
+        switch (size) {
             case 0:
             case 1: {
                 return list;
@@ -17,7 +25,7 @@ export abstract class List<T> extends Array<T> {
             default: {
                 const res: List<T> = [];
 
-                for (let i = list.length - 1; i >= 0; i--) {
+                for (let i = size - 1; i >= 0; i--) {
                     res.push(list[ i ]);
                 }
 
@@ -34,5 +42,33 @@ export abstract class List<T> extends Array<T> {
         }
 
         return false;
+    }
+
+    public static head<T>(list: List<T>): Maybe<T> {
+        if (this.isEmpty(list)) {
+            return Nothing;
+        }
+
+        return Just(list[ 0 ]);
+    }
+
+    public static tail<T>(list: List<T>): Maybe<List<T>> {
+        if (this.isEmpty(list)) {
+            return Nothing;
+        }
+
+        return Just(this.drop(1, list));
+    }
+
+    public static drop<T>(count: number, list: List<T>): List<T> {
+        if (count === 0) {
+            return list;
+        }
+
+        if (count >= this.size(list)) {
+            return [];
+        }
+
+        return list.slice(count);
     }
 }
