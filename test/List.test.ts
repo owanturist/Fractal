@@ -276,6 +276,30 @@ test('List.range', t => {
     );
 });
 
+test('List.cons', t => {
+    t.deepEqual(
+        List.cons(1, []),
+        [ 1 ]
+    );
+
+    const list = [ 2, 3 ];
+
+    t.not(
+        List.cons(1, list),
+        list
+    );
+
+    t.deepEqual(
+        List.cons(1, list),
+        [ 1, 2, 3 ]
+    );
+
+    t.deepEqual(
+        list,
+        [ 2, 3 ]
+    );
+});
+
 test.todo('List.append');
 
 test.todo('List.concat');

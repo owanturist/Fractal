@@ -147,4 +147,8 @@ export abstract class List<T> extends Array<T> {
 
         return res;
     }
+
+    public static cons<T>(value: T, list: List<T>): List<T> {
+        return [ value ].concat(list);
+    }
 }
