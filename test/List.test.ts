@@ -259,7 +259,22 @@ test('List.repeat', t => {
     );
 });
 
-test.todo('List.range');
+test('List.range', t => {
+    t.deepEqual(
+        List.range(3, 3),
+        [ 3 ]
+    );
+
+    t.deepEqual(
+        List.range(6, 3),
+        []
+    );
+
+    t.deepEqual(
+        List.range(3, 6),
+        [ 3, 4, 5, 6 ]
+    );
+});
 
 test.todo('List.append');
 

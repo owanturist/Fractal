@@ -129,4 +129,22 @@ export abstract class List<T> extends Array<T> {
             }
         }
     }
+
+    public static range(start: number, end: number): List<number> {
+        if (start === end) {
+            return [ start ];
+        }
+
+        if (start > end) {
+            return [];
+        }
+
+        const res: List<number> = [];
+
+        do {
+            res.push(start);
+        } while (start++ < end)
+
+        return res;
+    }
 }
