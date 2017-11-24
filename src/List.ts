@@ -103,4 +103,30 @@ export abstract class List<T> extends Array<T> {
 
         return list.slice(0, count);
     }
+
+    public static singleton<T>(value: T): List<T> {
+        return [ value ];
+    }
+
+    public static repeat<T>(count: number, value: T): List<T> {
+        switch (count) {
+            case 0: {
+                return [];
+            }
+
+            case 1: {
+                return this.singleton(value);
+            }
+
+            default: {
+                const res: List<T> = [];
+
+                while (count--) {
+                    res.push(value);
+                }
+
+                return res;
+            }
+        }
+    }
 }

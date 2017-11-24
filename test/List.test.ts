@@ -235,9 +235,29 @@ test('List.drop', t => {
     );
 });
 
-test.todo('List.singleton');
+test('List.singleton', t => {
+    t.deepEqual(
+        List.singleton(1),
+        [ 1 ]
+    );
+});
 
-test.todo('List.repeat');
+test('List.repeat', t => {
+    t.deepEqual(
+        List.repeat(0, 1),
+        []
+    );
+
+    t.deepEqual(
+        List.repeat(1, 1),
+        [ 1 ]
+    );
+
+    t.deepEqual(
+        List.repeat(3, 1),
+        [ 1, 1, 1 ]
+    );
+});
 
 test.todo('List.range');
 
