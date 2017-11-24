@@ -123,7 +123,49 @@ test('List.tail', t => {
    );
 });
 
-test.todo('List.filter');
+test('List.filter', t => {
+    const fn = (value: number) => value < 4;
+    const list1: List<number> = [];
+
+    t.is(
+        List.filter(fn, list1),
+        list1
+    )
+
+    t.deepEqual(
+        List.filter(fn, list1),
+        []
+    );
+
+    const list2 = [ 1, 2, 3, 4 ];
+
+    t.not(
+        List.filter(fn, list2),
+        list2
+    );
+
+    t.deepEqual(
+        List.filter(fn, list2),
+        [ 1, 2, 3 ]
+    );
+
+    t.deepEqual(
+        list2,
+        [ 1, 2, 3, 4 ]
+    );
+
+    const list3 = [ 1, 2, 3 ];
+
+    t.is(
+        List.filter(fn, list3),
+        list3
+    );
+
+    t.deepEqual(
+        List.filter(fn, list3),
+        [ 1, 2, 3 ]
+    );
+});
 
 test.todo('List.take');
 

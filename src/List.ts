@@ -34,9 +34,9 @@ export abstract class List<T> extends Array<T> {
         }
     }
 
-    public static member<T>(value: T, list: List<T>): boolean {
-        for (const item of list) {
-            if (value === item) {
+    public static member<T>(x: T, list: List<T>): boolean {
+        for (const value of list) {
+            if (x === value) {
                 return true;
             }
         }
@@ -58,6 +58,26 @@ export abstract class List<T> extends Array<T> {
         }
 
         return Just(this.drop(1, list));
+    }
+
+    public static filter<T>(fn: (value: T) => boolean, list: List<T>): List<T> {
+        if (this.isEmpty(list)) {
+            return list;
+        }
+
+        const res: List<T> = [];
+
+        for (const value of list) {
+            if (fn(value)) {
+                res.push(value);
+            }
+        }
+
+        if (this.size(list) === this.size(res)) {
+            return list;
+        }
+
+        return res;
     }
 
     public static drop<T>(count: number, list: List<T>): List<T> {
