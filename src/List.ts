@@ -167,4 +167,20 @@ export abstract class List<T> extends Array<T> {
     public static concat<T>(listOfLists: List<List<T>>): List<T> {
         return [].concat.apply([], listOfLists);
     }
+
+    public static intersperse<T>(delimiter: T, list: List<T>): List<T> {
+        const size = this.size(list);
+
+        if (size === 0) {
+            return list;
+        }
+
+        const res = [ list[ 0 ]];
+
+        for (var i = 1; i < size; i++) {
+            res.push(delimiter, list[ i ]);
+        }
+
+        return res;
+    }
 }

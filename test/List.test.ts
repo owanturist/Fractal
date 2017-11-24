@@ -346,7 +346,36 @@ test('List.concat', t => {
     );
 });
 
-test.todo('List.intersperse');
+test('List.intersperse', t => {
+    const list1: List<number> = [];
+
+    t.is(
+        List.intersperse(0, list1),
+        list1
+    );
+
+    t.deepEqual(
+        List.intersperse(0, list1),
+        []
+    );
+
+    const list2: List<number> = [ 1, 2, 3 ];
+
+    t.not(
+        List.intersperse(0, list2),
+        list2
+    );
+
+    t.deepEqual(
+        List.intersperse(0, list2),
+        [ 1, 0, 2, 0, 3 ]
+    );
+
+    t.deepEqual(
+        list2,
+        [ 1, 2, 3 ]
+    );
+});
 
 test.todo('List.partition');
 
