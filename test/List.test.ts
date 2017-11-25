@@ -377,7 +377,29 @@ test('List.intersperse', t => {
     );
 });
 
-test.todo('List.partition');
+test('List.partition', t  => {
+    const list = [ 1, 2, 3, 4 ];
+
+    t.deepEqual(
+        List.partition(value => value > 4, list),
+        [[], [ 1, 2, 3, 4 ]]
+    );
+
+    t.deepEqual(
+        List.partition(value => value < 5, list),
+        [[ 1, 2, 3, 4 ], []]
+    );
+
+    t.deepEqual(
+        List.partition(value => value < 3, list),
+        [[ 1, 2 ], [ 3, 4 ]]
+    );
+
+    t.deepEqual(
+        list,
+        [ 1, 2, 3, 4 ]
+    );
+});
 
 test.todo('List.unzip');
 

@@ -183,4 +183,19 @@ export abstract class List<T> extends Array<T> {
 
         return res;
     }
+
+    public static partition<T>(fn: (value: T) => boolean, list: List<T>): [List<T>, List<T>] {
+        const left: List<T> = [];
+        const right: List<T> = [];
+
+        for (const value of list) {
+            if (fn(value)) {
+                left.push(value);
+            } else {
+                right.push(value);
+            }
+        }
+
+        return [ left, right ];
+    }
 }
