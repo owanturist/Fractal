@@ -4,13 +4,11 @@ export class Value {
     protected toJSON(): any {
         return this.value;
     }
-
-    public static encode(indent: number, value: Value): string {
-        return JSON.stringify(value, null, indent);
-    }
 }
 
-export const encode = Value.encode;
+export function encode(indent: number, value: Value): string {
+    return JSON.stringify(value, null, indent);
+}
 
 export function string(value: string): Value {
     return new Value(value);
