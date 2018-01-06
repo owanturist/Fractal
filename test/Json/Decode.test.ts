@@ -18,36 +18,36 @@ import {
 
 test('Json.Decode.string', t => {
     t.deepEqual(
-        Decode.string.decodeValue(1),
+        Decode.string.decode(1),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        Decode.string.decodeValue('str'),
+        Decode.string.decode('str'),
         Right('str')
     );
 });
 
 test('Json.Decode.number', t => {
     t.deepEqual(
-        Decode.number.decodeValue('str'),
+        Decode.number.decode('str'),
         Left('Value `"str"` is not a number.')
     );
 
     t.deepEqual(
-        Decode.number.decodeValue(1),
+        Decode.number.decode(1),
         Right(1)
     );
 });
 
 test('Json.Decode.bool', t => {
     t.deepEqual(
-        Decode.bool.decodeValue(1),
+        Decode.bool.decode(1),
         Left('Value `1` is not a bool.')
     );
 
     t.deepEqual(
-        Decode.bool.decodeValue(false),
+        Decode.bool.decode(false),
         Right(false)
     );
 });
@@ -56,22 +56,22 @@ test('Json.Decode.nullable', t => {
     const decoder = Decode.nullable(Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue(undefined),
+        decoder.decode(undefined),
         Left('Value `undefined` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue(null),
+        decoder.decode(null),
         Right(Nothing)
     );
 
     t.deepEqual(
-        decoder.decodeValue(1),
+        decoder.decode(1),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue('str'),
+        decoder.decode('str'),
         Right(Just('str'))
     );
 });
@@ -80,22 +80,22 @@ test('Json.Decode.list', t => {
     const decoder = Decode.list(Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue({}),
+        decoder.decode({}),
         Left('Value `{}` is not an array.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([ 1, 2 ]),
+        decoder.decode([ 1, 2 ]),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([ 'str1', 2 ]),
+        decoder.decode([ 'str1', 2 ]),
         Left('Value `2` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([ 'str1', 'str2' ]),
+        decoder.decode([ 'str1', 'str2' ]),
         Right([ 'str1', 'str2' ])
     );
 });
@@ -104,32 +104,32 @@ test('Json.Decode.dict', t => {
     const decoder = Decode.dict(Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue(1),
+        decoder.decode(1),
         Left('Value `1` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue(null),
+        decoder.decode(null),
         Left('Value `null` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([]),
+        decoder.decode([]),
         Left('Value `[]` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ s1: 1 }),
+        decoder.decode({ s1: 1 }),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ s1: 'str1', s2: 2 }),
+        decoder.decode({ s1: 'str1', s2: 2 }),
         Left('Value `2` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ s1: 'str1', s2: 'str2' }),
+        decoder.decode({ s1: 'str1', s2: 'str2' }),
         Right({ s1: 'str1', s2: 'str2' })
     );
 });
@@ -138,32 +138,32 @@ test('Json.Decode.keyValuePairs', t => {
     const decoder = Decode.keyValuePairs(Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue(1),
+        decoder.decode(1),
         Left('Value `1` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue(null),
+        decoder.decode(null),
         Left('Value `null` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([]),
+        decoder.decode([]),
         Left('Value `[]` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ s1: 1 }),
+        decoder.decode({ s1: 1 }),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ s1: 'str1', s2: 2 }),
+        decoder.decode({ s1: 'str1', s2: 2 }),
         Left('Value `2` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ s1: 'str1', s2: 'str2' }),
+        decoder.decode({ s1: 'str1', s2: 'str2' }),
         Right([
             [ 's1', 'str1' ],
             [ 's2', 'str2' ]
@@ -175,27 +175,27 @@ test('Json.Decode.field', t => {
     const decoder = Decode.field('foo', Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue(1),
+        decoder.decode(1),
         Left('Value `1` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue(null),
+        decoder.decode(null),
         Left('Value `null` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([]),
+        decoder.decode([]),
         Left('Value `[]` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ bar: 'str' }),
+        decoder.decode({ bar: 'str' }),
         Left('Field `foo` doesn\'t exist in an object {"bar":"str"}.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ foo: 'str' }),
+        decoder.decode({ foo: 'str' }),
         Right('str')
     );
 });
@@ -204,29 +204,29 @@ test('Json.Decode.at', t => {
     const decoder = Decode.at([ 'foo', 'bar' ], Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue(null),
+        decoder.decode(null),
         Left('Value `null` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ bar: 'str' }),
+        decoder.decode({ bar: 'str' }),
         Left('Field `foo` doesn\'t exist in an object {"bar":"str"}.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({ foo: null }),
+        decoder.decode({ foo: null }),
         Left('Value `null` is not an object.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
              foo: { baz: 'str' }
         }),
         Left('Field `bar` doesn\'t exist in an object {"baz":"str"}.')
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
              foo: { bar: 'str' }
         }),
         Right('str')
@@ -237,22 +237,22 @@ test('Json.Decode.index', t => {
     const decoder = Decode.index(1, Decode.string);
 
     t.deepEqual(
-        decoder.decodeValue({}),
+        decoder.decode({}),
         Left('Value `{}` is not an array.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([]),
+        decoder.decode([]),
         Left('Need index 1 but there are only 0 entries.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([0, 1]),
+        decoder.decode([0, 1]),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue([0, 'str']),
+        decoder.decode([0, 'str']),
         Right('str')
     );
 });
@@ -264,32 +264,32 @@ test('Json.Decode.maybe', t => {
     };
 
     t.deepEqual(
-        Decode.maybe(Decode.field('s1', Decode.number)).decodeValue(input),
+        Decode.maybe(Decode.field('s1', Decode.number)).decode(input),
         Right(Nothing)
     );
 
     t.deepEqual(
-        Decode.maybe(Decode.field('s2', Decode.number)).decodeValue(input),
+        Decode.maybe(Decode.field('s2', Decode.number)).decode(input),
         Right(Just(1))
     );
 
     t.deepEqual(
-        Decode.maybe(Decode.field('s3', Decode.number)).decodeValue(input),
+        Decode.maybe(Decode.field('s3', Decode.number)).decode(input),
         Right(Nothing)
     );
 
     t.deepEqual(
-        Decode.field('s1', Decode.maybe(Decode.number)).decodeValue(input),
+        Decode.field('s1', Decode.maybe(Decode.number)).decode(input),
         Right(Nothing)
     );
 
     t.deepEqual(
-        Decode.field('s2', Decode.maybe(Decode.number)).decodeValue(input),
+        Decode.field('s2', Decode.maybe(Decode.number)).decode(input),
         Right(Just(1))
     );
 
     t.deepEqual(
-        Decode.field('s3', Decode.maybe(Decode.number)).decodeValue(input),
+        Decode.field('s3', Decode.maybe(Decode.number)).decode(input),
         Left('Field `s3` doesn\'t exist in an object {"s1":"str","s2":1}.')
     );
 });
@@ -298,14 +298,14 @@ test('Json.Decode.oneOf', t => {
     const input = [ 1, 2, null, 3 ];
 
     t.deepEqual(
-        Decode.list(Decode.oneOf([])).decodeValue(input),
+        Decode.list(Decode.oneOf([])).decode(input),
         Left('OneOf Decoder shouldn\'t be empty.')
     );
 
     t.deepEqual(
         Decode.list(Decode.oneOf([
             Decode.number
-        ])).decodeValue(input),
+        ])).decode(input),
         Left('Value `null` is not a number.')
     );
 
@@ -313,7 +313,7 @@ test('Json.Decode.oneOf', t => {
         Decode.list(Decode.oneOf([
             Decode.number,
             Decode.nul(0)
-        ])).decodeValue(input),
+        ])).decode(input),
         Right([ 1, 2, 0, 3 ])
     );
 });
@@ -331,7 +331,7 @@ test('Json.Decode.lazy', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             message: 'msg',
             responces: [{
                 message: 'msg-1'
@@ -346,7 +346,7 @@ test('Json.Decode.lazy', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             message: 'msg',
             responses: [{
                 message: 'msg-1',
@@ -383,11 +383,11 @@ test('Json.Decode.lazy', t => {
 
 test('Json.Decode.value', t => {
     t.deepEqual(
-        Decode.value.decodeValue({ foo: 'bar' }),
+        Decode.value.decode({ foo: 'bar' }),
         Right(new Value({ foo: 'bar' }))
     );
 
-    Decode.value.decodeValue({ foo: 'bar' }).cata({
+    Decode.value.decode({ foo: 'bar' }).cata({
         Left: err => {
             t.fail(err);
         },
@@ -404,31 +404,31 @@ test('Json.Decode.nul', t => {
     const decoder = Decode.nul(0);
 
     t.deepEqual(
-        decoder.decodeValue(0),
+        decoder.decode(0),
         Left('Value `0` is not a null.')
     );
 
     t.deepEqual(
-        decoder.decodeValue('0'),
+        decoder.decode('0'),
         Left('Value `"0"` is not a null.')
     );
 
     t.deepEqual(
-        decoder.decodeValue(null),
+        decoder.decode(null),
         Right(0)
     );
 });
 
 test('Json.Decode.fail', t => {
     t.deepEqual(
-        Decode.fail('msg').decodeValue(null),
+        Decode.fail('msg').decode(null),
         Left('msg')
     )
 });
 
 test('Json.Decode.succeed', t => {
     t.deepEqual(
-        Decode.succeed(1).decodeValue(null),
+        Decode.succeed(1).decode(null),
         Right(1)
     )
 });
@@ -440,12 +440,12 @@ test('Json.Decode.map', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue(1),
+        decoder.decode(1),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeValue('str'),
+        decoder.decode('str'),
         Right({
             t1: 'str'
         })
@@ -460,7 +460,7 @@ test('Json.Decode.map2', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2
         }),
@@ -468,7 +468,7 @@ test('Json.Decode.map2', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2
         }),
@@ -476,7 +476,7 @@ test('Json.Decode.map2', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2'
         }),
@@ -496,7 +496,7 @@ test('Json.Decode.map3', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2,
             s3: 3
@@ -505,7 +505,7 @@ test('Json.Decode.map3', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2,
             s3: 3
@@ -514,7 +514,7 @@ test('Json.Decode.map3', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 3
@@ -523,7 +523,7 @@ test('Json.Decode.map3', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3'
@@ -546,7 +546,7 @@ test('Json.Decode.map4', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2,
             s3: 3,
@@ -556,7 +556,7 @@ test('Json.Decode.map4', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2,
             s3: 3,
@@ -566,7 +566,7 @@ test('Json.Decode.map4', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 3,
@@ -576,7 +576,7 @@ test('Json.Decode.map4', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -586,7 +586,7 @@ test('Json.Decode.map4', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -612,7 +612,7 @@ test('Json.Decode.map5', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2,
             s3: 3,
@@ -623,7 +623,7 @@ test('Json.Decode.map5', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2,
             s3: 3,
@@ -634,7 +634,7 @@ test('Json.Decode.map5', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 3,
@@ -645,7 +645,7 @@ test('Json.Decode.map5', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -656,7 +656,7 @@ test('Json.Decode.map5', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -667,7 +667,7 @@ test('Json.Decode.map5', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -696,7 +696,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2,
             s3: 3,
@@ -708,7 +708,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2,
             s3: 3,
@@ -720,7 +720,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 3,
@@ -732,7 +732,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -744,7 +744,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -756,7 +756,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -768,7 +768,7 @@ test('Json.Decode.map6', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -800,7 +800,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2,
             s3: 3,
@@ -813,7 +813,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2,
             s3: 3,
@@ -826,7 +826,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 3,
@@ -839,7 +839,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -852,7 +852,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -865,7 +865,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -878,7 +878,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -891,7 +891,7 @@ test('Json.Decode.map7', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -926,7 +926,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 1,
             s2: 2,
             s3: 3,
@@ -940,7 +940,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 2,
             s3: 3,
@@ -954,7 +954,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 3,
@@ -968,7 +968,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -982,7 +982,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -996,7 +996,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -1010,7 +1010,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -1024,7 +1024,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -1038,7 +1038,7 @@ test('Json.Decode.map8', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue({
+        decoder.decode({
             s1: 'str1',
             s2: 'str2',
             s3: 'str3',
@@ -1068,17 +1068,17 @@ test('Json.Decode.andThen', t => {
     );
 
     t.deepEqual(
-        decoder.decodeValue('str'),
+        decoder.decode('str'),
         Left('Value `"str"` is not a number.')
     );
 
     t.deepEqual(
-        decoder.decodeValue(1),
+        decoder.decode(1),
         Left('msg')
     );
 
     t.deepEqual(
-        decoder.decodeValue(2),
+        decoder.decode(2),
         Right(1)
     );
 });
