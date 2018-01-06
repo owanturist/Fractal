@@ -4,16 +4,16 @@ import {
     Just
 } from '../Maybe';
 import {
-    Result,
-    Err,
-    Ok
-} from '../Result';
+    Either,
+    Left,
+    Right
+} from '../Either';
 import {
     Value as Value_
 } from './Encode';
 
 export abstract class Decoder<T> {
-    protected abstract decode(input: any): Result<string, T>;
+    protected abstract decode(input: any): Either<string, T>;
 }
 
 class Primitive<T> extends Decoder<T> {
@@ -24,10 +24,10 @@ class Primitive<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(input: any): Result<string, T> {
+    protected decode(input: any): Either<string, T> {
         return this.check(input)
-            ? Ok(input)
-            : Err('Value `' + JSON.stringify(input) + '` is not a ' + this.title + '.')
+            ? Right(input)
+            : Left('Value `' + JSON.stringify(input) + '` is not a ' + this.title + '.')
     }
 }
 
@@ -36,10 +36,10 @@ class Nullable<T> extends Decoder<Maybe_<T>> {
         super();
     }
 
-    protected decode(input: any): Result<string, Maybe_<T>> {
+    protected decode(input: any): Either<string, Maybe_<T>> {
         return input === null
-            ? Ok(Nothing)
-            : Result.map(Just, decodeValue(this.decoder, input))
+            ? Right(Nothing)
+            : decodeValue(this.decoder, input).map(Just)
     }
 }
 
@@ -48,24 +48,22 @@ class List<T> extends Decoder<Array<T>> {
         super();
     }
 
-    protected decode(input: any): Result<string, Array<T>> {
+    protected decode(input: any): Either<string, Array<T>> {
         if (!(input instanceof Array)) {
-            return Err('Value `' + JSON.stringify(input) + '` is not an array.');
+            return Left('Value `' + JSON.stringify(input) + '` is not an array.');
         }
 
-        let acc: Result<string, Array<T>> = Ok([]);
+        let acc: Either<string, Array<T>> = Right([]);
 
         for (const item of input) {
-            acc = Result.andThen(
-                accResult => Result.map(
+            acc = acc.chain(
+                accResult => decodeValue(this.decoder, item).map(
                     itemResult => {
                         accResult.push(itemResult);
 
                         return accResult;
-                    },
-                    decodeValue(this.decoder, item)
-                ),
-                acc
+                    }
+                )
             );
         }
 
@@ -78,25 +76,23 @@ class Dict<T> extends Decoder<{[ key: string ]: T}> {
         super();
     }
 
-    protected decode(input: any): Result<string, {[ key: string ]: T}> {
+    protected decode(input: any): Either<string, {[ key: string ]: T}> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
-            return Err('Value `' + JSON.stringify(input) + '` is not an object.');
+            return Left('Value `' + JSON.stringify(input) + '` is not an object.');
         }
 
-        let acc: Result<string, {[ key: string ]: T}> = Ok({});
+        let acc: Either<string, {[ key: string ]: T}> = Right({});
 
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
-                acc = Result.andThen(
-                    accResult => Result.map(
+                acc = acc.chain(
+                    accResult => decodeValue(this.decoder, input[ key ]).map(
                         itemResult => {
                             accResult[ key ] = itemResult;
 
                             return accResult;
-                        },
-                        decodeValue(this.decoder, input[ key ])
-                    ),
-                    acc
+                        }
+                    )
                 );
             }
         }
@@ -110,25 +106,23 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
         super();
     }
 
-    protected decode(input: any): Result<string, Array<[ string, T ]>> {
+    protected decode(input: any): Either<string, Array<[ string, T ]>> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
-            return Err('Value `' + JSON.stringify(input) + '` is not an object.');
+            return Left('Value `' + JSON.stringify(input) + '` is not an object.');
         }
 
-        let acc: Result<string, Array<[ string, T ]>> = Ok([]);
+        let acc: Either<string, Array<[ string, T ]>> = Right([]);
 
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
-                acc = Result.andThen(
-                    accResult => Result.map(
+                acc = acc.chain(
+                    accResult => decodeValue(this.decoder, input[ key ]).map(
                         itemResult => {
                             accResult.push([ key, itemResult ]);
 
                             return accResult;
-                        },
-                        decodeValue(this.decoder, input[ key ])
-                    ),
-                    acc
+                        }
+                    )
                 );
             }
         }
@@ -145,14 +139,14 @@ class Field<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(input: any): Result<string, T> {
+    protected decode(input: any): Either<string, T> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
-            return Err('Value `' + JSON.stringify(input) + '` is not an object.');
+            return Left('Value `' + JSON.stringify(input) + '` is not an object.');
         }
 
         return this.key in input
             ? decodeValue(this.decoder, input[ this.key ])
-            : Err('Field `' + this.key + '` doesn\'t exist in an object ' + JSON.stringify(input) + '.');
+            : Left('Field `' + this.key + '` doesn\'t exist in an object ' + JSON.stringify(input) + '.');
     }
 }
 
@@ -164,13 +158,13 @@ class Index<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(input: any): Result<string, T> {
+    protected decode(input: any): Either<string, T> {
         if (!(input instanceof Array)) {
-            return Err('Value `' + JSON.stringify(input) + '` is not an array.');
+            return Left('Value `' + JSON.stringify(input) + '` is not an array.');
         }
 
         return this.index >= input.length
-            ? Err('Need index ' + this.index + ' but there are only ' + input.length + ' entries.')
+            ? Left('Need index ' + this.index + ' but there are only ' + input.length + ' entries.')
             : decodeValue(this.decoder, input[ this.index ]);
     }
 }
@@ -180,11 +174,9 @@ class Maybe<T> extends Decoder<Maybe_<T>> {
         super();
     }
 
-    protected decode(input: any): Result<string, Maybe_<T>> {
-        return Ok(
-            Result.toMaybe(
-                decodeValue(this.decoder, input)
-            )
+    protected decode(input: any): Either<string, Maybe_<T>> {
+        return Right(
+            decodeValue(this.decoder, input).toMaybe()
         );
     }
 }
@@ -194,22 +186,18 @@ class OneOf<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(input: any): Result<string, T> {
+    protected decode(input: any): Either<string, T> {
         if (this.decoders.length === 1) {
             return decodeValue(this.decoders[ 0 ], input);
         }
 
-        let acc: Result<string, T> = Err('OneOf Decoder shouldn\'t be empty.');
+        let acc: Either<string, T> = Left('OneOf Decoder shouldn\'t be empty.');
 
         for (const decoder of this.decoders) {
-            acc = Result.cata({
-                Err: accErr => Result.mapError(
-                    err => accErr + '\n' + err,
-                    decodeValue(decoder, input)
-                ),
-
-                Ok: Ok
-            }, acc)
+            acc = acc.orElse(
+                accErr => decodeValue(decoder, input)
+                    .leftMap(err => accErr + '\n' + err)
+            );
         }
 
         return acc;
@@ -221,14 +209,14 @@ class Lazy<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(input: any): Result<string, T> {
+    protected decode(input: any): Either<string, T> {
         return decodeValue(this.callDecoder(), input);
     }
 }
 
 class Value extends Decoder<any> {
-    protected decode(input: any): Result<string, Value_> {
-        return Ok(new Value_(input));
+    protected decode(input: any): Either<string, Value_> {
+        return Right(new Value_(input));
     }
 }
 
@@ -237,10 +225,10 @@ class Nul<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(input: any): Result<string, T> {
+    protected decode(input: any): Either<string, T> {
         return input === null
-            ? Ok(this.defaults)
-            : Err('Value `' + JSON.stringify(input) + '` is not a null.')
+            ? Right(this.defaults)
+            : Left('Value `' + JSON.stringify(input) + '` is not a null.')
     }
 }
 
@@ -249,8 +237,8 @@ class Fail extends Decoder<any> {
         super();
     }
 
-    protected decode(): Result<string, any> {
-        return Err(this.msg);
+    protected decode(): Either<string, any> {
+        return Left(this.msg);
     }
 }
 
@@ -259,8 +247,8 @@ class Succeed<T> extends Decoder<T> {
         super();
     }
 
-    protected decode(): Result<string, T> {
-        return Ok(this.value);
+    protected decode(): Either<string, T> {
+        return Right(this.value);
     }
 }
 
@@ -272,11 +260,8 @@ class Map<T, R> extends Decoder<R> {
         super();
     }
 
-    protected decode(input: any): Result<string, R> {
-        return Result.map(
-            this.fn,
-            decodeValue(this.decoder, input)
-        );
+    protected decode(input: any): Either<string, R> {
+        return decodeValue(this.decoder, input).map(this.fn);
     }
 }
 
@@ -288,10 +273,9 @@ class AndThen<T, R> extends Decoder<R> {
         super();
     }
 
-    protected decode(input: any): Result<string, R> {
-        return Result.andThen(
-            value => decodeValue(this.fn(value), input),
-            decodeValue(this.decoder, input)
+    protected decode(input: any): Either<string, R> {
+        return decodeValue(this.decoder, input).chain(
+            value => decodeValue(this.fn(value), input)
         );
     }
 }
@@ -520,15 +504,15 @@ export abstract class Decode<T> extends Decoder<T> {
         return new AndThen(fn, decoder);
     }
 
-    public static decodeValue<T>(decoder: Decoder<T>, input: any): Result<string, T> {
+    public static decodeValue<T>(decoder: Decoder<T>, input: any): Either<string, T> {
         return (decoder as Decode<T>).decode(input);
     }
 
-    public static decodeString<T>(decoder: Decoder<T>, str: string): Result<string, T> {
+    public static decodeString<T>(decoder: Decoder<T>, str: string): Either<string, T> {
         try {
             return decodeValue(decoder, JSON.parse(str));
         } catch (err) {
-            return Err(err.message);
+            return Left(err.message);
         }
     }
 }

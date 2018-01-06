@@ -158,7 +158,7 @@ test('Maybe.cata()', t => {
         }),
         6
     );
-})
+});
 
 // MAPPING
 

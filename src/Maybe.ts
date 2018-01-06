@@ -202,7 +202,7 @@ const maybe = {
     },
 
     Just: class Just<T> implements Maybe<T> {
-        constructor(private readonly value: T) { }
+        constructor(private readonly value: T) {}
 
         // COMPARING
 
