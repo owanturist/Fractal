@@ -9,8 +9,7 @@ import {
     Right
 } from '../../src/Either';
 import {
-    Value,
-    encode
+    Value
 } from '../../src/Json/Encode';
 import {
     decodeValue,
@@ -414,7 +413,7 @@ test('Json.Decode.value', t => {
         },
         Right: value => {
             t.deepEqual(
-                encode(0, value),
+                value.encode(0),
                 '{"foo":"bar"}'
             );
         }

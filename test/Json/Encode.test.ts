@@ -2,51 +2,44 @@ import test from 'ava';
 
 import {
     Value,
-    Encode,
-    encode
+    Encode
 } from '../../src/Json/Encode';
 
 test('Json.Encode.string', t => {
-    const encoder = (value: string): Value => Encode.string(value);
-
     t.is(
-        encode(0, encoder('msg')),
+        Encode.string('msg').encode(0),
         '"msg"'
     );
 });
 
 test('Json.Encode.number', t => {
-    const encoder = (value: number): Value => Encode.number(value);
-
     t.is(
-        encode(0, encoder(1)),
+        Encode.number(1).encode(0),
         '1'
     );
 });
 
 test('Json.Encode.bool', t => {
-    const encoder = (value: boolean): Value => Encode.bool(value);
-
     t.is(
-        encode(0, encoder(false)),
+        Encode.bool(false).encode(0),
         'false'
     );
 });
 
-test('Json.Encode.nul', t => {
+test('Json.Encode.nill', t => {
     t.is(
-        encode(0, Encode.nul),
+        Encode.nill.encode(0),
         'null'
     );
 });
 
 test('Json.Encode.list', t => {
     t.is(
-        encode(0, Encode.list([
+        Encode.list([
             Encode.number(1),
             Encode.number(2),
             Encode.number(3)
-        ])),
+        ]).encode(0),
         '[1,2,3]'
     );
 });
@@ -65,20 +58,20 @@ test('Json.Encode.object', t => {
     ]);
 
     t.is(
-        encode(0, encoder({
+        encoder({
             bar: 'str',
             baz: 0,
             foo: false
-        })),
+        }).encode(0),
         '{"_bar":"str","_baz":0,"_foo":false}'
     );
 
     t.is(
-        encode(4, encoder({
+        encoder({
             bar: 'str',
             baz: 0,
             foo: false
-        })),
+        }).encode(4),
         '{\n'
         + '    "_bar": "str",\n'
         + '    "_baz": 0,\n'
