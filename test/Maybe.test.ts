@@ -6,19 +6,163 @@ import {
     Just
 } from '../src/Maybe';
 
-test('Maybe.map', t => {
+// CONSTRUCTING
+
+test('Maybe.fromNullable()', t => {
     t.deepEqual(
-        Maybe.map((a: number) => a * 2, Nothing),
+        Maybe.fromNullable(undefined),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.map(a => a * 2, Just(3)),
+        Maybe.fromNullable(null),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.fromNullable(0),
+        Just(0)
+    );
+
+    t.deepEqual(
+        Maybe.fromNullable(''),
+        Just('')
+    );
+});
+
+// COMPARING
+
+test('Maybe.isNothing', t => {
+    t.true(Nothing.isNothing);
+
+    t.false(Just(1).isNothing);
+});
+
+test('Maybe.isJust', t => {
+    t.false(Nothing.isJust);
+
+    t.true(Just(1).isJust);
+});
+
+test('Maybe.isEqual()', t => {
+    t.false(
+        Just(1).isEqual(Nothing)
+    );
+
+    t.false(
+        Nothing.isEqual(Just(1))
+    );
+
+    t.false(
+        Just(1).isEqual(Just(2))
+    );
+
+    t.false(
+        Just([]).isEqual(Just([]))
+    );
+
+    t.true(
+        Just(1).isEqual(Just(1))
+    );
+
+    t.true(
+        Nothing.isEqual(Nothing)
+    );
+});
+
+// EXTRACTING
+
+test('Maybe.getOrElse()', t => {
+    t.is(
+        Nothing.getOrElse(1),
+        1
+    );
+
+    t.is(
+        Just(2).getOrElse(1),
+        2
+    );
+});
+
+// TRANSFORMING
+
+test('Maybe.map()', t => {
+    t.deepEqual(
+        Nothing.map((a: number) => a * 2),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(3).map(a => a * 2),
         Just(6)
     );
 });
 
-test('Maybe.map2', t => {
+test('Maybe.chain()', t => {
+    t.deepEqual(
+        Nothing.chain(() => Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).chain(() => Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Nothing.chain(a => Just(a * 3)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).chain(a => Just(a * 3)),
+        Just(3)
+    );
+});
+
+test('Maybe.orElse()', t => {
+    t.deepEqual(
+        Nothing.orElse(() => Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).orElse(() => Nothing),
+        Just(1)
+    );
+
+    t.deepEqual(
+        Nothing.orElse(() => Just(3)),
+        Just(3)
+    );
+
+    t.deepEqual(
+        Just(1).orElse(() => Just(3)),
+        Just(1)
+    );
+});
+
+test('Maybe.cata()', t => {
+    t.is(
+        Nothing.cata({
+            Nothing: () => 1,
+            Just: a => a * 2
+        }),
+        1
+    );
+
+    t.is(
+        Just(3).cata({
+            Nothing: () => 1,
+            Just: a => a * 2
+        }),
+        6
+    );
+})
+
+// MAPPING
+
+test('Maybe.map2()', t => {
     t.deepEqual(
         Maybe.map2(
             (a: number, b: number) => a * 2 + b,
@@ -47,7 +191,7 @@ test('Maybe.map2', t => {
     );
 });
 
-test('Maybe.map3', t => {
+test('Maybe.map3()', t => {
     t.deepEqual(
         Maybe.map3(
             (a: number, b: number, c: number) => a * 2 + b - c,
@@ -89,7 +233,7 @@ test('Maybe.map3', t => {
     );
 });
 
-test('Maybe.map4', t => {
+test('Maybe.map4()', t => {
     t.deepEqual(
         Maybe.map4(
             (a: number, b: number, c: number, d: number) => a * 2 + b - c * d,
@@ -146,7 +290,7 @@ test('Maybe.map4', t => {
     );
 });
 
-test('Maybe.map5', t => {
+test('Maybe.map5()', t => {
     t.deepEqual(
         Maybe.map5(
             (a: number, b: number, c: number, d: number, e: number) => a * 2 + b - c * d + e,
@@ -220,7 +364,7 @@ test('Maybe.map5', t => {
     );
 });
 
-test('Maybe.map6', t => {
+test('Maybe.map6()', t => {
     t.deepEqual(
         Maybe.map6(
             (a: number, b: number, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
@@ -313,7 +457,7 @@ test('Maybe.map6', t => {
     );
 });
 
-test('Maybe.map7', t => {
+test('Maybe.map7()', t => {
     t.deepEqual(
         Maybe.map7(
             (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
@@ -427,7 +571,7 @@ test('Maybe.map7', t => {
     );
 });
 
-test('Maybe.map8', t => {
+test('Maybe.map8()', t => {
     t.deepEqual(
         Maybe.map8(
             (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
@@ -563,55 +707,3 @@ test('Maybe.map8', t => {
         Just(-34)
     );
 });
-
-test('Maybe.andThen', t => {
-    t.deepEqual(
-        Maybe.andThen(() => Nothing, Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.andThen(() => Nothing, Just(1)),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.andThen(a => Just(a * 3), Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        Maybe.andThen(a => Just(a * 3), Just(1)),
-        Just(3)
-    );
-});
-
-test('Maybe.withDefault', t => {
-    t.is(
-        Maybe.withDefault(1, Nothing),
-        1
-    );
-
-    t.is(
-        Maybe.withDefault(1, Just(2)),
-        2
-    );
-});
-
-test('Maybe.cata', t => {
-    t.is(
-        Maybe.cata({
-            Nothing: () => 1,
-            Just: a => a * 2
-        }, Nothing),
-        1
-    );
-
-    t.is(
-        Maybe.cata({
-            Nothing: () => 1,
-            Just: a => a * 2
-        }, Just(3)),
-        6
-    );
-})

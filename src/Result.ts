@@ -168,10 +168,10 @@ export abstract class Result<E, T> {
     }
 
     public static fromMaybe<E, T>(msg: E, maybe: Maybe<T>): Result<E, T> {
-        return Maybe.cata({
+        return maybe.cata({
             Nothing: () => Err(msg),
             Just: Ok
-        }, maybe)
+        })
     }
 
     public static mapError<E, T, R>(fn: (msg: E) => R, result: Result<E, T>): Result<R, T> {

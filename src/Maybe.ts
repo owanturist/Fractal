@@ -1,19 +1,44 @@
+type Pattern<T, R> = {
+    Nothing: () => R;
+    Just: (value: T) => R;
+};
+
 export abstract class Maybe<T> {
-    public static map<T, R>(fn: (value: T) => R, maybe: Maybe<T>): Maybe<R> {
-        return maybe.map(fn);
+
+    // CONSTRUCTING
+
+    public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
+        return value == null ? Nothing : Just(value);
     }
+
+    // COMPARING
+
+    public abstract isNothing: boolean;
+    public abstract isJust: boolean;
+    public abstract isEqual(another: Maybe<T>): boolean;
+
+    // EXTRACTING
+
+    public abstract getOrElse(defaults: T): T;
+
+    // TRANSFORMING
+
+    public abstract map<R>(fn: (value: T) => R): Maybe<R>;
+    public abstract chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+    public abstract orElse(fn: () => Maybe<T>): Maybe<T>;
+    public abstract cata<R>(pattern: Pattern<T, R>): R;
+
+    // MAPPING
 
     public static map2<T1, T2, R>(
         fn: (t1: T1, t2: T2) => R,
         m1: Maybe<T1>,
         m2: Maybe<T2>
     ): Maybe<R> {
-        return this.andThen(
-            t1 => this.map(
-                t2 => fn(t1, t2),
-                m2
-            ),
-            m1
+        return m1.chain(
+            t1 => m2.map(
+                t2 => fn(t1, t2)
+            )
         );
     }
 
@@ -23,13 +48,12 @@ export abstract class Maybe<T> {
         m2: Maybe<T2>,
         m3: Maybe<T3>
     ): Maybe<R> {
-        return this.andThen(
+        return m1.chain(
             t1 => this.map2(
                 (t2, t3) => fn(t1, t2, t3),
                 m2,
                 m3
-            ),
-            m1
+            )
         );
     }
 
@@ -40,14 +64,13 @@ export abstract class Maybe<T> {
         m3: Maybe<T3>,
         m4: Maybe<T4>
     ): Maybe<R> {
-        return this.andThen(
+        return m1.chain(
             t1 => this.map3(
                 (t2, t3, t4) => fn(t1, t2, t3, t4),
                 m2,
                 m3,
                 m4
-            ),
-            m1
+            )
         );
     }
 
@@ -59,15 +82,14 @@ export abstract class Maybe<T> {
         m4: Maybe<T4>,
         m5: Maybe<T5>
     ): Maybe<R> {
-        return this.andThen(
+        return m1.chain(
             t1 => this.map4(
                 (t2, t3, t4, t5) => fn(t1, t2, t3, t4, t5),
                 m2,
                 m3,
                 m4,
                 m5
-            ),
-            m1
+            )
         );
     }
 
@@ -80,7 +102,7 @@ export abstract class Maybe<T> {
         m5: Maybe<T5>,
         m6: Maybe<T6>
     ): Maybe<R> {
-        return this.andThen(
+        return m1.chain(
             t1 => this.map5(
                 (t2, t3, t4, t5, t6) => fn(t1, t2, t3, t4, t5, t6),
                 m2,
@@ -88,8 +110,7 @@ export abstract class Maybe<T> {
                 m4,
                 m5,
                 m6
-            ),
-            m1
+            )
         );
     }
 
@@ -103,7 +124,7 @@ export abstract class Maybe<T> {
         m6: Maybe<T6>,
         m7: Maybe<T7>
     ): Maybe<R> {
-        return this.andThen(
+        return m1.chain(
             t1 => this.map6(
                 (t2, t3, t4, t5, t6, t7) => fn(t1, t2, t3, t4, t5, t6, t7),
                 m2,
@@ -112,8 +133,7 @@ export abstract class Maybe<T> {
                 m5,
                 m6,
                 m7
-            ),
-            m1
+            )
         );
     }
 
@@ -128,7 +148,7 @@ export abstract class Maybe<T> {
         m7: Maybe<T7>,
         m8: Maybe<T8>
     ): Maybe<R> {
-        return this.andThen(
+        return m1.chain(
             t1 => this.map7(
                 (t2, t3, t4, t5, t6, t7, t8) => fn(t1, t2, t3, t4, t5, t6, t7, t8),
                 m2,
@@ -138,81 +158,93 @@ export abstract class Maybe<T> {
                 m6,
                 m7,
                 m8
-            ),
-            m1
+            )
         );
     }
-
-    public static andThen<T, R>(fn: (value: T) => Maybe<R>, maybe: Maybe<T>): Maybe<R> {
-        return maybe.andThen(fn);
-    }
-
-    public static withDefault<T>(defaults: T, maybe: Maybe<T>): T {
-        return maybe.withDefault(defaults);
-    }
-
-    public static cata<T, R>(pattern: Pattern<T, R>, maybe: Maybe<T>): R {
-        return maybe.cata(pattern);
-    }
-
-    protected abstract map<R>(fn: (value: T) => R): Maybe<R>;
-
-    protected abstract andThen<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
-
-    protected abstract withDefault(defaults: T): T;
-
-    protected abstract cata<R>(pattern: Pattern<T, R>): R;
-}
-
-interface Pattern<T, R> {
-    Nothing(): R;
-    Just(value: T): R;
 }
 
 const maybe = {
-    Just: class Just<T> extends Maybe<T> {
-        constructor(private readonly value: T) {
-            super();
+    Nothing: class Nothing<T> implements Maybe<T> {
+
+        // COMPARING
+
+        public isNothing = true;
+
+        public isJust = false;
+
+        public isEqual(another: Maybe<T>): boolean {
+            return another.isNothing;
         }
 
-        protected map<R>(fn: (value: T) => R): Maybe<R> {
+        // EXTRACTING
+
+        public getOrElse(defaults: T): T {
+            return defaults;
+        }
+
+        // TRANSFORMING
+
+        public map<R>(): Maybe<R> {
+            return new Nothing();
+        }
+
+        public chain<R>(): Maybe<R> {
+            return new Nothing();
+        }
+
+        public orElse(fn: () => Maybe<T>): Maybe<T> {
+            return fn();
+        }
+
+        public cata<R>(pattern: Pattern<T, R>): R {
+            return pattern.Nothing();
+        }
+    },
+
+    Just: class Just<T> implements Maybe<T> {
+        constructor(private readonly value: T) { }
+
+        // COMPARING
+
+        public isNothing = false;
+
+        public isJust = true;
+
+        public isEqual(another: Maybe<T>): boolean {
+            return another
+                .map(value => value === this.value)
+                .getOrElse(false);
+        }
+
+        // EXTRACTING
+
+        public getOrElse(): T {
+            return this.value;
+        }
+
+        // TRANSFORMING
+
+        public map<R>(fn: (value: T) => R): Maybe<R> {
             return new Just(
                 fn(this.value)
             );
         }
 
-        protected andThen<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
+        public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
             return fn(this.value);
         }
 
-        protected withDefault(): T {
-            return this.value;
+        public orElse(): Maybe<T> {
+            return this;
         }
 
-        protected cata<R>(pattern: Pattern<T, R>): R {
+        public cata<R>(pattern: Pattern<T, R>): R {
             return pattern.Just(this.value);
-        }
-    },
-
-    Nothing: class Nothing<T> extends Maybe<T> {
-        protected map<R>(): Maybe<R> {
-            return new Nothing();
-        }
-
-        protected andThen<R>(): Maybe<R> {
-            return new Nothing();
-        }
-
-        protected withDefault<T>(defaults: T): T {
-            return defaults;
-        }
-
-        protected cata<R>(pattern: Pattern<T, R>): R {
-            return pattern.Nothing();
         }
     }
 };
 
-export const Just = <T>(value: T): Maybe<T> => new maybe.Just(value);
 
 export const Nothing: Maybe<any> = new maybe.Nothing();
+
+export const Just = <T>(value: T): Maybe<T> => new maybe.Just(value);
