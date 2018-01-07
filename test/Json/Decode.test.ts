@@ -52,6 +52,82 @@ test('Json.Decode.bool', t => {
     );
 });
 
+test('Json.Decode.value', t => {
+    t.deepEqual(
+        Decode.value.decode({ foo: 'bar' }),
+        Right(new Value({ foo: 'bar' }))
+    );
+
+    Decode.value.decode({ foo: 'bar' }).cata({
+        Left: err => {
+            t.fail(err);
+        },
+        Right: value => {
+            t.deepEqual(
+                value.encode(0),
+                '{"foo":"bar"}'
+            );
+        }
+    });
+});
+
+test('Json.Decode.nill', t => {
+    const decoder = Decode.nill(0);
+
+    t.deepEqual(
+        decoder.decode(0),
+        Left('Value `0` is not a null.')
+    );
+
+    t.deepEqual(
+        decoder.decode('0'),
+        Left('Value `"0"` is not a null.')
+    );
+
+    t.deepEqual(
+        decoder.decode(null),
+        Right(0)
+    );
+});
+
+test('Json.Decode.fail', t => {
+    t.deepEqual(
+        Decode.fail('msg').decode(null),
+        Left('msg')
+    )
+});
+
+test('Json.Decode.succeed', t => {
+    t.deepEqual(
+        Decode.succeed(1).decode(null),
+        Right(1)
+    )
+});
+
+test('Json.Decode.oneOf', t => {
+    const input = [1, 2, null, 3];
+
+    t.deepEqual(
+        Decode.list(Decode.oneOf([])).decode(input),
+        Left('OneOf Decoder shouldn\'t be empty.')
+    );
+
+    t.deepEqual(
+        Decode.list(Decode.oneOf([
+            Decode.number
+        ])).decode(input),
+        Left('Value `null` is not a number.')
+    );
+
+    t.deepEqual(
+        Decode.list(Decode.oneOf([
+            Decode.number,
+            Decode.nill(0)
+        ])).decode(input),
+        Right([1, 2, 0, 3])
+    );
+});
+
 test('Json.Decode.nullable', t => {
     const decoder = Decode.nullable(Decode.string);
 
@@ -73,6 +149,43 @@ test('Json.Decode.nullable', t => {
     t.deepEqual(
         decoder.decode('str'),
         Right(Just('str'))
+    );
+});
+
+test('Json.Decode.maybe', t => {
+    const input = {
+        s1: 'str',
+        s2: 1
+    };
+
+    t.deepEqual(
+        Decode.maybe(Decode.field('s1', Decode.number)).decode(input),
+        Right(Nothing)
+    );
+
+    t.deepEqual(
+        Decode.maybe(Decode.field('s2', Decode.number)).decode(input),
+        Right(Just(1))
+    );
+
+    t.deepEqual(
+        Decode.maybe(Decode.field('s3', Decode.number)).decode(input),
+        Right(Nothing)
+    );
+
+    t.deepEqual(
+        Decode.field('s1', Decode.maybe(Decode.number)).decode(input),
+        Right(Nothing)
+    );
+
+    t.deepEqual(
+        Decode.field('s2', Decode.maybe(Decode.number)).decode(input),
+        Right(Just(1))
+    );
+
+    t.deepEqual(
+        Decode.field('s3', Decode.maybe(Decode.number)).decode(input),
+        Left('Field `s3` doesn\'t exist in an object {"s1":"str","s2":1}.')
     );
 });
 
@@ -171,6 +284,30 @@ test('Json.Decode.keyValuePairs', t => {
     );
 });
 
+test('Json.Decode.index', t => {
+    const decoder = Decode.index(1, Decode.string);
+
+    t.deepEqual(
+        decoder.decode({}),
+        Left('Value `{}` is not an array.')
+    );
+
+    t.deepEqual(
+        decoder.decode([]),
+        Left('Need index 1 but there are only 0 entries.')
+    );
+
+    t.deepEqual(
+        decoder.decode([0, 1]),
+        Left('Value `1` is not a string.')
+    );
+
+    t.deepEqual(
+        decoder.decode([0, 'str']),
+        Right('str')
+    );
+});
+
 test('Json.Decode.field', t => {
     const decoder = Decode.field('foo', Decode.string);
 
@@ -230,91 +367,6 @@ test('Json.Decode.at', t => {
              foo: { bar: 'str' }
         }),
         Right('str')
-    );
-});
-
-test('Json.Decode.index', t => {
-    const decoder = Decode.index(1, Decode.string);
-
-    t.deepEqual(
-        decoder.decode({}),
-        Left('Value `{}` is not an array.')
-    );
-
-    t.deepEqual(
-        decoder.decode([]),
-        Left('Need index 1 but there are only 0 entries.')
-    );
-
-    t.deepEqual(
-        decoder.decode([0, 1]),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode([0, 'str']),
-        Right('str')
-    );
-});
-
-test('Json.Decode.maybe', t => {
-    const input = {
-        s1: 'str',
-        s2: 1
-    };
-
-    t.deepEqual(
-        Decode.maybe(Decode.field('s1', Decode.number)).decode(input),
-        Right(Nothing)
-    );
-
-    t.deepEqual(
-        Decode.maybe(Decode.field('s2', Decode.number)).decode(input),
-        Right(Just(1))
-    );
-
-    t.deepEqual(
-        Decode.maybe(Decode.field('s3', Decode.number)).decode(input),
-        Right(Nothing)
-    );
-
-    t.deepEqual(
-        Decode.field('s1', Decode.maybe(Decode.number)).decode(input),
-        Right(Nothing)
-    );
-
-    t.deepEqual(
-        Decode.field('s2', Decode.maybe(Decode.number)).decode(input),
-        Right(Just(1))
-    );
-
-    t.deepEqual(
-        Decode.field('s3', Decode.maybe(Decode.number)).decode(input),
-        Left('Field `s3` doesn\'t exist in an object {"s1":"str","s2":1}.')
-    );
-});
-
-test('Json.Decode.oneOf', t => {
-    const input = [ 1, 2, null, 3 ];
-
-    t.deepEqual(
-        Decode.list(Decode.oneOf([])).decode(input),
-        Left('OneOf Decoder shouldn\'t be empty.')
-    );
-
-    t.deepEqual(
-        Decode.list(Decode.oneOf([
-            Decode.number
-        ])).decode(input),
-        Left('Value `null` is not a number.')
-    );
-
-    t.deepEqual(
-        Decode.list(Decode.oneOf([
-            Decode.number,
-            Decode.nul(0)
-        ])).decode(input),
-        Right([ 1, 2, 0, 3 ])
     );
 });
 
@@ -381,63 +433,29 @@ test('Json.Decode.lazy', t => {
     );
 });
 
-test('Json.Decode.value', t => {
-    t.deepEqual(
-        Decode.value.decode({ foo: 'bar' }),
-        Right(new Value({ foo: 'bar' }))
-    );
-
-    Decode.value.decode({ foo: 'bar' }).cata({
-        Left: err => {
-            t.fail(err);
-        },
-        Right: value => {
-            t.deepEqual(
-                value.encode(0),
-                '{"foo":"bar"}'
-            );
-        }
-    });
-});
-
-test('Json.Decode.nul', t => {
-    const decoder = Decode.nul(0);
-
-    t.deepEqual(
-        decoder.decode(0),
-        Left('Value `0` is not a null.')
+test('Json.Decode.chain', t => {
+    const decoder = Decode.number.chain(
+        t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg')
     );
 
     t.deepEqual(
-        decoder.decode('0'),
-        Left('Value `"0"` is not a null.')
+        decoder.decode('str'),
+        Left('Value `"str"` is not a number.')
     );
 
     t.deepEqual(
-        decoder.decode(null),
-        Right(0)
-    );
-});
-
-test('Json.Decode.fail', t => {
-    t.deepEqual(
-        Decode.fail('msg').decode(null),
+        decoder.decode(1),
         Left('msg')
-    )
-});
+    );
 
-test('Json.Decode.succeed', t => {
     t.deepEqual(
-        Decode.succeed(1).decode(null),
+        decoder.decode(2),
         Right(1)
-    )
+    );
 });
 
 test('Json.Decode.map', t => {
-    const decoder = Decode.map(
-        t1 => ({ t1 }),
-        Decode.string
-    );
+    const decoder = Decode.string.map(t1 => ({ t1 }));
 
     t.deepEqual(
         decoder.decode(1),
@@ -1058,28 +1076,6 @@ test('Json.Decode.map8', t => {
             t7: 'str7',
             t8: 'str8'
         })
-    );
-});
-
-test('Json.Decode.andThen', t => {
-    const decoder = Decode.andThen(
-        t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg'),
-        Decode.number
-    );
-
-    t.deepEqual(
-        decoder.decode('str'),
-        Left('Value `"str"` is not a number.')
-    );
-
-    t.deepEqual(
-        decoder.decode(1),
-        Left('msg')
-    );
-
-    t.deepEqual(
-        decoder.decode(2),
-        Right(1)
     );
 });
 
