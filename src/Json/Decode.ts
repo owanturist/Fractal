@@ -295,7 +295,7 @@ class Succeed<T> extends Decoder<T> {
     }
 }
 
-export const map2 = <T1, T2, R>(
+const map2 = <T1, T2, R>(
     fn: (t1: T1, t2: T2) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>
@@ -306,7 +306,7 @@ export const map2 = <T1, T2, R>(
         )
     );
 
-export const map3 = <T1, T2, T3, R>(
+const map3 = <T1, T2, T3, R>(
     fn: (t1: T1, t2: T2, t3: T3) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>,
@@ -320,7 +320,7 @@ export const map3 = <T1, T2, T3, R>(
         )
     );
 
-export const map4 = <T1, T2, T3, T4, R>(
+const map4 = <T1, T2, T3, T4, R>(
     fn: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>,
@@ -336,7 +336,7 @@ export const map4 = <T1, T2, T3, T4, R>(
         )
     );
 
-export const map5 = <T1, T2, T3, T4, T5, R>(
+const map5 = <T1, T2, T3, T4, T5, R>(
     fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>,
@@ -354,7 +354,7 @@ export const map5 = <T1, T2, T3, T4, T5, R>(
         )
     );
 
-export const map6 = <T1, T2, T3, T4, T5, T6, R>(
+const map6 = <T1, T2, T3, T4, T5, T6, R>(
     fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>,
@@ -374,7 +374,7 @@ export const map6 = <T1, T2, T3, T4, T5, T6, R>(
         )
     );
 
-export const map7 = <T1, T2, T3, T4, T5, T6, T7, R>(
+const map7 = <T1, T2, T3, T4, T5, T6, T7, R>(
     fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>,
@@ -396,7 +396,7 @@ export const map7 = <T1, T2, T3, T4, T5, T6, T7, R>(
         )
     );
 
-export const map8 = <T1, T2, T3, T4, T5, T6, T7, T8, R>(
+const map8 = <T1, T2, T3, T4, T5, T6, T7, T8, R>(
     fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
     d1: Decoder<T1>,
     d2: Decoder<T2>,
