@@ -1,250 +1,174 @@
-type Pattern<T, R> = {
-    Nothing: () => R;
-    Just: (value: T) => R;
-};
+interface Fn<T, R> extends Function {
+    <P>(value: T): R | Fn<R, P>;
+}
+
+interface Pattern<T, R> {
+    readonly Nothing: () => R;
+    readonly Just: (value: T) => R;
+}
+
+interface LazyPattern<T, R> {
+    readonly Nothing?: () => R;
+    readonly Just?: (value: T) => R;
+    readonly _: () => R;
+}
 
 export abstract class Maybe<T> {
+    public abstract map<R, P>(fn: (value: T) => Fn<R, P>): Pipe<R, P>;
+    public abstract map<R>(fn: (value: T) => R): Maybe<R>;
 
-    // CONSTRUCTING
-
-    public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
-        return value == null ? Nothing : Just(value);
-    }
-
-    // COMPARING
-
-    public abstract isNothing: boolean;
-    public abstract isJust: boolean;
-    public abstract isEqual(another: Maybe<T>): boolean;
-
-    // EXTRACTING
+    public abstract chain<R, P>(fn: (value: T) => Pipe<R, P>): Pipe<R, P>;
+    public abstract chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
 
     public abstract getOrElse(defaults: T): T;
 
-    // TRANSFORMING
-
-    public abstract map<R>(fn: (value: T) => R): Maybe<R>;
-    public abstract chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
-    public abstract orElse(fn: () => Maybe<T>): Maybe<T>;
     public abstract cata<R>(pattern: Pattern<T, R>): R;
+    public abstract cata<R>(pattern: LazyPattern<T, R>): R;
+}
 
-    // MAPPING
-
-    public static map2<T1, T2, R>(
-        fn: (t1: T1, t2: T2) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => m2.map(
-                t2 => fn(t1, t2)
-            )
-        );
+class Nothing<T> implements Maybe<T> {
+    public map<R, P>(fn: (value: T) => Fn<R, P>): Pipe<R, P>;
+    public map<R>(fn: (value: T) => R): Maybe<R>;
+    public map<R>(): Maybe<R> {
+        return new Nothing();
     }
 
-    public static map3<T1, T2, T3, R>(
-        fn: (t1: T1, t2: T2, t3: T3) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>,
-        m3: Maybe<T3>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => this.map2(
-                (t2, t3) => fn(t1, t2, t3),
-                m2,
-                m3
-            )
-        );
+    public chain<R, P>(fn: (value: T) => Pipe<R, P>): Pipe<R, P>;
+    public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+    public chain<R>(): Maybe<R> {
+        return new Nothing();
     }
 
-    public static map4<T1, T2, T3, T4, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>,
-        m3: Maybe<T3>,
-        m4: Maybe<T4>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => this.map3(
-                (t2, t3, t4) => fn(t1, t2, t3, t4),
-                m2,
-                m3,
-                m4
-            )
-        );
+    public getOrElse(defaults: T): T {
+        return defaults;
     }
 
-    public static map5<T1, T2, T3, T4, T5, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>,
-        m3: Maybe<T3>,
-        m4: Maybe<T4>,
-        m5: Maybe<T5>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => this.map4(
-                (t2, t3, t4, t5) => fn(t1, t2, t3, t4, t5),
-                m2,
-                m3,
-                m4,
-                m5
-            )
-        );
+    public cata<R>(pattern: Pattern<T, R>): R;
+    public cata<R>(pattern: LazyPattern<T, R>): R;
+    public cata<R>(pattern: Pattern<T, R> | LazyPattern<T, R>): R {
+        return 'Nothing' in pattern
+            ? (pattern as Pattern<T, R>).Nothing()
+            : (pattern as LazyPattern<T, R>)._();
+    }
+}
+
+class Just<T> implements Maybe<T> {
+    constructor(protected readonly value: T) {}
+
+    public map<R, P>(fn: (value: T) => Fn<R, P>): Pipe<R, P>;
+    public map<R>(fn: (value: T) => R): Maybe<R>;
+    public map<R, P>(fn: (value: T) => R | (Fn<R, P>)): Maybe<R> | Pipe<R, P> {
+        const fnOrValue = fn(this.value);
+
+        return typeof fnOrValue === 'function'
+            ? new Pipe(fnOrValue)
+            : new Just(fnOrValue);
     }
 
-    public static map6<T1, T2, T3, T4, T5, T6, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>,
-        m3: Maybe<T3>,
-        m4: Maybe<T4>,
-        m5: Maybe<T5>,
-        m6: Maybe<T6>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => this.map5(
-                (t2, t3, t4, t5, t6) => fn(t1, t2, t3, t4, t5, t6),
-                m2,
-                m3,
-                m4,
-                m5,
-                m6
-            )
-        );
+    public chain<R, P>(fn: (value: T) => Pipe<R, P>): Pipe<R, P>;
+    public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+    public chain<R, P>(fn: (value: T) => Maybe<R> | Pipe<R, P>): Maybe<R> | Pipe<R, P> {
+        return fn(this.value);
     }
 
-    public static map7<T1, T2, T3, T4, T5, T6, T7, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>,
-        m3: Maybe<T3>,
-        m4: Maybe<T4>,
-        m5: Maybe<T5>,
-        m6: Maybe<T6>,
-        m7: Maybe<T7>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => this.map6(
-                (t2, t3, t4, t5, t6, t7) => fn(t1, t2, t3, t4, t5, t6, t7),
-                m2,
-                m3,
-                m4,
-                m5,
-                m6,
-                m7
-            )
-        );
+    public getOrElse(): T {
+        return this.value;
     }
 
-    public static map8<T1, T2, T3, T4, T5, T6, T7, T8, R>(
-        fn: (t1: T1, t2: T2, t3: T3, t4: T4, t5: T5, t6: T6, t7: T7, t8: T8) => R,
-        m1: Maybe<T1>,
-        m2: Maybe<T2>,
-        m3: Maybe<T3>,
-        m4: Maybe<T4>,
-        m5: Maybe<T5>,
-        m6: Maybe<T6>,
-        m7: Maybe<T7>,
-        m8: Maybe<T8>
-    ): Maybe<R> {
-        return m1.chain(
-            t1 => this.map7(
-                (t2, t3, t4, t5, t6, t7, t8) => fn(t1, t2, t3, t4, t5, t6, t7, t8),
-                m2,
-                m3,
-                m4,
-                m5,
-                m6,
-                m7,
-                m8
-            )
+    public cata<R>(pattern: Pattern<T, R>): R;
+    public cata<R>(pattern: LazyPattern<T, R>): R;
+    public cata<R>(pattern: Pattern<T, R> | LazyPattern<T, R>): R {
+        return 'Just' in pattern
+            ? (pattern as Pattern<T, R>).Just(this.value)
+            : (pattern as LazyPattern<T, R>)._();
+    }
+}
+
+class Pipe<T, R> extends Just<Fn<T, R>> {
+    public ap<P>(maybe: Maybe<T>): Pipe<R, P>;
+    public ap(maybe: Maybe<T>): Maybe<R>;
+    public ap<P>(maybe: Maybe<T>): Maybe<R> | Pipe<R, P> {
+        const fo: Fn<T, R> | Fn<T, Fn<R, P>> = this.value;
+
+        return maybe.chain(
+            (value: T): any => {
+                const foo: R | Fn<R, P> = fo(value);
+
+                return typeof foo === 'function'
+                    ? new Pipe(foo) as Pipe<R, P>
+                    : new Just(foo) as Maybe<R>
+            }
         );
     }
 }
 
-const maybe = {
-    Nothing: class Nothing<T> implements Maybe<T> {
+export const __Nothing__: Maybe<any> = new Nothing();
 
-        // COMPARING
+export function __Just__<T, R>(fn: Fn<T, R>): Pipe<T, R>;
+export function __Just__<T>(value: T): Maybe<T>;
+export function __Just__<T, R>(fnOrValue: T | Fn<T, R>): Maybe<T> | Pipe<T, R> {
+    return typeof fnOrValue === 'function'
+        ? new Pipe(fnOrValue)
+        : new Just(fnOrValue);
+}
 
-        public isNothing = true;
+export const A = __Just__(1);
+export const B = __Just__(2);
+export const C = __Just__('hi');
 
-        public isJust = false;
+const pipe1 = __Just__((a: number) => a * 2).ap(A);
+const pipe2 = __Just__((a: number) => (b: number) => a * 2 - b).ap(A);
+const pipe3 = A.map(a => (b: number) => a * b);
+const pipe4 = A.chain(a => __Just__((b: number) => a * b));
 
-        public isEqual(another: Maybe<T>): boolean {
-            return another.isNothing;
-        }
+// const pip = fn.ap(A)
 
-        // EXTRACTING
-
-        public getOrElse(defaults: T): T {
-            return defaults;
-        }
-
-        // TRANSFORMING
-
-        public map<R>(): Maybe<R> {
-            return new Nothing();
-        }
-
-        public chain<R>(): Maybe<R> {
-            return new Nothing();
-        }
-
-        public orElse(fn: () => Maybe<T>): Maybe<T> {
-            return fn();
-        }
-
-        public cata<R>(pattern: Pattern<T, R>): R {
-            return pattern.Nothing();
-        }
-    },
-
-    Just: class Just<T> implements Maybe<T> {
-        constructor(private readonly value: T) {}
-
-        // COMPARING
-
-        public isNothing = false;
-
-        public isJust = true;
-
-        public isEqual(another: Maybe<T>): boolean {
-            return another
-                .map(value => value === this.value)
-                .getOrElse(false);
-        }
-
-        // EXTRACTING
-
-        public getOrElse(): T {
-            return this.value;
-        }
-
-        // TRANSFORMING
-
-        public map<R>(fn: (value: T) => R): Maybe<R> {
-            return new Just(
-                fn(this.value)
-            );
-        }
-
-        public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
-            return fn(this.value);
-        }
-
-        public orElse(): Maybe<T> {
-            return this;
-        }
-
-        public cata<R>(pattern: Pattern<T, R>): R {
-            return pattern.Just(this.value);
-        }
+export function bar<T1, T2, T3, T4, R>(
+    fn: (t1: T1) => (t2: T2) => (t3: T3) => (t4: T4) => R,
+    t1: T1,
+    t2: T2,
+    t3: T3,
+    t4: T4
+): R;
+export function bar<T1, T2, T3, R>(
+    fn: (t1: T1) => (t2: T2) => (t3: T3) => R,
+    t1: T1,
+    t2: T2,
+    t3: T3
+): R;
+export function bar<T1, T2, R>(
+    fn: (t1: T1) => (t2: T2) => R,
+    t1: T1,
+    t2: T2
+): R;
+export function bar<T1, R>(
+    fn: (t1: T1) => R,
+    t1: T1
+): R;
+export function bar<T1, T2, T3, T4, R>(
+    fn: Function,
+    t1: T1,
+    t2?: T2,
+    t3?: T3,
+    t4?: T4
+): R {
+    if (typeof t2 === 'undefined') {
+        return fn(t1);
     }
-};
 
+    if (typeof t3 === 'undefined') {
+        return fn(t1)(t2);
+    }
 
-export const Nothing: Maybe<any> = new maybe.Nothing();
+    if (typeof t4 === 'undefined') {
+        return fn(t1)(t2)(t3);
+    }
 
-export const Just = <T>(value: T): Maybe<T> => new maybe.Just(value);
+    return fn(t1)(t2)(t3)(t4);
+}
+
+const asd = bar(
+    (a: number) => (b: number) => (c: number): number => a * b * c,
+    1,
+    3
+);
