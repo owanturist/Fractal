@@ -3,27 +3,21 @@ interface Pattern<T, R> {
     readonly Just: (value: T) => R;
 }
 
-interface LazyPattern<T, R> {
-    readonly Nothing?: () => R;
-    readonly Just?: (value: T) => R;
-    readonly _: () => R;
-}
-
 export abstract class Maybe<T> {
-
-    // COMPAREING AND TESTING
-
-    public abstract isNothing(): Boolean;
-
-    public abstract isJust(): Boolean;
-
-    public abstract isEqual(another: Maybe<T>): Boolean;
 
     // CONSTRUCTING
 
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
         return value == undefined ? Nothing : Just(value);
     }
+
+    // COMPAREING AND TESTING
+
+    public abstract isNothing: Boolean;
+
+    public abstract isJust: Boolean;
+
+    public abstract isEqual(another: Maybe<T>): Boolean;
 
     // EXTRACTING
 
@@ -40,23 +34,18 @@ export abstract class Maybe<T> {
     public abstract orElse(fn: () => Maybe<T>): Maybe<T>;
 
     public abstract cata<R>(pattern: Pattern<T, R>): R;
-    public abstract cata<R>(pattern: LazyPattern<T, R>): R;
 }
 
 const maybe = {
     Nothing: class Nothing<T> implements Maybe<T> {
         // COMPAREING AND TESTING
 
-        public isNothing(): Boolean {
-            return true;
-        }
+        public isNothing: Boolean = true
 
-        public isJust(): Boolean {
-            return false;
-        }
+        public isJust: Boolean = false;
 
         public isEqual(another: Maybe<T>): Boolean {
-            return another.isNothing();
+            return another.isNothing;
         }
 
         // EXTRACTING
@@ -83,12 +72,8 @@ const maybe = {
             return fn();
         }
 
-        public cata<R>(pattern: Pattern<T, R>): R;
-        public cata<R>(pattern: LazyPattern<T, R>): R;
-        public cata<R>(pattern: Pattern<T, R> | LazyPattern<T, R>): R {
-            return 'Nothing' in pattern
-                ? (pattern as Pattern<T, R>).Nothing()
-                : (pattern as LazyPattern<T, R>)._();
+        public cata<R>(pattern: Pattern<T, R>): R {
+            return pattern.Nothing();
         }
     },
 
@@ -97,13 +82,9 @@ const maybe = {
 
         // COMPAREING AND TESTING
 
-        public isNothing(): Boolean {
-            return false;
-        }
+        public isNothing: Boolean = false;
 
-        public isJust(): Boolean {
-            return true;
-        }
+        public isJust: Boolean = true;
 
         public isEqual(another: Maybe<T>): Boolean {
             return another.cata({
@@ -140,12 +121,8 @@ const maybe = {
             return this;
         }
 
-        public cata<R>(pattern: Pattern<T, R>): R;
-        public cata<R>(pattern: LazyPattern<T, R>): R;
-        public cata<R>(pattern: Pattern<T, R> | LazyPattern<T, R>): R {
-            return 'Just' in pattern
-                ? (pattern as Pattern<T, R>).Just(this.value)
-                : (pattern as LazyPattern<T, R>)._();
+        public cata<R>(pattern: Pattern<T, R>): R {
+            return pattern.Just(this.value);
         }
     }
 }
