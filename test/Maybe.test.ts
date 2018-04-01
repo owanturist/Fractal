@@ -86,6 +86,28 @@ test('Maybe.getOrElse()', t => {
 
 // TRANSFORMING
 
+test('Maybe.ap()', t => {
+    t.deepEqual(
+        Nothing.ap(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Nothing.ap(Just((a: number) => a * 2)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(3).ap(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(3).ap(Just((a: number) => a * 2)),
+        Just(6)
+    );
+});
+
 test('Maybe.map()', t => {
     t.deepEqual(
         Nothing.map((a: number) => a * 2),
