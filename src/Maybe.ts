@@ -4,7 +4,6 @@ interface Pattern<T, R> {
 }
 
 export abstract class Maybe<T> {
-
     // CONSTRUCTING
 
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
@@ -13,9 +12,9 @@ export abstract class Maybe<T> {
 
     // COMPAREING AND TESTING
 
-    public abstract isNothing: Boolean;
+    public abstract readonly isNothing: Boolean;
 
-    public abstract isJust: Boolean;
+    public abstract readonly isJust: Boolean;
 
     public abstract isEqual(another: Maybe<T>): Boolean;
 
@@ -40,9 +39,9 @@ const maybe = {
     Nothing: class Nothing<T> implements Maybe<T> {
         // COMPAREING AND TESTING
 
-        public isNothing: Boolean = true
+        public readonly isNothing: Boolean = true;
 
-        public isJust: Boolean = false;
+        public readonly isJust: Boolean = false
 
         public isEqual(another: Maybe<T>): Boolean {
             return another.isNothing;
@@ -82,9 +81,9 @@ const maybe = {
 
         // COMPAREING AND TESTING
 
-        public isNothing: Boolean = false;
+        public readonly isNothing: Boolean = false;
 
-        public isJust: Boolean = true;
+        public readonly isJust: Boolean = true;
 
         public isEqual(another: Maybe<T>): Boolean {
             return another.cata({
@@ -129,4 +128,6 @@ const maybe = {
 
 export const Nothing: Maybe<any> = new maybe.Nothing();
 
-export const Just = <T>(value: T): Maybe<T> => new maybe.Just(value);
+export function Just<T>(value: T): Maybe<T> {
+    return new maybe.Just(value);
+}
