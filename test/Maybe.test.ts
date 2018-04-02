@@ -182,3 +182,77 @@ test('Maybe.cata()', t => {
     );
 });
 
+test('Maybe.all()', t => {
+    t.deepEqual(
+        Maybe.props({}),
+        Just({})
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Nothing
+        }),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just(1)
+        }),
+        Just({
+            foo: 1
+        })
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Nothing,
+            bar: Nothing
+        }),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Nothing,
+            bar: Just(1)
+        }),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just('foo'),
+            bar: Nothing
+        }),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just('foo'),
+            bar: Just(1)
+        }),
+        Just({
+            foo: 'foo',
+            bar: 1
+        })
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just('foo'),
+            bar: Just(1)
+        }).map(obj => obj.foo),
+        Just('foo')
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just('foo'),
+            bar: Just(1)
+        }).map(obj => obj.bar),
+        Just(1)
+    );
+});
+
