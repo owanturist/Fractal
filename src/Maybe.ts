@@ -55,8 +55,8 @@ export abstract class Maybe<T> {
     }
 }
 
-const maybe = {
-    Nothing: class Nothing<T> implements Maybe<T> {
+namespace Variations {
+    export class Nothing<T> implements Maybe<T> {
         // COMPAREING AND TESTING
 
         public readonly isNothing: Boolean = true;
@@ -94,9 +94,9 @@ const maybe = {
         public cata<R>(pattern: Pattern<T, R>): R {
             return pattern.Nothing();
         }
-    },
+    }
 
-    Just: class Just<T> implements Maybe<T> {
+    export class Just<T> implements Maybe<T> {
         constructor(private readonly value: T) {}
 
         // COMPAREING AND TESTING
@@ -146,8 +146,8 @@ const maybe = {
     }
 }
 
-export const Nothing: Maybe<any> = new maybe.Nothing();
+export const Nothing: Maybe<any> = new Variations.Nothing();
 
 export function Just<T>(value: T): Maybe<T> {
-    return new maybe.Just(value);
+    return new Variations.Just(value);
 }
