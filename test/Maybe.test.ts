@@ -281,3 +281,39 @@ test('Maybe.props()', t => {
     );
 });
 
+test('Maybe.all()', t => {
+    t.deepEqual(
+        Maybe.all([]),
+        Just([])
+    );
+
+    t.deepEqual(
+        Maybe.all([ Nothing ]),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.all([ Just(1) ]),
+        Just([ 1 ])
+    );
+
+    t.deepEqual(
+        Maybe.all([ Nothing, Nothing ]),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.all([ Nothing, Just(2) ]),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.all([ Just(1), Nothing ]),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.all([ Just(1), Just(2) ]),
+        Just([ 1, 2 ])
+    );
+});

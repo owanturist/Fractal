@@ -56,6 +56,24 @@ export abstract class Maybe<T> {
 
         return acc;
     }
+
+    public static all<T>(list: Array<Maybe<T>>): Maybe<Array<T>> {
+        let acc = Just([] as Array<T>);
+
+        for (const item of list) {
+            acc = acc.chain(
+                (arr: Array<T>) => item.map(
+                    (value: T) => {
+                        arr.push(value);
+
+                        return arr;
+                    }
+                )
+            );
+        }
+
+        return acc;
+    }
 }
 
 namespace Variations {
