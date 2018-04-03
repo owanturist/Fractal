@@ -246,7 +246,7 @@ test('Either.toMaybe()', t => {
     );
 });
 
-test('Either.all()', t => {
+test('Either.props()', t => {
     t.deepEqual(
         Either.props({}),
         Right({})

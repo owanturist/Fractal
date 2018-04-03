@@ -370,17 +370,16 @@ test('Json.Decode.at', t => {
     );
 });
 
-test('Json.Decode.lazy', t => {
+test.skip('Json.Decode.lazy', t => {
     interface Comment {
         message: string;
         responses: Array<Comment>
     }
 
-    const decoder: Decoder<Comment> = Decode.map2(
-        (message, responses) => ({ message, responses }),
-        Decode.field('message', Decode.string),
-        Decode.field('responses', Decode.lazy(() => Decode.list(decoder)))
-    );
+    const decoder: Decoder<Comment> = Decode.props({
+        message: Decode.field('message', Decode.string),
+        responses: Decode.field('responses', Decode.lazy(() => Decode.list(decoder)))
+    });
 
     t.deepEqual(
         decoder.decode({
@@ -470,621 +469,11 @@ test('Json.Decode.map', t => {
     );
 });
 
-test('Json.Decode.map2', t => {
-    const decoder = Decode.map2(
-        (t1, t2) => ({ t1, t2 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2'
-        })
-    );
-});
-
-test('Json.Decode.map3', t => {
-    const decoder = Decode.map3(
-        (t1, t2, t3) => ({ t1, t2, t3 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string),
-        Decode.field('s3', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2,
-            s3: 3
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2,
-            s3: 3
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 3
-        }),
-        Left('Value `3` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2',
-            t3: 'str3'
-        })
-    );
-});
-
-test('Json.Decode.map4', t => {
-    const decoder = Decode.map4(
-        (t1, t2, t3, t4) => ({ t1, t2, t3, t4 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string),
-        Decode.field('s3', Decode.string),
-        Decode.field('s4', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2,
-            s3: 3,
-            s4: 4
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2,
-            s3: 3,
-            s4: 4
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 3,
-            s4: 4
-        }),
-        Left('Value `3` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 4
-        }),
-        Left('Value `4` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2',
-            t3: 'str3',
-            t4: 'str4'
-        })
-    );
-});
-
-test('Json.Decode.map5', t => {
-    const decoder = Decode.map5(
-        (t1, t2, t3, t4, t5) => ({ t1, t2, t3, t4, t5 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string),
-        Decode.field('s3', Decode.string),
-        Decode.field('s4', Decode.string),
-        Decode.field('s5', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 3,
-            s4: 4,
-            s5: 5
-        }),
-        Left('Value `3` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 4,
-            s5: 5
-        }),
-        Left('Value `4` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 5
-        }),
-        Left('Value `5` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2',
-            t3: 'str3',
-            t4: 'str4',
-            t5: 'str5'
-        })
-    );
-});
-
-test('Json.Decode.map6', t => {
-    const decoder = Decode.map6(
-        (t1, t2, t3, t4, t5, t6) => ({ t1, t2, t3, t4, t5, t6 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string),
-        Decode.field('s3', Decode.string),
-        Decode.field('s4', Decode.string),
-        Decode.field('s5', Decode.string),
-        Decode.field('s6', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6
-        }),
-        Left('Value `3` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 4,
-            s5: 5,
-            s6: 6
-        }),
-        Left('Value `4` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 5,
-            s6: 6
-        }),
-        Left('Value `5` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 6
-        }),
-        Left('Value `6` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 'str6'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2',
-            t3: 'str3',
-            t4: 'str4',
-            t5: 'str5',
-            t6: 'str6'
-        })
-    );
-});
-
-test('Json.Decode.map7', t => {
-    const decoder = Decode.map7(
-        (t1, t2, t3, t4, t5, t6, t7) => ({ t1, t2, t3, t4, t5, t6, t7 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string),
-        Decode.field('s3', Decode.string),
-        Decode.field('s4', Decode.string),
-        Decode.field('s5', Decode.string),
-        Decode.field('s6', Decode.string),
-        Decode.field('s7', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7
-        }),
-        Left('Value `3` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7
-        }),
-        Left('Value `4` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 5,
-            s6: 6,
-            s7: 7
-        }),
-        Left('Value `5` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 6,
-            s7: 7
-        }),
-        Left('Value `6` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 'str6',
-            s7: 7
-        }),
-        Left('Value `7` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 'str6',
-            s7: 'str7'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2',
-            t3: 'str3',
-            t4: 'str4',
-            t5: 'str5',
-            t6: 'str6',
-            t7: 'str7'
-        })
-    );
-});
-
-test('Json.Decode.map8', t => {
-    const decoder = Decode.map8(
-        (t1, t2, t3, t4, t5, t6, t7, t8) => ({ t1, t2, t3, t4, t5, t6, t7, t8 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string),
-        Decode.field('s3', Decode.string),
-        Decode.field('s4', Decode.string),
-        Decode.field('s5', Decode.string),
-        Decode.field('s6', Decode.string),
-        Decode.field('s7', Decode.string),
-        Decode.field('s8', Decode.string)
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 1,
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `1` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 2,
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `2` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 3,
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `3` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 4,
-            s5: 5,
-            s6: 6,
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `4` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 5,
-            s6: 6,
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `5` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 6,
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `6` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 'str6',
-            s7: 7,
-            s8: 8
-        }),
-        Left('Value `7` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 'str6',
-            s7: 'str7',
-            s8: 8
-        }),
-        Left('Value `8` is not a string.')
-    );
-
-    t.deepEqual(
-        decoder.decode({
-            s1: 'str1',
-            s2: 'str2',
-            s3: 'str3',
-            s4: 'str4',
-            s5: 'str5',
-            s6: 'str6',
-            s7: 'str7',
-            s8: 'str8'
-        }),
-        Right({
-            t1: 'str1',
-            t2: 'str2',
-            t3: 'str3',
-            t4: 'str4',
-            t5: 'str5',
-            t6: 'str6',
-            t7: 'str7',
-            t8: 'str8'
-        })
-    );
-});
-
 test('Json.Decode.decodeString', t => {
-    const decoder = Decode.map2(
-        (t1, t2) => ({ t1, t2 }),
-        Decode.field('s1', Decode.string),
-        Decode.field('s2', Decode.string)
-    );
+    const decoder = Decode.props({
+        t1: Decode.field('s1', Decode.string),
+        t2: Decode.field('s2', Decode.string),
+    });
 
     t.deepEqual(
         decoder.decodeString('invalid'),
@@ -1104,3 +493,97 @@ test('Json.Decode.decodeString', t => {
         })
     );
 });
+
+
+test('Decode.props()', t => {
+    t.deepEqual(
+        Decode.props({}).decode(null),
+        Right({})
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.string
+        }).decode(null),
+        Left('Value `null` is not a string.')
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.string
+        }).decode('bar'),
+        Right({
+            foo: 'bar'
+        })
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.field('soo', Decode.number),
+            bar: Decode.field('sar', Decode.bool)
+        }).decode({
+            soo: 'str',
+            sar: false
+        }),
+        Left('Value `"str"` is not a number.')
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.field('soo', Decode.number),
+            bar: Decode.field('sar', Decode.bool)
+        }).decode({
+            soo: 1,
+            sar: false
+        }),
+        Right({
+            foo: 1,
+            bar: false
+        })
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.field('soo', Decode.number),
+            bar: Decode.field('sar', Decode.bool)
+        }).map(obj => obj.foo).decode({
+            soo: 1,
+            sar: false
+        }),
+        Right(1)
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.field('soo', Decode.number),
+            bar: Decode.field('sar', Decode.props({
+                baz: Decode.field('saz', Decode.string)
+            }))
+        }).decode({
+            soo: 1,
+            sar: false
+        }),
+        Left('Value `false` is not an object.')
+    );
+
+    t.deepEqual(
+        Decode.props({
+            foo: Decode.field('soo', Decode.number),
+            bar: Decode.field('sar', Decode.props({
+                baz: Decode.field('saz', Decode.string)
+            }))
+        }).decode({
+            soo: 1,
+            sar: {
+                saz: '1'
+            }
+        }),
+        Right({
+            foo: 1,
+            bar: {
+                baz: '1'
+            }
+        })
+    );
+});
+

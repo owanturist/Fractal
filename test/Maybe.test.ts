@@ -182,7 +182,7 @@ test('Maybe.cata()', t => {
     );
 });
 
-test('Maybe.all()', t => {
+test('Maybe.props()', t => {
     t.deepEqual(
         Maybe.props({}),
         Just({})

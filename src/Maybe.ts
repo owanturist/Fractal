@@ -43,15 +43,17 @@ export abstract class Maybe<T> {
         let acc = Just({} as T);
 
         for (const key in config) {
-            acc = acc.chain(
-                (obj: T) => (config[ key ] as Maybe<T[ K ]>).map(
-                    (value: T[ K ]) => {
-                        obj[ key ] = value;
+            if (config.hasOwnProperty(key)) {
+                acc = acc.chain(
+                    (obj: T) => (config[ key ] as Maybe<T[ K ]>).map(
+                        (value: T[ K ]) => {
+                            obj[ key ] = value;
 
-                        return obj;
-                    }
-                )
-            );
+                            return obj;
+                        }
+                    )
+                );
+            }
         }
 
         return acc;
