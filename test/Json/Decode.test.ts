@@ -5,6 +5,7 @@ import {
     Just
 } from '../../src/Maybe';
 import {
+    Either,
     Left,
     Right
 } from '../../src/Either';
@@ -491,6 +492,28 @@ test('Json.Decode.decodeString', t => {
             t1: 'str1',
             t2: 'str2'
         })
+    );
+});
+
+test('Decode.fromEither()', t => {
+    const toDecimal = (str: string): Either<string, number> =>{
+        const result = parseInt(str, 10);
+
+        return isNaN(result) ? Left('error') : Right(result);
+    };
+
+    const decoder = Decode.string.chain(
+        str => Decode.fromEither(toDecimal(str))
+    );
+
+    t.deepEqual(
+        decoder.decode('invalid'),
+        Left('error')
+    );
+
+    t.deepEqual(
+        decoder.decode('123'),
+        Right(123)
     );
 });
 
