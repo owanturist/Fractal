@@ -13,7 +13,21 @@ import {
 } from './Encode';
 
 export abstract class Decoder<T> {
-    public abstract decode(input: any): Either<string, T>;
+    protected abstract decodeFrom(input: any, origin: Array<string>): Either<string, T>;
+
+    protected static run<T>(decoder: Decoder<T>, input: any, origin: Array<string>): Either<string, T> {
+        return decoder.decodeFrom(input, origin);
+    }
+
+    protected static makePath(origin: Array<string>): string {
+        return origin.length === 0
+            ? ' '
+            : ' at _' + origin.join('') + ' '
+    }
+
+    public decode(input: any): Either<string, T> {
+        return this.decodeFrom(input, []);
+    }
 
     public map<R>(fn: (value: T) => R): Decoder<R> {
         return new Map(fn, this);
@@ -40,8 +54,8 @@ class Map<T, R> extends Decoder<R> {
         super();
     }
 
-    public decode(input: any): Either<string, R> {
-        return this.decoder.decode(input).map(this.fn);
+    public decodeFrom(input: any, origin: Array<string>): Either<string, R> {
+        return Decoder.run(this.decoder, input, origin).map(this.fn);
     }
 }
 
@@ -53,8 +67,8 @@ class Chain<T, R> extends Decoder<R> {
         super();
     }
 
-    public decode(input: any): Either<string, R> {
-        return this.decoder.decode(input).chain(
+    public decodeFrom(input: any, origin: Array<string>): Either<string, R> {
+        return Decoder.run(this.decoder, input, origin).chain(
             value => this.fn(value).decode(input)
         );
     }
@@ -68,14 +82,12 @@ class Primitive<T> extends Decoder<T> {
         super();
     }
 
-    private makeError(input: any): string {
-        return `Expecting ${this.title} but instead got: ${JSON.stringify(input)}`;
-    }
-
-    public decode(input: any): Either<string, T> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
         return this.check(input)
             ? Right(input)
-            : Left(this.makeError(input))
+            : Left(
+                `Expecting ${this.title}${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`
+            )
     }
 }
 
@@ -84,16 +96,15 @@ class Nullable<T> extends Decoder<Maybe_<T>> {
         super();
     }
 
-    private makeError(input: any): string {
-        return 'I ran into the following problems:\n\n' +
-               `Expecting null but instead got: ${JSON.stringify(input)}`
-    }
-
-    public decode(input: any): Either<string, Maybe_<T>> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
         return input === null
             ? Right(Nothing)
-            : this.decoder.decode(input).bimap(
-                (error: string): string => this.makeError(input) + '\n' + error,
+            : Decoder.run(this.decoder, input, origin).bimap(
+                (error: string): string => [
+                    'I ran into the following problems:\n',
+                    `Expecting null${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`,
+                    error
+                ].join('\n'),
                 Just
             )
     }
@@ -104,22 +115,24 @@ class List<T> extends Decoder<Array<T>> {
         super();
     }
 
-    public decode(input: any): Either<string, Array<T>> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, Array<T>> {
         if (!(input instanceof Array)) {
-            return Left('Value `' + JSON.stringify(input) + '` is not an array.');
+            return Left(`Expecting a List but instead got: ${JSON.stringify(input)}`);
         }
 
         let acc: Either<string, Array<T>> = Right([]);
 
-        for (const item of input) {
+        for (let index = 0; index < input.length; index++) {
             acc = acc.chain(
-                accResult => this.decoder.decode(item).map(
-                    itemResult => {
-                        accResult.push(itemResult);
+                accResult => Decoder
+                    .run(this.decoder, input[ index ], origin.concat(`[${index}]`))
+                    .map(
+                        itemResult => {
+                            accResult.push(itemResult);
 
-                        return accResult;
-                    }
-                )
+                            return accResult;
+                        }
+                    )
             );
         }
 
@@ -132,9 +145,9 @@ class Dict<T> extends Decoder<{[ key: string ]: T}> {
         super();
     }
 
-    public decode(input: any): Either<string, {[ key: string ]: T}> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, {[ key: string ]: T}> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
-            return Left('Value `' + JSON.stringify(input) + '` is not an object.');
+            return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
 
         let acc: Either<string, {[ key: string ]: T}> = Right({});
@@ -142,13 +155,15 @@ class Dict<T> extends Decoder<{[ key: string ]: T}> {
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    accResult => this.decoder.decode(input[ key ]).map(
-                        itemResult => {
-                            accResult[ key ] = itemResult;
+                    accResult => Decoder
+                        .run(this.decoder, input[ key ], origin.concat(`.${key}`))
+                        .map(
+                            itemResult => {
+                                accResult[ key ] = itemResult;
 
-                            return accResult;
-                        }
-                    )
+                                return accResult;
+                            }
+                        )
                 );
             }
         }
@@ -162,9 +177,9 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
         super();
     }
 
-    public decode(input: any): Either<string, Array<[ string, T ]>> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, Array<[ string, T ]>> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
-            return Left('Value `' + JSON.stringify(input) + '` is not an object.');
+            return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
 
         let acc: Either<string, Array<[ string, T ]>> = Right([]);
@@ -172,13 +187,15 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    accResult => this.decoder.decode(input[ key ]).map(
-                        itemResult => {
-                            accResult.push([ key, itemResult ]);
+                    accResult => Decoder
+                        .run(this.decoder, input[ key ], origin.concat(`.${key}`))
+                        .map(
+                            itemResult => {
+                                accResult.push([ key, itemResult ]);
 
-                            return accResult;
-                        }
-                    )
+                                return accResult;
+                            }
+                        )
                 );
             }
         }
@@ -195,14 +212,12 @@ class Field<T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: any): Either<string, T> {
-        if (typeof input !== 'object' || input === null || input instanceof Array) {
-            return Left('Value `' + JSON.stringify(input) + '` is not an object.');
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+        if (typeof input !== 'object' || input === null || input instanceof Array || !(this.key in input)) {
+            return Left(`Expecting an object with a field named \`${this.key}\`${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
         }
 
-        return this.key in input
-            ? this.decoder.decode(input[ this.key ])
-            : Left('Field `' + this.key + '` doesn\'t exist in an object ' + JSON.stringify(input) + '.');
+        return Decoder.run(this.decoder, input[ this.key ], origin.concat(`.${this.key}`));
     }
 }
 
@@ -214,14 +229,14 @@ class Index<T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: any): Either<string, T> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
         if (!(input instanceof Array)) {
-            return Left('Value `' + JSON.stringify(input) + '` is not an array.');
+            return Left(`Expecting an array but instead got: ${JSON.stringify(input)}`);
         }
 
         return this.index >= input.length
-            ? Left('Need index ' + this.index + ' but there are only ' + input.length + ' entries.')
-            : this.decoder.decode(input[ this.index ]);
+            ? Left(`Expecting a longer array. Need index ${this.index} but there are only ${input.length} entries but instead got: ${JSON.stringify(input)}`)
+            : Decoder.run(this.decoder, input[ this.index ], origin.concat(`[${this.index}]`));
     }
 }
 
@@ -230,9 +245,9 @@ class Maybe<T> extends Decoder<Maybe_<T>> {
         super();
     }
 
-    public decode(input: any): Either<string, Maybe_<T>> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
         return Right(
-            this.decoder.decode(input).toMaybe()
+            Decoder.run(this.decoder, input, origin).toMaybe()
         );
     }
 }
@@ -242,16 +257,17 @@ class OneOf<T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: any): Either<string, T> {
-        if (this.decoders.length === 1) {
-            return this.decoders[0].decode(input);
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+        if (this.decoders.length === 0) {
+            return Left(`Expecting at least one Decoder for oneOf${Decoder.makePath(origin)}but instead got 0`);
         }
 
-        let acc: Either<string, T> = Left('OneOf Decoder shouldn\'t be empty.');
+        let acc = Left('I ran into the following problems:\n');
 
         for (const decoder of this.decoders) {
             acc = acc.orElse(
-                accErr => decoder.decode(input)
+                accErr => Decoder
+                    .run(decoder, input, origin)
                     .leftMap(err => accErr + '\n' + err)
             );
         }
@@ -265,8 +281,8 @@ class Lazy<T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: any): Either<string, T> {
-        return this.callDecoder().decode(input);
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+        return Decoder.run(this.callDecoder(), input, origin)
     }
 }
 
@@ -275,19 +291,23 @@ class Props<T extends object, K extends keyof T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: any): Either<string, T> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
         let acc = Right({} as T);
 
         for (const key in this.config) {
             if (this.config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T) => (this.config[ key ] as Decoder<T[ K ]>).map(
-                        (value: T[ K ]) => {
-                            obj[ key ] = value;
+                    (obj: T) => Decoder.run(
+                        (this.config[ key ] as Decoder<T[ K ]>).map(
+                            (value: T[ K ]) => {
+                                obj[ key ] = value;
 
-                            return obj;
-                        }
-                    ).decode(input)
+                                return obj;
+                            }
+                        ),
+                        input,
+                        origin
+                    )
                 );
             }
         }
@@ -297,7 +317,7 @@ class Props<T extends object, K extends keyof T> extends Decoder<T> {
 }
 
 class Value extends Decoder<any> {
-    public decode(input: any): Either<string, Value_> {
+    public decodeFrom(input: any): Either<string, Value_> {
         return Right(new Value_(input));
     }
 }
@@ -307,10 +327,10 @@ class Nill<T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: any): Either<string, T> {
+    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
         return input === null
             ? Right(this.defaults)
-            : Left('Value `' + JSON.stringify(input) + '` is not a null.')
+            : Left(`Expecting null${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`,)
     }
 }
 
@@ -319,7 +339,7 @@ class Fail extends Decoder<any> {
         super();
     }
 
-    public decode(): Either<string, any> {
+    public decodeFrom(): Either<string, any> {
         return Left(this.msg);
     }
 }
@@ -329,7 +349,7 @@ class Succeed<T> extends Decoder<T> {
         super();
     }
 
-    public decode(): Either<string, T> {
+    public decodeFrom(): Either<string, T> {
         return Right(this.value);
     }
 }
