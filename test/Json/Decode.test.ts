@@ -20,7 +20,7 @@ import {
 test('Json.Decode.string', t => {
     t.deepEqual(
         Decode.string.decode(1),
-        Left('Value `1` is not a string.')
+        Left("Expecting a String but instead got: 1")
     );
 
     t.deepEqual(
@@ -32,7 +32,7 @@ test('Json.Decode.string', t => {
 test('Json.Decode.number', t => {
     t.deepEqual(
         Decode.number.decode('str'),
-        Left('Value `"str"` is not a number.')
+        Left("Expecting a Number but instead got: \"str\"")
     );
 
     t.deepEqual(
@@ -41,14 +41,14 @@ test('Json.Decode.number', t => {
     );
 });
 
-test('Json.Decode.bool', t => {
+test('Json.Decode.boolean', t => {
     t.deepEqual(
-        Decode.bool.decode(1),
-        Left('Value `1` is not a bool.')
+        Decode.boolean.decode(1),
+        Left("Expecting a Boolean but instead got: 1")
     );
 
     t.deepEqual(
-        Decode.bool.decode(false),
+        Decode.boolean.decode(false),
         Right(false)
     );
 });
@@ -117,7 +117,7 @@ test('Json.Decode.oneOf', t => {
         Decode.list(Decode.oneOf([
             Decode.number
         ])).decode(input),
-        Left('Value `null` is not a number.')
+        Left("Expecting a Number but instead got: null")
     );
 
     t.deepEqual(
@@ -134,7 +134,11 @@ test('Json.Decode.nullable', t => {
 
     t.deepEqual(
         decoder.decode(undefined),
-        Left('Value `undefined` is not a string.')
+        Left(
+            'I ran into the following problems:\n\n' +
+            'Expecting null but instead got: undefined\n' +
+            'Expecting a String but instead got: undefined'
+        )
     );
 
     t.deepEqual(
@@ -144,7 +148,11 @@ test('Json.Decode.nullable', t => {
 
     t.deepEqual(
         decoder.decode(1),
-        Left('Value `1` is not a string.')
+        Left(
+            'I ran into the following problems:\n\n' +
+            'Expecting null but instead got: 1\n' +
+            'Expecting a String but instead got: 1'
+        )
     );
 
     t.deepEqual(
@@ -200,12 +208,12 @@ test('Json.Decode.list', t => {
 
     t.deepEqual(
         decoder.decode([ 1, 2 ]),
-        Left('Value `1` is not a string.')
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
         decoder.decode([ 'str1', 2 ]),
-        Left('Value `2` is not a string.')
+        Left('Expecting a String but instead got: 2')
     );
 
     t.deepEqual(
@@ -234,12 +242,12 @@ test('Json.Decode.dict', t => {
 
     t.deepEqual(
         decoder.decode({ s1: 1 }),
-        Left('Value `1` is not a string.')
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
         decoder.decode({ s1: 'str1', s2: 2 }),
-        Left('Value `2` is not a string.')
+        Left('Expecting a String but instead got: 2')
     );
 
     t.deepEqual(
@@ -268,12 +276,12 @@ test('Json.Decode.keyValuePairs', t => {
 
     t.deepEqual(
         decoder.decode({ s1: 1 }),
-        Left('Value `1` is not a string.')
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
         decoder.decode({ s1: 'str1', s2: 2 }),
-        Left('Value `2` is not a string.')
+        Left('Expecting a String but instead got: 2')
     );
 
     t.deepEqual(
@@ -300,7 +308,7 @@ test('Json.Decode.index', t => {
 
     t.deepEqual(
         decoder.decode([0, 1]),
-        Left('Value `1` is not a string.')
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
@@ -440,7 +448,7 @@ test('Json.Decode.chain', t => {
 
     t.deepEqual(
         decoder.decode('str'),
-        Left('Value `"str"` is not a number.')
+        Left('Expecting a Number but instead got: "str"')
     );
 
     t.deepEqual(
@@ -459,7 +467,7 @@ test('Json.Decode.map', t => {
 
     t.deepEqual(
         decoder.decode(1),
-        Left('Value `1` is not a string.')
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
@@ -483,7 +491,7 @@ test('Json.Decode.decodeJSON', t => {
 
     t.deepEqual(
         decoder.decodeJSON('{"s1":1}'),
-        Left('Value `1` is not a string.')
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
@@ -528,7 +536,7 @@ test('Decode.props()', t => {
         Decode.props({
             foo: Decode.string
         }).decode(null),
-        Left('Value `null` is not a string.')
+        Left('Expecting a String but instead got: null')
     );
 
     t.deepEqual(
@@ -543,18 +551,18 @@ test('Decode.props()', t => {
     t.deepEqual(
         Decode.props({
             foo: Decode.field('soo', Decode.number),
-            bar: Decode.field('sar', Decode.bool)
+            bar: Decode.field('sar', Decode.boolean)
         }).decode({
             soo: 'str',
             sar: false
         }),
-        Left('Value `"str"` is not a number.')
+        Left('Expecting a Number but instead got: "str"')
     );
 
     t.deepEqual(
         Decode.props({
             foo: Decode.field('soo', Decode.number),
-            bar: Decode.field('sar', Decode.bool)
+            bar: Decode.field('sar', Decode.boolean)
         }).decode({
             soo: 1,
             sar: false
@@ -568,7 +576,7 @@ test('Decode.props()', t => {
     t.deepEqual(
         Decode.props({
             foo: Decode.field('soo', Decode.number),
-            bar: Decode.field('sar', Decode.bool)
+            bar: Decode.field('sar', Decode.boolean)
         }).map(obj => obj.foo).decode({
             soo: 1,
             sar: false

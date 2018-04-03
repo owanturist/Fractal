@@ -68,10 +68,14 @@ class Primitive<T> extends Decoder<T> {
         super();
     }
 
+    private makeError(input: any): string {
+        return `Expecting ${this.title} but instead got: ${JSON.stringify(input)}`;
+    }
+
     public decode(input: any): Either<string, T> {
         return this.check(input)
             ? Right(input)
-            : Left('Value `' + JSON.stringify(input) + '` is not a ' + this.title + '.')
+            : Left(this.makeError(input))
     }
 }
 
@@ -80,10 +84,18 @@ class Nullable<T> extends Decoder<Maybe_<T>> {
         super();
     }
 
+    private makeError(input: any): string {
+        return 'I ran into the following problems:\n\n' +
+               `Expecting null but instead got: ${JSON.stringify(input)}`
+    }
+
     public decode(input: any): Either<string, Maybe_<T>> {
         return input === null
             ? Right(Nothing)
-            : this.decoder.decode(input).map(Just)
+            : this.decoder.decode(input).bimap(
+                (error: string): string => this.makeError(input) + '\n' + error,
+                Just
+            )
     }
 }
 
@@ -324,17 +336,17 @@ class Succeed<T> extends Decoder<T> {
 
 export const Decode = {
     string: new Primitive(
-        'string',
+        'a String',
         (value: any): value is string => typeof value === 'string'
     ) as Decoder<string>,
 
     number: new Primitive(
-        'number',
+        'a Number',
         (value: any): value is number => typeof value === 'number'
     ) as Decoder<number>,
 
-    bool: new Primitive(
-        'bool',
+    boolean: new Primitive(
+        'a Boolean',
         (value: any): value is boolean => typeof value === 'boolean'
     ) as Decoder<boolean>,
 
