@@ -79,6 +79,24 @@ export abstract class Either<E, T> {
 
         return acc;
     }
+
+    public static all<E, T>(list: Array<Either<E, T>>): Either<E, Array<T>> {
+        let acc = Right([] as Array<T>);
+
+        for (const item of list) {
+            acc = acc.chain(
+                (arr: Array<T>) => item.map(
+                    (value: T) => {
+                        arr.push(value);
+
+                        return arr;
+                    }
+                )
+            );
+        }
+
+        return acc;
+    }
 }
 
 namespace Variations {

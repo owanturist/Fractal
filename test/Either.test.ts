@@ -344,3 +344,40 @@ test('Either.props()', t => {
         })
     );
 });
+
+test('Either.all()', t => {
+    t.deepEqual(
+        Either.all([]),
+        Right([])
+    );
+
+    t.deepEqual(
+        Either.all([ Left('1') ]),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Either.all([ Right(1) ]),
+        Right([ 1 ])
+    );
+
+    t.deepEqual(
+        Either.all([ Left('1'), Left('2') ]),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Either.all([ Left('1'), Right(2) ]),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Either.all([ Right(1), Left('2') ]),
+        Left('2')
+    );
+
+    t.deepEqual(
+        Either.all([ Right(1), Right(2) ]),
+        Right([ 1, 2 ])
+    );
+});
