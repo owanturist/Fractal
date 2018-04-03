@@ -3,8 +3,6 @@ interface Pattern<T, R> {
     readonly Just: (value: T) => R;
 }
 
-type Props<T> = {[ K in keyof T ]: Maybe<T[ K ]>}
-
 export abstract class Maybe<T> {
 
     // CONSTRUCTING
@@ -39,7 +37,7 @@ export abstract class Maybe<T> {
 
     public abstract cata<R>(pattern: Pattern<T, R>): R;
 
-    public static props<T extends object, K extends keyof T>(config: Props<T>): Maybe<T> {
+    public static props<T extends object, K extends keyof T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
         let acc = Just({} as T);
 
         for (const key in config) {

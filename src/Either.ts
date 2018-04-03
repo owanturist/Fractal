@@ -9,8 +9,6 @@ interface Pattern<E, T, R> {
     readonly Right: (value: T) => R;
 };
 
-type Props<E, T> = {[ K in keyof T ]: Either<E, T[ K ]>}
-
 export abstract class Either<E, T> {
     // CONSTRUCTING
 
@@ -62,7 +60,7 @@ export abstract class Either<E, T> {
 
     public abstract toMaybe(): Maybe<T>;
 
-    public static props<E, T extends object, K extends keyof T>(config: Props<E, T>): Either<E, T> {
+    public static props<E, T extends object, K extends keyof T>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
         let acc = Right({} as T);
 
         for (const key in config) {
