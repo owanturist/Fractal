@@ -371,7 +371,7 @@ test('Json.Decode.at', t => {
     );
 });
 
-test.skip('Json.Decode.lazy', t => {
+test('Json.Decode.lazy', t => {
     interface Comment {
         message: string;
         responses: Array<Comment>
@@ -470,24 +470,24 @@ test('Json.Decode.map', t => {
     );
 });
 
-test('Json.Decode.decodeString', t => {
+test('Json.Decode.decodeJSON', t => {
     const decoder = Decode.props({
         t1: Decode.field('s1', Decode.string),
         t2: Decode.field('s2', Decode.string),
     });
 
     t.deepEqual(
-        decoder.decodeString('invalid'),
+        decoder.decodeJSON('invalid'),
         Left('Unexpected token i in JSON at position 0')
     );
 
     t.deepEqual(
-        decoder.decodeString('{"s1":1}'),
+        decoder.decodeJSON('{"s1":1}'),
         Left('Value `1` is not a string.')
     );
 
     t.deepEqual(
-        decoder.decodeString('{"s1":"str1","s2":"str2"}'),
+        decoder.decodeJSON('{"s1":"str1","s2":"str2"}'),
         Right({
             t1: 'str1',
             t2: 'str2'

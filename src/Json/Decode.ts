@@ -12,8 +12,6 @@ import {
     Value as Value_
 } from './Encode';
 
-type Props<T> = {[ K in keyof T ]: Decoder<T[ K ]>}
-
 export abstract class Decoder<T> {
     public abstract decode(input: any): Either<string, T>;
 
@@ -25,7 +23,7 @@ export abstract class Decoder<T> {
         return new Chain(fn, this);
     }
 
-    public decodeString(input: string): Either<string, T> {
+    public decodeJSON(input: string): Either<string, T> {
         try {
             return this.decode(JSON.parse(input));
         } catch (err) {
@@ -260,6 +258,32 @@ class Lazy<T> extends Decoder<T> {
     }
 }
 
+class Props<T extends object, K extends keyof T> extends Decoder<T> {
+    constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
+        super();
+    }
+
+    public decode(input: any): Either<string, T> {
+        let acc = Right({} as T);
+
+        for (const key in this.config) {
+            if (this.config.hasOwnProperty(key)) {
+                acc = acc.chain(
+                    (obj: T) => (this.config[ key ] as Decoder<T[ K ]>).map(
+                        (value: T[ K ]) => {
+                            obj[ key ] = value;
+
+                            return obj;
+                        }
+                    ).decode(input)
+                );
+            }
+        }
+
+        return acc;
+    }
+}
+
 class Value extends Decoder<any> {
     public decode(input: any): Either<string, Value_> {
         return Right(new Value_(input));
@@ -345,23 +369,5 @@ export const Decode = {
         Decode.succeed
     ),
 
-    props: <T extends object, K extends keyof T>(config: Props<T>): Decoder<T> => {
-        let acc = Decode.succeed({} as T);
-
-        for (const key in config) {
-            if (config.hasOwnProperty(key)) {
-                acc = acc.chain(
-                    (obj: T) => (config[ key ] as Decoder<T[ K ]>).map(
-                        (value: T[ K ]) => {
-                            obj[ key ] = value;
-
-                            return obj;
-                        }
-                    )
-                );
-            }
-        }
-
-        return acc;
-    }
+    props: <T extends object>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Props(config)
 };
