@@ -560,7 +560,7 @@ test('Json.Decode.decodeJSON', t => {
     );
 });
 
-test('Decode.fromEither()', t => {
+test('Json.Decode.fromEither()', t => {
     const toDecimal = (str: string): Either<string, number> =>{
         const result = parseInt(str, 10);
 
@@ -582,8 +582,7 @@ test('Decode.fromEither()', t => {
     );
 });
 
-
-test('Decode.props()', t => {
+test('Json.Decode.props()', t => {
     t.deepEqual(
         Decode.props({}).decode(null),
         Right({})
@@ -675,3 +674,104 @@ test('Decode.props()', t => {
     );
 });
 
+test('Json.Decode realworld example', t => {
+    interface User {
+        id: number;
+        username: string;
+        comments: Array<Comment>
+    }
+
+    const user = (id: number, username: string, comments: Array<Comment>): User => ({
+        id,
+        username,
+        comments
+    });
+
+    const userDecoder: Decoder<User> = Decode.props({
+        id: Decode.field('id', Decode.number),
+        username: Decode.field('username', Decode.string),
+        comments: Decode.field('comments', Decode.list(Decode.lazy(() => commentDecoder)))
+    });
+
+    interface Comment {
+        id: number;
+        text: string;
+        responses: Array<Response>;
+    }
+
+    const comment = (id: number, text: string, responses: Array<Response>): Comment => ({
+        id,
+        text,
+        responses
+    });
+
+    const commentDecoder: Decoder<Comment> = Decode.props({
+        id: Decode.field('id', Decode.number),
+        text: Decode.field('text', Decode.string),
+        responses: Decode.field('responses', Decode.list(Decode.lazy(() => responseDecoder)))
+    });
+
+    interface Response {
+        id: number;
+        text: string;
+        user: User;
+    }
+
+    const response = (id: number, text: string, user: User): Response => ({
+        id,
+        text,
+        user
+    });
+
+    const responseDecoder: Decoder<Response> = Decode.props({
+        id: Decode.field('id', Decode.number),
+        text: Decode.field('text', Decode.string),
+        user: Decode.field('user', userDecoder)
+    });
+
+    t.deepEqual(
+        userDecoder.decode(
+            user(0, 'u-zero', [
+                comment(0, 'c-zero', []),
+                comment(1, 'c-one', []),
+                comment(2, 'c-two', [
+                    response(0, 'r-zero', user(1, 'u-one', [])),
+                    response(1, 'r-one', user(2, 'u-two', [])),
+                    {
+                        id: 2,
+                        text: 0,
+                        user: null
+                    } as any
+                ])
+            ])
+        ),
+        Left('Expecting a String at _.comments[2].responses[2].text but instead got: 0')
+    );
+
+    t.deepEqual(
+        userDecoder.decode(
+            user(0, 'u-zero', [
+                comment(0, 'c-zero', [
+                    response(0, 'r-zero', user(1, 'u-one', []))
+                ])
+            ])
+        ),
+        Right({
+            id: 0,
+            username: 'u-zero',
+            comments: [{
+                id: 0,
+                text: 'c-zero',
+                responses: [{
+                    id: 0,
+                    text: 'r-zero',
+                    user: {
+                        id: 1,
+                        username: 'u-one',
+                        comments: []
+                    }
+                }]
+            }]
+        })
+    );
+});
