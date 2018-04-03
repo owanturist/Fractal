@@ -6,6 +6,7 @@ interface Pattern<T, R> {
 type Props<T> = {[ K in keyof T ]: Maybe<T[ K ]>}
 
 export abstract class Maybe<T> {
+
     // CONSTRUCTING
 
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
@@ -14,11 +15,11 @@ export abstract class Maybe<T> {
 
     // COMPAREING AND TESTING
 
-    public abstract readonly isNothing: Boolean;
+    public abstract readonly isNothing: boolean;
 
-    public abstract readonly isJust: Boolean;
+    public abstract readonly isJust: boolean;
 
-    public abstract isEqual(another: Maybe<T>): Boolean;
+    public abstract isEqual(another: Maybe<T>): boolean;
 
     // EXTRACTING
 
@@ -31,6 +32,8 @@ export abstract class Maybe<T> {
     public abstract map<R>(fn: (value: T) => R): Maybe<R>;
 
     public abstract chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+
+    public abstract fold<R>(nothingFn: () => R, justFn: (value: T) => R): R;
 
     public abstract orElse(fn: () => Maybe<T>): Maybe<T>;
 
@@ -57,13 +60,14 @@ export abstract class Maybe<T> {
 
 namespace Variations {
     export class Nothing<T> implements Maybe<T> {
+
         // COMPAREING AND TESTING
 
-        public readonly isNothing: Boolean = true;
+        public readonly isNothing: boolean = true;
 
-        public readonly isJust: Boolean = false
+        public readonly isJust: boolean = false
 
-        public isEqual(another: Maybe<T>): Boolean {
+        public isEqual(another: Maybe<T>): boolean {
             return another.isNothing;
         }
 
@@ -87,6 +91,10 @@ namespace Variations {
             return this as any as Maybe<R>;
         }
 
+        public fold<R>(nothingFn: () => R): R {
+            return nothingFn();
+        }
+
         public orElse(fn: () => Maybe<T>): Maybe<T> {
             return fn();
         }
@@ -101,15 +109,15 @@ namespace Variations {
 
         // COMPAREING AND TESTING
 
-        public readonly isNothing: Boolean = false;
+        public readonly isNothing: boolean = false;
 
-        public readonly isJust: Boolean = true;
+        public readonly isJust: boolean = true;
 
-        public isEqual(another: Maybe<T>): Boolean {
-            return another.cata({
-                Nothing: () => false,
-                Just: (value: T): Boolean => value === this.value
-            });
+        public isEqual(another: Maybe<T>): boolean {
+            return another.fold(
+                (): boolean => false,
+                (value: T): boolean => value === this.value
+            );
         }
 
         // EXTRACTING
@@ -122,7 +130,7 @@ namespace Variations {
 
         public ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R> {
             return maybeFn.map(
-                (fn: (value: T) => R) => fn(this.value)
+                (fn: (value: T) => R): R => fn(this.value)
             );
         }
 
@@ -134,6 +142,10 @@ namespace Variations {
 
         public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
             return fn(this.value);
+        }
+
+        public fold<R>(_nothingFn: () => R, justFn: (value: T) => R): R {
+            return justFn(this.value);
         }
 
         public orElse(): Maybe<T> {
@@ -148,6 +160,4 @@ namespace Variations {
 
 export const Nothing: Maybe<any> = new Variations.Nothing();
 
-export function Just<T>(value: T): Maybe<T> {
-    return new Variations.Just(value);
-}
+export const Just = <T>(value: T): Maybe<T> => new Variations.Just(value);

@@ -254,5 +254,30 @@ test('Maybe.all()', t => {
         }).map(obj => obj.bar),
         Just(1)
     );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just('foo'),
+            bar: Maybe.props({
+                baz: Nothing
+            })
+        }),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Just('foo'),
+            bar: Maybe.props({
+                baz: Just(1)
+            })
+        }),
+        Just({
+            foo: 'foo',
+            bar: {
+                baz: 1
+            }
+        })
+    );
 });
 

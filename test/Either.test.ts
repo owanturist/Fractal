@@ -10,7 +10,7 @@ import {
     Right
 } from '../src/Either';
 
-// CONSTRUCTING
+// COMPAREING AND TESTING
 
 test('Either.fromNullable()', t => {
     t.deepEqual(
@@ -31,18 +31,6 @@ test('Either.fromNullable()', t => {
     t.deepEqual(
         Either.fromNullable('err', ''),
         Right('')
-    );
-});
-
-test('Either.fromMaybe()', t => {
-    t.deepEqual(
-        Either.fromMaybe('err', Nothing),
-        Left('err')
-    );
-
-    t.deepEqual(
-        Either.fromMaybe('err', Just(0)),
-        Right(0)
     );
 });
 
@@ -101,6 +89,28 @@ test('Either.getOrElse()', t => {
 });
 
 // TRANSFORMING
+
+test('Either.ap()', t => {
+    t.deepEqual(
+        Left('1').ap(Left('2')),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Left('1').ap(Right((a: number) => a * 2)),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Right(1).ap(Left('1')),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Right(1).ap(Right((a: number) => a * 2)),
+        Right(2)
+    );
+});
 
 test('Either.map()', t => {
     t.deepEqual(
@@ -236,550 +246,101 @@ test('Either.toMaybe()', t => {
     );
 });
 
-// MAPPING
-
-test('Either.map2', t => {
+test('Either.all()', t => {
     t.deepEqual(
-        Either.map2(
-            (a: number, b: number) => a * 2 + b,
-            Left('msg1'),
-            Left('msg2')
-        ),
-        Left('msg1')
+        Either.props({}),
+        Right({})
     );
 
     t.deepEqual(
-        Either.map2(
-            (a: number, b) => a * 2 + b,
-            Right(1),
-            Left('msg2')
-        ),
-        Left('msg2')
+        Either.props({
+            foo: Left('1')
+        }),
+        Left('1')
     );
 
     t.deepEqual(
-        Either.map2(
-            (a, b) => a * 2 + b,
-            Right(1),
-            Right(2)
-        ),
-        Right(4)
-    );
-});
-
-test('Either.map3', t => {Left
-    t.deepEqual(
-        Either.map3(
-            (a: number, b: number, c: number) => a * 2 + b - c,
-            Left('msg1'),
-            Left('msg2'),
-            Left('msg3')
-        ),
-        Left('msg1')
+        Either.props({
+            foo: Right(1)
+        }),
+        Right({
+            foo: 1
+        })
     );
 
     t.deepEqual(
-        Either.map3(
-            (a, b: number, c: number) => a * 2 + b - c,
-            Right(1),
-            Left('msg2'),
-            Left('msg3')
-        ),
-        Left('msg2')
+        Either.props({
+            foo: Left('1'),
+            bar: Left('2')
+        }),
+        Left('1')
     );
 
     t.deepEqual(
-        Either.map3(
-            (a, b, c: number) => a * 2 + b - c,
-            Right(1),
-            Right(2),
-            Left('msg3')
-        ),
-        Left('msg3')
+        Either.props({
+            foo: Left('1'),
+            bar: Right(1)
+        }),
+        Left('1')
     );
 
     t.deepEqual(
-        Either.map3(
-            (a, b, c) => a * 2 + b - c,
-            Right(1),
-            Right(2),
-            Right(3)
-        ),
+        Either.props({
+            foo: Right(1),
+            bar: Left('1')
+        }),
+        Left('1')
+    );
+
+    t.deepEqual(
+        Either.props({
+            foo: Right('foo'),
+            bar: Right(1)
+        }),
+        Right({
+            foo: 'foo',
+            bar: 1
+        })
+    );
+
+    t.deepEqual(
+        Either.props({
+            foo: Right('foo'),
+            bar: Right(1)
+        }).map(obj => obj.foo),
+        Right('foo')
+    );
+
+    t.deepEqual(
+        Either.props({
+            foo: Right('foo'),
+            bar: Right(1)
+        }).map(obj => obj.bar),
         Right(1)
     );
-});
 
-test('Either.map4', t => {Left
     t.deepEqual(
-        Either.map4(
-            (a: number, b: number, c: number, d: number) => a * 2 + b - c * d,
-            Left('msg1'),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4')
-        ),
-        Left('msg1')
+        Either.props({
+            foo: Right('foo'),
+            bar: Either.props({
+                baz: Left('1')
+            })
+        }),
+        Left('1')
     );
 
     t.deepEqual(
-        Either.map4(
-            (a, b: number, c: number, d: number) => a * 2 + b - c * d,
-            Right(1),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4')
-        ),
-        Left('msg2')
-    );
-
-    t.deepEqual(
-        Either.map4(
-            (a, b, c: number, d: number) => a * 2 + b - c * d,
-            Right(1),
-            Right(2),
-            Left('msg3'),
-            Left('msg4')
-        ),
-        Left('msg3')
-    );
-
-    t.deepEqual(
-        Either.map4(
-            (a, b, c, d: number) => a * 2 + b - c * d,
-            Right(1),
-            Right(2),
-            Right(3),
-            Left('msg4')
-        ),
-        Left('msg4')
-    );
-
-    t.deepEqual(
-        Either.map4(
-            (a, b, c, d) => a * 2 + b - c * d,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4)
-        ),
-        Right(-8)
-    );
-});
-
-test('Either.map5', t => {Left
-    t.deepEqual(
-        Either.map5(
-            (a: number, b: number, c: number, d: number, e: number) => a * 2 + b - c * d + e,
-            Left('msg1'),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5')
-        ),
-        Left('msg1')
-    );
-
-    t.deepEqual(
-        Either.map5(
-            (a, b: number, c: number, d: number, e: number) => a * 2 + b - c * d + e,
-            Right(1),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5')
-        ),
-        Left('msg2')
-    );
-
-    t.deepEqual(
-        Either.map5(
-            (a, b, c: number, d: number, e: number) => a * 2 + b - c * d + e,
-            Right(1),
-            Right(2),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5')
-        ),
-        Left('msg3')
-    );
-
-    t.deepEqual(
-        Either.map5(
-            (a, b, c, d: number, e: number) => a * 2 + b - c * d + e,
-            Right(1),
-            Right(2),
-            Right(3),
-            Left('msg4'),
-            Left('msg5')
-        ),
-        Left('msg4')
-    );
-
-    t.deepEqual(
-        Either.map5(
-            (a, b, c, d, e: number) => a * 2 + b - c * d + e,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Left('msg5')
-        ),
-        Left('msg5')
-    );
-
-    t.deepEqual(
-        Either.map5(
-            (a, b, c, d, e) => a * 2 + b - c * d + e,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5)
-        ),
-        Right(-3)
-    );
-});
-
-test('Either.map6', t => {Left
-    t.deepEqual(
-        Either.map6(
-            (a: number, b: number, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
-            Left('msg1'),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6')
-        ),
-        Left('msg1')
-    );
-
-    t.deepEqual(
-        Either.map6(
-            (a, b: number, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
-            Right(1),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6')
-        ),
-        Left('msg2')
-    );
-
-    t.deepEqual(
-        Either.map6(
-            (a, b, c: number, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
-            Right(1),
-            Right(2),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6')
-        ),
-        Left('msg3')
-    );
-
-    t.deepEqual(
-        Either.map6(
-            (a, b, c, d: number, e: number, f: number) => a * 2 + b - c * d + e * f,
-            Right(1),
-            Right(2),
-            Right(3),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6')
-        ),
-        Left('msg4')
-    );
-
-    t.deepEqual(
-        Either.map6(
-            (a, b, c, d, e: number, f: number) => a * 2 + b - c * d + e * f,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Left('msg5'),
-            Left('msg6')
-        ),
-        Left('msg5')
-    );
-
-    t.deepEqual(
-        Either.map6(
-            (a, b, c, d, e, f: number) => a * 2 + b - c * d + e * f,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Left('msg6')
-        ),
-        Left('msg6')
-    );
-
-    t.deepEqual(
-        Either.map6(
-            (a, b, c, d, e, f) => a * 2 + b - c * d + e * f,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Right(6)
-        ),
-        Right(22)
-    );
-});
-
-test('Either.map7', t => {
-    t.deepEqual(
-        Either.map7(
-            (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
-            Left('msg1'),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7')
-        ),
-        Left('msg1')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b: number, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7')
-        ),
-        Left('msg2')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b, c: number, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Right(2),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7')
-        ),
-        Left('msg3')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b, c, d: number, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Right(2),
-            Right(3),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7')
-        ),
-        Left('msg4')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b, c, d, e: number, f: number, g: number) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7')
-        ),
-        Left('msg5')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b, c, d, e, f: number, g: number) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Left('msg6'),
-            Left('msg7')
-        ),
-        Left('msg6')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b, c, d, e, f, g: number) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Right(6),
-            Left('msg7')
-        ),
-        Left('msg7')
-    );
-
-    t.deepEqual(
-        Either.map7(
-            (a, b, c, d, e, f, g) => a * 2 + b - c * d + e * f - g,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Right(6),
-            Right(7)
-        ),
-        Right(15)
-    );
-});
-
-test('Either.map8', t => {
-    t.deepEqual(
-        Either.map8(
-            (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Left('msg1'),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg1')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Left('msg2'),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg2')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c: number, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Left('msg3'),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg3')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c, d: number, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Right(3),
-            Left('msg4'),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg4')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c, d, e: number, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Left('msg5'),
-            Left('msg6'),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg5')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c, d, e, f: number, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Left('msg6'),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg6')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c, d, e, f, g: number, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Right(6),
-            Left('msg7'),
-            Left('msg8')
-        ),
-        Left('msg7')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c, d, e, f, g, h: number) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Right(6),
-            Right(7),
-            Left('msg8')
-        ),
-        Left('msg8')
-    );
-
-    t.deepEqual(
-        Either.map8(
-            (a, b, c, d, e, f, g, h) => a * 2 + b - c * d + e * f - g * h,
-            Right(1),
-            Right(2),
-            Right(3),
-            Right(4),
-            Right(5),
-            Right(6),
-            Right(7),
-            Right(8)
-        ),
-        Right(-34)
+        Either.props({
+            foo: Right('foo'),
+            bar: Either.props({
+                baz: Right(1)
+            })
+        }),
+        Right({
+            foo: 'foo',
+            bar: {
+                baz: 1
+            }
+        })
     );
 });
