@@ -9,9 +9,9 @@
   "scripts": {
     "clean": "rm -rf ./dist",
     "prebuild": "npm run clean",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.dev.json",
     "build:watch": "npm run build -- -w",
-    "test": "npm run build -- -p tsconfig.test.json && ava --verbose"
+    "test": "npm run build -- -p tsconfig.json && ava --verbose"
   },
   "devDependencies": {
     "ava": "^0.23.0",
