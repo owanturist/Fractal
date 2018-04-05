@@ -9,13 +9,7 @@ import {
     Left,
     Right
 } from '../../src/Either';
-import {
-    Value
-} from '../../src/Json/Encode';
-import {
-    Decode,
-    Decoder
-} from '../../src/Json/Decode';
+import * as Decode from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
     t.deepEqual(
@@ -75,11 +69,6 @@ test('Json.Decode.boolean', t => {
 });
 
 test('Json.Decode.value', t => {
-    t.deepEqual(
-        Decode.value.decode({ foo: 'bar' }),
-        Right(new Value({ foo: 'bar' }))
-    );
-
     Decode.value.decode({ foo: 'bar' }).cata({
         Left: err => {
             t.fail(err);
@@ -447,7 +436,7 @@ test('Json.Decode.lazy', t => {
         responses: Array<Comment>
     }
 
-    const decoder: Decoder<Comment> = Decode.props({
+    const decoder: Decode.Decoder<Comment> = Decode.props({
         message: Decode.field('message', Decode.string),
         responses: Decode.field('responses', Decode.lazy(() => Decode.list(decoder)))
     });
@@ -687,7 +676,7 @@ test('Json.Decode realworld example', t => {
         comments
     });
 
-    const userDecoder: Decoder<User> = Decode.props({
+    const userDecoder: Decode.Decoder<User> = Decode.props({
         id: Decode.field('id', Decode.number),
         username: Decode.field('username', Decode.string),
         comments: Decode.field('comments', Decode.list(Decode.lazy(() => commentDecoder)))
@@ -705,7 +694,7 @@ test('Json.Decode realworld example', t => {
         responses
     });
 
-    const commentDecoder: Decoder<Comment> = Decode.props({
+    const commentDecoder: Decode.Decoder<Comment> = Decode.props({
         id: Decode.field('id', Decode.number),
         text: Decode.field('text', Decode.string),
         responses: Decode.field('responses', Decode.list(Decode.lazy(() => responseDecoder)))
@@ -723,7 +712,7 @@ test('Json.Decode realworld example', t => {
         user
     });
 
-    const responseDecoder: Decoder<Response> = Decode.props({
+    const responseDecoder: Decode.Decoder<Response> = Decode.props({
         id: Decode.field('id', Decode.number),
         text: Decode.field('text', Decode.string),
         user: Decode.field('user', userDecoder)

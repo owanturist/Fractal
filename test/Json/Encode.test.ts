@@ -1,9 +1,13 @@
 import test from 'ava';
 
-import {
-    Value,
-    Encode
-} from '../../src/Json/Encode';
+import * as Encode from '../../src/Json/Encode';
+
+test('Json.Encode.nill', t => {
+    t.is(
+        Encode.nill.encode(0),
+        'null'
+    );
+});
 
 test('Json.Encode.string', t => {
     t.is(
@@ -19,17 +23,10 @@ test('Json.Encode.number', t => {
     );
 });
 
-test('Json.Encode.bool', t => {
+test('Json.Encode.boolean', t => {
     t.is(
-        Encode.bool(false).encode(0),
+        Encode.boolean(false).encode(0),
         'false'
-    );
-});
-
-test('Json.Encode.nill', t => {
-    t.is(
-        Encode.nill.encode(0),
-        'null'
     );
 });
 
@@ -51,11 +48,11 @@ test('Json.Encode.object', t => {
         foo: boolean
     };
 
-    const encoder = (foo: Foo): Value => Encode.object([
-        [ '_bar', Encode.string(foo.bar) ],
-        [ '_baz', Encode.number(foo.baz) ],
-        [ '_foo', Encode.bool(foo.foo) ]
-    ]);
+    const encoder = (foo: Foo): Encode.Value => Encode.object({
+        _bar: Encode.string(foo.bar),
+        _baz: Encode.number(foo.baz),
+        _foo: Encode.boolean(foo.foo)
+    });
 
     t.is(
         encoder({

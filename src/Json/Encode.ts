@@ -1,7 +1,7 @@
-export class Value {
+export abstract class Value {
     constructor(private readonly js: any) {}
 
-    protected static extract(value: Value) {
+    protected static extract(value: Value): any {
         return value.js;
     }
 
@@ -10,52 +10,50 @@ export class Value {
     }
 }
 
-export function string(value: string): Value {
-    return new Value(value);
-}
-
-export function number(value: number): Value {
-    return new Value(value);
-}
-
-export function bool(value: boolean): Value {
-    return new Value(value);
-}
-
-export const nill = new Value(null);
-
-class List extends Value {
-    constructor(config: Array<Value>) {
-        const result: Array<string> = [];
-
-        for (const value of config) {
-            result.push(
-                Value.extract(value)
-            );
+namespace Encode {
+    export class Primitive extends Value {
+        constructor(js: any) {
+            super(js)
         }
+    }
 
-        super(result);
+    export class List extends Value {
+        constructor(list: Array<Value>) {
+            const result: Array<any> = [];
+
+            for (const value of list) {
+                result.push(
+                    Value.extract(value)
+                );
+            }
+
+            super(result);
+        }
+    }
+
+    export class Object extends Value {
+        constructor(object: {[ key: string ]: Value}) {
+            const result: {[ key: string ]: any} = {};
+
+            for (const key in object) {
+                if (object.hasOwnProperty(key)) {
+                    result[ key ] = Value.extract(object[ key ]);
+                }
+            }
+
+            super(result);
+        }
     }
 }
 
-export function list(config: Array<Value>): Value {
-    return new List(config);
-}
+export const nill: Value = new Encode.Primitive(null);
 
-class Obj extends Value {
-    constructor(config: Array<[ string, Value ]>) {
-        const result: {[ key: string ]: string} = {};
+export const string = (string: string): Value => new Encode.Primitive(string);
 
-        for (const [ key, value ] of config) {
-            result[ key ] = Value.extract(value);
-        }
+export const number = (number: number): Value => new Encode.Primitive(number);
 
-        super(result);
-    }
-}
+export const boolean = (boolean: boolean): Value => new Encode.Primitive(boolean);
 
-export function object(config: Array<[ string, Value ]>): Value {
-    return new Obj(config);
-}
+export const list = (list:  Array<Value>): Value => new Encode.List(list);
 
-export const Encode = { string, number, bool, nill, list, object };
+export const object = (object: {[ key: string ]: Value}): Value => new Encode.Object(object);
