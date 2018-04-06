@@ -12,17 +12,13 @@ import * as Encode from './Encode';
 
 export abstract class Decoder<T> {
     protected static run<T>(decoder: Decoder<T>, input: any, origin: Array<string>): Either<string, T> {
-        return decoder.decodeFrom(input, origin);
+        return decoder.deserialize(input, origin);
     }
 
     protected static makePath(origin: Array<string>): string {
         return origin.length === 0
             ? ' '
             : ' at _' + origin.join('') + ' ';
-    }
-
-    public decode(input: any): Either<string, T> {
-        return this.decodeFrom(input, []);
     }
 
     public map<R>(fn: (value: T) => R): Decoder<R> {
@@ -33,6 +29,10 @@ export abstract class Decoder<T> {
         return new Chain(fn, this);
     }
 
+    public decode(input: any): Either<string, T> {
+        return this.deserialize(input, []);
+    }
+
     public decodeJSON(input: string): Either<string, T> {
         try {
             return this.decode(JSON.parse(input));
@@ -41,10 +41,10 @@ export abstract class Decoder<T> {
         }
     }
 
-    protected abstract decodeFrom(input: any, origin: Array<string>): Either<string, T>;
+    protected abstract deserialize(input: any, origin: Array<string>): Either<string, T>;
 }
 
-export class Map<T, R> extends Decoder<R> {
+class Map<T, R> extends Decoder<R> {
     constructor(
         private readonly fn: (value: T) => R,
         protected readonly decoder: Decoder<T>
@@ -52,12 +52,12 @@ export class Map<T, R> extends Decoder<R> {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, R> {
+    public deserialize(input: any, origin: Array<string>): Either<string, R> {
         return Decoder.run(this.decoder, input, origin).map(this.fn);
     }
 }
 
-export class Chain<T, R> extends Decoder<R> {
+class Chain<T, R> extends Decoder<R> {
     constructor(
         private readonly fn: (value: T) => Decoder<R>,
         protected readonly decoder: Decoder<T>
@@ -65,14 +65,14 @@ export class Chain<T, R> extends Decoder<R> {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, R> {
+    public deserialize(input: any, origin: Array<string>): Either<string, R> {
         return Decoder.run(this.decoder, input, origin).chain(
             (value: T) => this.fn(value).decode(input)
         );
     }
 }
 
-export class Primitive<T> extends Decoder<T> {
+class Primitive<T> extends Decoder<T> {
     constructor(
         private readonly title: string,
         private readonly check: (input: any) => input is T
@@ -80,7 +80,7 @@ export class Primitive<T> extends Decoder<T> {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         return this.check(input)
             ? Right(input)
             : Left(
@@ -89,12 +89,12 @@ export class Primitive<T> extends Decoder<T> {
     }
 }
 
-export class Nullable<T> extends Decoder<Maybe_<T>> {
+class Nullable<T> extends Decoder<Maybe_<T>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
+    public deserialize(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
         return input === null
             ? Right(Nothing)
             : Decoder.run(this.decoder, input, origin).bimap(
@@ -108,12 +108,12 @@ export class Nullable<T> extends Decoder<Maybe_<T>> {
     }
 }
 
-export class List<T> extends Decoder<Array<T>> {
+class List<T> extends Decoder<Array<T>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, Array<T>> {
+    public deserialize(input: any, origin: Array<string>): Either<string, Array<T>> {
         if (!(input instanceof Array)) {
             return Left(`Expecting a List but instead got: ${JSON.stringify(input)}`);
         }
@@ -138,12 +138,12 @@ export class List<T> extends Decoder<Array<T>> {
     }
 }
 
-export class Dict<T> extends Decoder<{[ key: string ]: T}> {
+class Dict<T> extends Decoder<{[ key: string ]: T}> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, {[ key: string ]: T}> {
+    public deserialize(input: any, origin: Array<string>): Either<string, {[ key: string ]: T}> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
             return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
@@ -170,12 +170,12 @@ export class Dict<T> extends Decoder<{[ key: string ]: T}> {
     }
 }
 
-export class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
+class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, Array<[ string, T ]>> {
+    public deserialize(input: any, origin: Array<string>): Either<string, Array<[ string, T ]>> {
         if (typeof input !== 'object' || input === null || input instanceof Array) {
             return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
@@ -202,7 +202,7 @@ export class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
     }
 }
 
-export class Field<T> extends Decoder<T> {
+class Field<T> extends Decoder<T> {
     constructor(
         private readonly key: string,
         private readonly decoder: Decoder<T>
@@ -210,7 +210,7 @@ export class Field<T> extends Decoder<T> {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         if (typeof input !== 'object' || input === null || input instanceof Array || !(this.key in input)) {
             return Left(
                 `Expecting an object with a field named \`${this.key}\`${Decoder.makePath(origin)}but instead got: ` +
@@ -222,7 +222,7 @@ export class Field<T> extends Decoder<T> {
     }
 }
 
-export class Index<T> extends Decoder<T> {
+class Index<T> extends Decoder<T> {
     constructor(
         private readonly index: number,
         private readonly decoder: Decoder<T>
@@ -230,7 +230,7 @@ export class Index<T> extends Decoder<T> {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         if (!(input instanceof Array)) {
             return Left(`Expecting an array but instead got: ${JSON.stringify(input)}`);
         }
@@ -245,24 +245,24 @@ export class Index<T> extends Decoder<T> {
     }
 }
 
-export class Maybe<T> extends Decoder<Maybe_<T>> {
+class Maybe<T> extends Decoder<Maybe_<T>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
+    public deserialize(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
         return Right(
             Decoder.run(this.decoder, input, origin).toMaybe()
         );
     }
 }
 
-export class OneOf<T> extends Decoder<T> {
+class OneOf<T> extends Decoder<T> {
     constructor(private readonly decoders: Array<Decoder<T>>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         if (this.decoders.length === 0) {
             return Left(`Expecting at least one Decoder for oneOf${Decoder.makePath(origin)}but instead got 0`);
         }
@@ -281,22 +281,22 @@ export class OneOf<T> extends Decoder<T> {
     }
 }
 
-export class Lazy<T> extends Decoder<T> {
+class Lazy<T> extends Decoder<T> {
     constructor(private readonly callDecoder: () => Decoder<T>) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         return Decoder.run(this.callDecoder(), input, origin);
     }
 }
 
-export class Props<T extends object, K extends keyof T> extends Decoder<T> {
+class Props<T extends object, K extends keyof T> extends Decoder<T> {
     constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         let acc = Right({} as T); // tslint:disable-line no-object-literal-type-assertion
 
         for (const key in this.config) {
@@ -333,40 +333,40 @@ class Encoder implements Encode.Value<any> {
     }
 }
 
-export class Value extends Decoder<any> {
-    public decodeFrom(input: any): Either<string, Encoder> {
+class Value extends Decoder<any> {
+    public deserialize(input: any): Either<string, Encoder> {
         return Right(new Encoder(input));
     }
 }
 
-export class Nill<T> extends Decoder<T> {
+class Nill<T> extends Decoder<T> {
     constructor(private readonly defaults: T) {
         super();
     }
 
-    public decodeFrom(input: any, origin: Array<string>): Either<string, T> {
+    public deserialize(input: any, origin: Array<string>): Either<string, T> {
         return input === null
             ? Right(this.defaults)
             : Left(`Expecting null${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
     }
 }
 
-export class Fail extends Decoder<any> {
+class Fail extends Decoder<any> {
     constructor(private readonly msg: string) {
         super();
     }
 
-    public decodeFrom(): Either<string, any> {
+    public deserialize(): Either<string, any> {
         return Left(this.msg);
     }
 }
 
-export class Succeed<T> extends Decoder<T> {
+class Succeed<T> extends Decoder<T> {
     constructor(private readonly value: T) {
         super();
     }
 
-    public decodeFrom(): Either<string, T> {
+    public deserialize(): Either<string, T> {
         return Right(this.value);
     }
 }
