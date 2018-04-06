@@ -321,14 +321,20 @@ export class Props<T extends object, K extends keyof T> extends Decoder<T> {
     }
 }
 
-class Encoder extends Encode.Value {
-    constructor(js: any) {
-        super(js);
+class Encoder implements Encode.Value<any> {
+    constructor(private readonly js: any) {}
+
+    public serialize(): any {
+        return this.js;
+    }
+
+    public encode(indent: number): string {
+        return JSON.stringify(this.js, null, indent);
     }
 }
 
 export class Value extends Decoder<any> {
-    public decodeFrom(input: any): Either<string, Encode.Value> {
+    public decodeFrom(input: any): Either<string, Encoder> {
         return Right(new Encoder(input));
     }
 }
@@ -373,7 +379,7 @@ export const string: Decoder<string> = new Primitive('a String', isString);
 export const number: Decoder<number> = new Primitive('a Number', isNumber);
 export const boolean: Decoder<boolean> = new Primitive('a Boolean', isBoolean);
 
-export const value: Decoder<Encode.Value> = new Value();
+export const value: Decoder<Encoder> = new Value();
 export const nill = <T>(defaults: T): Decoder<T> => new Nill(defaults);
 export const fail = (msg: string): Decoder<any> => new Fail(msg);
 export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);

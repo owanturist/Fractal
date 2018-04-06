@@ -1,59 +1,79 @@
-export abstract class Value {
-    protected static extract(value: Value): any {
-        return value.js;
-    }
+export type Serializable<T>
+    = null
+    | string
+    | boolean
+    | number
+    | Array<T>
+    | {[ K in keyof T ]: T[ K ] }
+    ;
 
-    constructor(private readonly js: any) {}
-
-    public encode(indent: number): string {
-        return JSON.stringify(this.js, null, indent);
-    }
+export interface Value<T extends Serializable<T>> {
+    serialize(): T;
+    encode(indent: number): string;
 }
 
 namespace Encode {
-    export class Primitive extends Value {
-        constructor(js: any) {
-            super(js);
+    abstract class Encoder<T, R extends Serializable<R>> implements Value<R> {
+        constructor(protected readonly js: T) {}
+
+        public abstract serialize(): R;
+
+        public encode(indent: number): string {
+            return JSON.stringify(this.serialize(), null, indent);
         }
     }
 
-    export class List extends Value {
-        constructor(list: Array<Value>) {
-            const result: Array<any> = [];
+    export class Primitive<T extends Serializable<never>> extends Encoder<T, T> {
+        public serialize(): T {
+            return this.js;
+        }
+    }
 
-            for (const value of list) {
-                result.push(
-                    Value.extract(value)
-                );
+    export class List<T extends Serializable<T>> extends Encoder<Array<Value<T>>, Array<T>> {
+        public serialize(): Array<T> {
+            const result: Array<T> = [];
+
+            for (const value of this.js) {
+                result.push(value.serialize());
             }
 
-            super(result);
+            return result;
         }
     }
 
-    export class Object extends Value {
-        constructor(object: {[ key: string ]: Value}) {
-            const result: {[ key: string ]: any} = {};
+    export class Object<T extends object> extends Encoder<{[ K in keyof T ]: Value<T[ K ]>}, T> {
+        public serialize(): T {
+            const result = {} as T; // tslint:disable-line no-object-literal-type-assertion
 
-            for (const key in object) {
-                if (object.hasOwnProperty(key)) {
-                    result[ key ] = Value.extract(object[ key ]);
+            for (const key in this.js) {
+                if (this.js.hasOwnProperty(key)) {
+                    result[ key ] = this.js[ key ].serialize();
                 }
             }
 
-            super(result);
+            return result;
         }
     }
 }
 
-export const nill: Value = new Encode.Primitive(null);
+export const nill: Value<null> = new Encode.Primitive(null);
 
-export const string = (string: string): Value => new Encode.Primitive(string);
+export function string(string: string): Value<string> {
+    return new Encode.Primitive(string);
+}
 
-export const number = (number: number): Value => new Encode.Primitive(number);
+export function number(number: number): Value<number> {
+    return new Encode.Primitive(number);
+}
 
-export const boolean = (boolean: boolean): Value => new Encode.Primitive(boolean);
+export function boolean(boolean: boolean): Value<boolean> {
+    return new Encode.Primitive(boolean);
+}
 
-export const list = (list: Array<Value>): Value => new Encode.List(list);
+export function list<T extends Serializable<T>>(list: Array<Value<T>>): Value<Array<T>> {
+    return new Encode.List(list);
+}
 
-export const object = (object: {[ key: string ]: Value}): Value => new Encode.Object(object);
+export function object<T extends object>(object: {[ K in keyof T ]: Value<T[ K ]>}) {
+    return new Encode.Object(object);
+}
