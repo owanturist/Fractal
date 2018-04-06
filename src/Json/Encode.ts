@@ -41,7 +41,9 @@ namespace Encode {
         }
     }
 
-    export class Object<T extends object> extends Encoder<{[ K in keyof T ]: Value<T[ K ]>}, T> {
+    export type Props<T extends object> = {[ K in keyof T ]: Value<T[ K ]>};
+
+    export class Object<T extends object> extends Encoder<Props<T>, T> {
         public serialize(): T {
             const result = {} as T; // tslint:disable-line no-object-literal-type-assertion
 
@@ -58,22 +60,9 @@ namespace Encode {
 
 export const nill: Value<null> = new Encode.Primitive(null);
 
-export function string(string: string): Value<string> {
-    return new Encode.Primitive(string);
-}
+export const string = (string: string): Value<string> => new Encode.Primitive(string);
+export const number = (number: number): Value<number> => new Encode.Primitive(number);
+export const boolean = (boolean: boolean): Value<boolean> => new Encode.Primitive(boolean);
 
-export function number(number: number): Value<number> {
-    return new Encode.Primitive(number);
-}
-
-export function boolean(boolean: boolean): Value<boolean> {
-    return new Encode.Primitive(boolean);
-}
-
-export function list<T extends Serializable<T>>(list: Array<Value<T>>): Value<Array<T>> {
-    return new Encode.List(list);
-}
-
-export function object<T extends object>(object: {[ K in keyof T ]: Value<T[ K ]>}) {
-    return new Encode.Object(object);
-}
+export const list = <T extends Serializable<T>>(list: Array<Value<T>>): Value<Array<T>> => new Encode.List(list);
+export const object = <T extends object>(object: Encode.Props<T>): Value<T> => new Encode.Object(object);
