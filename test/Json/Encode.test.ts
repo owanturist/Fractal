@@ -1,3 +1,5 @@
+/* tslint:disable: no-magic-numbers */
+
 import test from 'ava';
 
 import * as Encode from '../../src/Json/Encode';
@@ -35,18 +37,18 @@ test('Json.Encode.list', t => {
         Encode.list([
             Encode.number(1),
             Encode.number(2),
-            Encode.number(3)
+            Encode.number(1)
         ]).encode(0),
-        '[1,2,3]'
+        '[1,2,1]'
     );
 });
 
 test('Json.Encode.object', t => {
-    type Foo = {
-        bar: string,
-        baz: number,
-        foo: boolean
-    };
+    interface Foo {
+        bar: string;
+        baz: number;
+        foo: boolean;
+    }
 
     const encoder = (foo: Foo): Encode.Value => Encode.object({
         _bar: Encode.string(foo.bar),

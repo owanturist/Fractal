@@ -1,9 +1,9 @@
 export abstract class Value {
-    constructor(private readonly js: any) {}
-
     protected static extract(value: Value): any {
         return value.js;
     }
+
+    constructor(private readonly js: any) {}
 
     public encode(indent: number): string {
         return JSON.stringify(this.js, null, indent);
@@ -13,7 +13,7 @@ export abstract class Value {
 namespace Encode {
     export class Primitive extends Value {
         constructor(js: any) {
-            super(js)
+            super(js);
         }
     }
 
@@ -54,6 +54,6 @@ export const number = (number: number): Value => new Encode.Primitive(number);
 
 export const boolean = (boolean: boolean): Value => new Encode.Primitive(boolean);
 
-export const list = (list:  Array<Value>): Value => new Encode.List(list);
+export const list = (list: Array<Value>): Value => new Encode.List(list);
 
 export const object = (object: {[ key: string ]: Value}): Value => new Encode.Object(object);

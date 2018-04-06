@@ -6,8 +6,6 @@ import {
     Just
 } from '../src/Maybe';
 
-// CONSTRUCTING
-
 test('Maybe.fromNullable()', t => {
     t.deepEqual(
         Maybe.fromNullable(undefined),
@@ -29,8 +27,6 @@ test('Maybe.fromNullable()', t => {
         Just('')
     );
 });
-
-// COMPAREING AND TESTING
 
 test('Maybe.isNothing', t => {
     t.true(Nothing.isNothing);
@@ -54,7 +50,7 @@ test('Maybe.isEqual()', t => {
     );
 
     t.false(
-        Just(1).isEqual(Just(2))
+        Just(1).isEqual(Just(0))
     );
 
     t.false(
@@ -70,8 +66,6 @@ test('Maybe.isEqual()', t => {
     );
 });
 
-// EXTRACTING
-
 test('Maybe.getOrElse()', t => {
     t.is(
         Nothing.getOrElse(1),
@@ -79,12 +73,10 @@ test('Maybe.getOrElse()', t => {
     );
 
     t.is(
-        Just(2).getOrElse(1),
-        2
+        Just(0).getOrElse(1),
+        0
     );
 });
-
-// TRANSFORMING
 
 test('Maybe.ap()', t => {
     t.deepEqual(
@@ -98,13 +90,13 @@ test('Maybe.ap()', t => {
     );
 
     t.deepEqual(
-        Just(3).ap(Nothing),
+        Just(0).ap(Nothing),
         Nothing
     );
 
     t.deepEqual(
-        Just(3).ap(Just((a: number) => a * 2)),
-        Just(6)
+        Just(1).ap(Just((a: number) => a * 2)),
+        Just(2)
     );
 });
 
@@ -115,8 +107,8 @@ test('Maybe.map()', t => {
     );
 
     t.deepEqual(
-        Just(3).map(a => a * 2),
-        Just(6)
+        Just(1).map(a => a * 2),
+        Just(2)
     );
 });
 
@@ -132,13 +124,13 @@ test('Maybe.chain()', t => {
     );
 
     t.deepEqual(
-        Nothing.chain(a => Just(a * 3)),
+        Nothing.chain(a => Just(a * 2)),
         Nothing
     );
 
     t.deepEqual(
-        Just(1).chain(a => Just(a * 3)),
-        Just(3)
+        Just(1).chain(a => Just(a * 2)),
+        Just(2)
     );
 });
 
@@ -154,12 +146,12 @@ test('Maybe.orElse()', t => {
     );
 
     t.deepEqual(
-        Nothing.orElse(() => Just(3)),
-        Just(3)
+        Nothing.orElse(() => Just(2)),
+        Just(2)
     );
 
     t.deepEqual(
-        Just(1).orElse(() => Just(3)),
+        Just(1).orElse(() => Just(2)),
         Just(1)
     );
 });
@@ -174,11 +166,11 @@ test('Maybe.cata()', t => {
     );
 
     t.is(
-        Just(3).cata({
+        Just(1).cata({
             Nothing: () => 1,
             Just: a => a * 2
         }),
-        6
+        2
     );
 });
 

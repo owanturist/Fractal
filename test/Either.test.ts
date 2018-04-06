@@ -10,8 +10,6 @@ import {
     Right
 } from '../src/Either';
 
-// COMPAREING AND TESTING
-
 test('Either.fromNullable()', t => {
     t.deepEqual(
         Either.fromNullable('err', undefined),
@@ -33,8 +31,6 @@ test('Either.fromNullable()', t => {
         Right('')
     );
 });
-
-// COMPARING
 
 test('Either.isLeft', t => {
     t.true(Left('err').isLeft);
@@ -74,8 +70,6 @@ test('Either.isEqual()', t => {
     );
 });
 
-// EXTRACTING
-
 test('Either.getOrElse()', t => {
     t.is(
         Left('err').getOrElse(1),
@@ -87,8 +81,6 @@ test('Either.getOrElse()', t => {
         2
     );
 });
-
-// TRANSFORMING
 
 test('Either.ap()', t => {
     t.deepEqual(
@@ -119,8 +111,8 @@ test('Either.map()', t => {
     );
 
     t.deepEqual(
-        Right(3).map(a => a * 2),
-        Right(6)
+        Right(1).map(a => a * 2),
+        Right(2)
     );
 });
 
@@ -136,13 +128,13 @@ test('Either.chain()', t => {
     );
 
     t.deepEqual(
-        Left('err').chain(a => Right(a * 3)),
+        Left('err').chain(a => Right(a * 2)),
         Left('err')
     );
 
     t.deepEqual(
-        Right(1).chain(a => Right(a * 3)),
-        Right(3)
+        Right(1).chain(a => Right(a * 2)),
+        Right(2)
     );
 });
 
@@ -168,11 +160,11 @@ test('Either.cata()', t => {
     );
 
     t.is(
-        Right(3).cata({
+        Right(1).cata({
             Left: err => err + '_',
             Right: a => '_' + a
         }),
-        '_3'
+        '_1'
     );
 });
 
@@ -183,8 +175,8 @@ test('Either.swap()', t => {
     );
 
     t.deepEqual(
-        Right(3).swap(),
-        Left(3)
+        Right(1).swap(),
+        Left(1)
     );
 });
 
@@ -195,8 +187,8 @@ test('Either.bimap()', t => {
     );
 
     t.deepEqual(
-        Right(3).bimap(err => err + '_', a => a * 2),
-        Right(6)
+        Right(1).bimap(err => err + '_', a => a * 2),
+        Right(2)
     );
 });
 
@@ -207,8 +199,8 @@ test('Either.leftMap()', t => {
     );
 
     t.deepEqual(
-        Right(3).leftMap(err => err + '_'),
-        Right(3)
+        Right(1).leftMap(err => err + '_'),
+        Right(1)
     );
 });
 
@@ -224,12 +216,12 @@ test('Either.orElse()', t => {
     );
 
     t.deepEqual(
-        Left('err').orElse(() => Right(3)),
-        Right(3)
+        Left('err').orElse(() => Right(1)),
+        Right(1)
     );
 
     t.deepEqual(
-        Right(1).orElse(() => Right(3)),
+        Right(1).orElse(() => Right(2)),
         Right(1)
     );
 });

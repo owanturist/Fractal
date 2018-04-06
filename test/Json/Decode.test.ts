@@ -1,3 +1,5 @@
+/* tslint:disable: max-line-length */
+
 import test from 'ava';
 
 import {
@@ -14,7 +16,7 @@ import * as Decode from '../../src/Json/Decode';
 test('Json.Decode.string', t => {
     t.deepEqual(
         Decode.string.decode(1),
-        Left("Expecting a String but instead got: 1")
+        Left('Expecting a String but instead got: 1')
     );
 
     t.deepEqual(
@@ -33,7 +35,7 @@ test('Json.Decode.string', t => {
 test('Json.Decode.number', t => {
     t.deepEqual(
         Decode.number.decode('str'),
-        Left("Expecting a Number but instead got: \"str\"")
+        Left('Expecting a Number but instead got: "str"')
     );
 
     t.deepEqual(
@@ -52,7 +54,7 @@ test('Json.Decode.number', t => {
 test('Json.Decode.boolean', t => {
     t.deepEqual(
         Decode.boolean.decode(1),
-        Left("Expecting a Boolean but instead got: 1")
+        Left('Expecting a Boolean but instead got: 1')
     );
 
     t.deepEqual(
@@ -105,14 +107,14 @@ test('Json.Decode.fail', t => {
     t.deepEqual(
         Decode.fail('msg').decode(null),
         Left('msg')
-    )
+    );
 });
 
 test('Json.Decode.succeed', t => {
     t.deepEqual(
         Decode.succeed(1).decode(null),
         Right(1)
-    )
+    );
 });
 
 test('Json.Decode.oneOf', t => {
@@ -131,7 +133,7 @@ test('Json.Decode.oneOf', t => {
     t.deepEqual(
         Decode.list(Decode.oneOf([
             Decode.number
-        ])).decode([1, 2, null, 3]),
+        ])).decode([1, 2, null, 1]),
         Left(
             'I ran into the following problems:\n\n' +
             'Expecting a Number at _[2] but instead got: null'
@@ -142,7 +144,7 @@ test('Json.Decode.oneOf', t => {
         Decode.list(Decode.oneOf([
             Decode.number,
             Decode.nill(0)
-        ])).decode([1, 2, null, 3, '4']),
+        ])).decode([1, 2, null, 1, '4']),
         Left(
             'I ran into the following problems:\n\n' +
             'Expecting a Number at _[4] but instead got: "4"\n' +
@@ -154,8 +156,8 @@ test('Json.Decode.oneOf', t => {
         Decode.list(Decode.oneOf([
             Decode.number,
             Decode.nill(0)
-        ])).decode([1, 2, null, 3]),
-        Right([1, 2, 0, 3])
+        ])).decode([1, 2, null, 1]),
+        Right([1, 2, 0, 1])
     );
 });
 
@@ -349,7 +351,7 @@ test('Json.Decode.index', t => {
 
     t.deepEqual(
         decoder.decode(['0']),
-        Left(`Expecting a longer array. Need index 1 but there are only 1 entries but instead got: ["0"]`)
+        Left('Expecting a longer array. Need index 1 but there are only 1 entries but instead got: ["0"]')
     );
 
     t.deepEqual(
@@ -433,7 +435,7 @@ test('Json.Decode.at', t => {
 test('Json.Decode.lazy', t => {
     interface Comment {
         message: string;
-        responses: Array<Comment>
+        responses: Array<Comment>;
     }
 
     const decoder: Decode.Decoder<Comment> = Decode.props({
@@ -527,7 +529,7 @@ test('Json.Decode.map', t => {
 test('Json.Decode.decodeJSON', t => {
     const decoder = Decode.props({
         t1: Decode.field('s1', Decode.string),
-        t2: Decode.field('s2', Decode.string),
+        t2: Decode.field('s2', Decode.string)
     });
 
     t.deepEqual(
@@ -550,7 +552,7 @@ test('Json.Decode.decodeJSON', t => {
 });
 
 test('Json.Decode.fromEither()', t => {
-    const toDecimal = (str: string): Either<string, number> =>{
+    const toDecimal = (str: string): Either<string, number> => {
         const result = parseInt(str, 10);
 
         return isNaN(result) ? Left('error') : Right(result);
@@ -566,8 +568,8 @@ test('Json.Decode.fromEither()', t => {
     );
 
     t.deepEqual(
-        decoder.decode('123'),
-        Right(123)
+        decoder.decode('1'),
+        Right(1)
     );
 });
 
@@ -667,7 +669,7 @@ test('Json.Decode realworld example', t => {
     interface User {
         id: number;
         username: string;
-        comments: Array<Comment>
+        comments: Array<Comment>;
     }
 
     const user = (id: number, username: string, comments: Array<Comment>): User => ({
