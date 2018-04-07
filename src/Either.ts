@@ -212,7 +212,7 @@ namespace Variations {
         }
 
         public leftMap<S>(): Either<S, T> {
-            return new Right(this.value);
+            return this as any as Either<S, T>;
         }
 
         public orElse(): Either<E, T> {
