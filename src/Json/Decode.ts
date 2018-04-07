@@ -321,16 +321,15 @@ class Props<T extends object, K extends keyof T> extends Decoder<T> {
     }
 }
 
-class Encoder implements Encode.Value<any> {
-    constructor(private readonly js: any) {}
+class Encoder extends Encode.Value {
+    constructor(private readonly js: any) {
+        super();
+    }
 
-    public serialize(): any {
+    protected serialize(): any {
         return this.js;
     }
 
-    public encode(indent: number): string {
-        return JSON.stringify(this.js, null, indent);
-    }
 }
 
 class Value extends Decoder<any> {

@@ -68,7 +68,7 @@ test('Json.Encode.object', t => {
         foo: boolean;
     }
 
-    const encoder = (foo: Foo) => Encode.object({
+    const encoder = (foo: Foo): Encode.Value => Encode.object({
         _bar: Encode.string(foo.bar),
         _baz: Encode.number(foo.baz),
         _foo: Encode.boolean(foo.foo)
@@ -105,43 +105,5 @@ test('Json.Encode.object', t => {
             })
         }).encode(0),
         '{"foo":{"bar":{"baz":0}}}'
-    );
-});
-
-test('Json.Encode Custom', t => {
-    abstract class Status implements Encode.Value<number> {
-        public abstract serialize(): number;
-
-        public encode(indent: number): string {
-            return JSON.stringify(this.serialize(), null, indent);
-        }
-    }
-
-    class Success extends Status {
-        public serialize(): number {
-            return 0;
-        }
-    }
-
-    class Failure extends Status {
-        public serialize(): number {
-            return 1;
-        }
-    }
-
-    t.is(
-        Encode.object({
-            message: Encode.string('everything is fine'),
-            status: new Success()
-        }).encode(0),
-        '{"message":"everything is fine","status":0}'
-    );
-
-    t.is(
-        Encode.object({
-            message: Encode.string('something went wrong'),
-            status: new Failure()
-        }).encode(0),
-        '{"message":"something went wrong","status":1}'
     );
 });
