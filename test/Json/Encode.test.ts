@@ -59,6 +59,24 @@ test('Json.Encode.list', t => {
         ]).encode(0),
         '[[[0,1]],[[1,0]]]'
     );
+
+    t.is(
+        Encode.list([
+            Encode.number(0),
+            Encode.string('1')
+        ]).encode(0),
+        '[0,"1"]'
+    );
+
+    t.is(
+        Encode.list([
+            Encode.number(0),
+            Encode.object({
+                bar: Encode.string('1')
+            })
+        ]).encode(0),
+        '[0,{"bar":"1"}]'
+    );
 });
 
 test('Json.Encode.object', t => {
@@ -84,6 +102,28 @@ test('Json.Encode.object', t => {
     );
 
     t.is(
+        Encode.object({
+            foo: Encode.object({
+                bar: Encode.object({
+                    baz: Encode.number(0)
+                })
+            })
+        }).encode(0),
+        '{"foo":{"bar":{"baz":0}}}'
+    );
+
+    t.is(
+        Encode.object({
+            foo: Encode.number(0),
+            bar: Encode.list([
+                Encode.boolean(false),
+                Encode.string('1')
+            ])
+        }).encode(0),
+        '{"foo":0,"bar":[false,"1"]}'
+    );
+
+    t.is(
         encoder({
             bar: 'str',
             baz: 0,
@@ -94,16 +134,5 @@ test('Json.Encode.object', t => {
         + '    "_baz": 0,\n'
         + '    "_foo": false\n'
         + '}'
-    );
-
-    t.is(
-        Encode.object({
-            foo: Encode.object({
-                bar: Encode.object({
-                    baz: Encode.number(0)
-                })
-            })
-        }).encode(0),
-        '{"foo":{"bar":{"baz":0}}}'
     );
 });
