@@ -27,7 +27,7 @@ export abstract class Either<E, T> {
     public static props<E, T extends object, K extends keyof T>(
         config: {[ K in keyof T ]: Either<E, T[ K ]>}
     ): Either<E, T> {
-        let acc = Right<E, T>({} as T); // tslint:disable-line no-object-literal-type-assertion
+        let acc = Right<E, T>({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {

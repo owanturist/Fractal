@@ -22,12 +22,12 @@
     "no-for-in-array": false, // requires type information
     "no-invalid-template-strings": true,
     "no-invalid-this": true,
-    "no-object-literal-type-assertion": true,
+    "no-object-literal-type-assertion": false,
     "no-shadowed-variable": false,
     "no-sparse-arrays": true,
     "no-switch-case-fall-through": true,
     "no-this-assignment": true,
-    "no-unsafe-any": false, // requires type information
+    "no-unsafe-any": true, // requires type information
     "no-use-before-declare": false, // requires type information
     "prefer-object-spread": true,
     "restrict-plus-operands": false, // requires type information

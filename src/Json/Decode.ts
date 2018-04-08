@@ -37,7 +37,7 @@ export abstract class Decoder<T> {
         try {
             return this.decode(JSON.parse(input));
         } catch (err) {
-            return Left(err.message);
+            return Left((err as SyntaxError).message);
         }
     }
 
@@ -138,22 +138,26 @@ class List<T> extends Decoder<Array<T>> {
     }
 }
 
-class Dict<T> extends Decoder<{[ key: string ]: T}> {
+const isObject = <T extends object>(input: any): input is T => {
+    return typeof input === 'object' && input !== null && !(input instanceof Array);
+};
+
+class Dict<T, O extends {[ key: string ]: T }> extends Decoder<O> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
-    public deserialize(input: any, origin: Array<string>): Either<string, {[ key: string ]: T}> {
-        if (typeof input !== 'object' || input === null || input instanceof Array) {
+    public deserialize(input: any, origin: Array<string>): Either<string, O> {
+        if (!isObject<O>(input)) {
             return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
 
-        let acc: Either<string, {[ key: string ]: T}> = Right({});
+        let acc: Either<string, O> = Right({} as O);
 
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (accResult: {[ key: string ]: T}) => Decoder
+                    (accResult: O) => Decoder
                         .run(this.decoder, input[ key ], origin.concat(`.${key}`))
                         .map(
                             (itemResult: T) => {
@@ -176,7 +180,7 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, Array<[ string, T ]>> {
-        if (typeof input !== 'object' || input === null || input instanceof Array) {
+        if (!isObject<{[ key: string ]: T }>(input)) {
             return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
 
@@ -211,14 +215,14 @@ class Field<T> extends Decoder<T> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, T> {
-        if (typeof input !== 'object' || input === null || input instanceof Array || !(this.key in input)) {
-            return Left(
-                `Expecting an object with a field named \`${this.key}\`${Decoder.makePath(origin)}but instead got: ` +
-                JSON.stringify(input)
-            );
+        if (isObject<{[ key: string ]: T }>(input) && this.key in input) {
+            return Decoder.run(this.decoder, input[ this.key ], origin.concat(`.${this.key}`));
         }
 
-        return Decoder.run(this.decoder, input[ this.key ], origin.concat(`.${this.key}`));
+        return Left(
+            `Expecting an object with a field named \`${this.key}\`${Decoder.makePath(origin)}but instead got: ` +
+            JSON.stringify(input)
+        );
     }
 }
 
@@ -297,7 +301,7 @@ class Props<T extends object, K extends keyof T> extends Decoder<T> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, T> {
-        let acc = Right<string, T>({} as T); // tslint:disable-line no-object-literal-type-assertion
+        let acc = Right<string, T>({} as T);
 
         for (const key in this.config) {
             if (this.config.hasOwnProperty(key)) {
@@ -387,7 +391,7 @@ export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(d
 export const nullable = <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Nullable(decoder);
 export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Maybe(decoder);
 export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder);
-export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}> => new Dict(decoder);
+export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => new Dict(decoder);
 export const keyValuePairs = <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new KeyValuePairs(decoder);
 export const props = <T extends object>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Props(config);
 

@@ -52,7 +52,6 @@ namespace Encode {
         }
 
         public serialize<T, K extends keyof T>(): {[ K in keyof T ]: T[ K ]} {
-            // tslint:disable-next-line no-object-literal-type-assertion
             const result = {} as {[ K in keyof T ]: Serializable<T[ K ]>};
 
             for (const key in this.object as {[ K in keyof T ]: Value }) {

@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.dev.json",
     "build:watch": "npm run build -- -w",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
-    "lint": "tslint ./test/**/* ./src/**/*"
+    "lint": "tslint --project tsconfig.json --config tslint.json"
   },
   "devDependencies": {
     "ava": "^0.23.0",

@@ -9,7 +9,7 @@ export abstract class Maybe<T> {
     }
 
     public static props<T extends object, K extends keyof T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
-        let acc = Just({} as T); // tslint:disable-line no-object-literal-type-assertion
+        let acc = Just({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
