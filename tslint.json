@@ -27,10 +27,9 @@
     "no-sparse-arrays": true,
     "no-switch-case-fall-through": true,
     "no-this-assignment": true,
-    "no-unsafe-any": true, // requires type information
-    "no-use-before-declare": false, // requires type information
+    "no-unsafe-any": true,
     "prefer-object-spread": true,
-    "restrict-plus-operands": false, // requires type information
+    "restrict-plus-operands": true,
     "switch-default": true,
     "triple-equals": [ true, "allow-null-check" ],
 

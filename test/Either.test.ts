@@ -153,29 +153,29 @@ test('Either.chain()', t => {
 
 test('Either.fold()', t => {
     t.deepEqual(
-        Left('err').fold(err => err + '_', a => '_' + a),
+        Left<string, number>('err').fold(err => err + '_', a => '_' + a.toString()),
         'err_'
     );
 
     t.deepEqual(
-        Right(1).fold(err => err + '_', a => '_' + a),
+        Right<string, number>(1).fold(err => err + '_', a => '_' + a.toString()),
         '_1'
     );
 });
 
 test('Either.cata()', t => {
     t.is(
-        Left('err').cata({
+        Left<string, number>('err').cata({
             Left: err => err + '_',
-            Right: a => '_' + a
+            Right: a => '_' + a.toString()
         }),
         'err_'
     );
 
     t.is(
-        Right(1).cata({
+        Right<string, number>(1).cata({
             Left: err => err + '_',
-            Right: a => '_' + a
+            Right: a => '_' + a.toString()
         }),
         '_1'
     );
@@ -200,7 +200,7 @@ test('Either.bimap()', t => {
     );
 
     t.deepEqual(
-        Right(1).bimap(err => err + '_', a => a * 2),
+        Right<string, number>(1).bimap(err => err + '_', a => a * 2),
         Right(2)
     );
 });
@@ -212,7 +212,7 @@ test('Either.leftMap()', t => {
     );
 
     t.deepEqual(
-        Right(1).leftMap(err => err + '_'),
+        Right<string, number>(1).leftMap(err => err + '_'),
         Right(1)
     );
 });
@@ -224,7 +224,7 @@ test('Either.orElse()', t => {
     );
 
     t.deepEqual(
-        Right(1).orElse(err => Left(err + '_')),
+        Right<string, number>(1).orElse(err => Left(err + '_')),
         Right(1)
     );
 
