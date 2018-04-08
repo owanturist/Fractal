@@ -4,6 +4,8 @@ interface Pattern<T, R> {
 }
 
 export abstract class Maybe<T> {
+    public static fromNullable<T>(value: undefined | null): Maybe<T>;
+    public static fromNullable<T>(value: T): Maybe<T>;
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
         return value == null ? Nothing() : Just(value);
     }

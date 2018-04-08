@@ -7,25 +7,21 @@ import {
 } from '../src/Maybe';
 
 test('Maybe.fromNullable()', t => {
-    t.deepEqual(
-        Maybe.fromNullable(undefined),
-        Nothing()
-    );
+    const m1: Maybe<{}> = Maybe.fromNullable(undefined);
+    const m2: Maybe<{}> = Maybe.fromNullable(null);
+    const m3: Maybe<number> = Maybe.fromNullable(0);
+    const m4: Maybe<string> = Maybe.fromNullable('str');
+    const m5: Maybe<boolean> = Maybe.fromNullable(true);
+    const m6: Maybe<number> = Maybe.fromNullable<number>(null);
+    const m7: Maybe<boolean> = Maybe.fromNullable<boolean>(null);
 
-    t.deepEqual(
-        Maybe.fromNullable(null),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Maybe.fromNullable(0),
-        Just(0)
-    );
-
-    t.deepEqual(
-        Maybe.fromNullable(''),
-        Just('')
-    );
+    t.deepEqual(m1, Nothing());
+    t.deepEqual(m2, Nothing());
+    t.deepEqual(m3, Just(0));
+    t.deepEqual(m4, Just('str'));
+    t.deepEqual(m5, Just(true));
+    t.deepEqual(m6, Nothing());
+    t.deepEqual(m7, Nothing());
 });
 
 test('Maybe.isNothing', t => {
