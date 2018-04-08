@@ -96,7 +96,7 @@ class Nullable<T> extends Decoder<Maybe_<T>> {
 
     public deserialize(input: any, origin: Array<string>): Either<string, Maybe_<T>> {
         return input === null
-            ? Right(Nothing)
+            ? Right(Nothing())
             : Decoder.run(this.decoder, input, origin).bimap(
                 (error: string): string => [
                     'I ran into the following problems:\n',
@@ -267,7 +267,7 @@ class OneOf<T> extends Decoder<T> {
             return Left(`Expecting at least one Decoder for oneOf${Decoder.makePath(origin)}but instead got 0`);
         }
 
-        let acc = Left('I ran into the following problems:\n');
+        let acc = Left<string, T>('I ran into the following problems:\n');
 
         for (const decoder of this.decoders) {
             acc = acc.orElse(
@@ -297,7 +297,7 @@ class Props<T extends object, K extends keyof T> extends Decoder<T> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, T> {
-        let acc = Right({} as T); // tslint:disable-line no-object-literal-type-assertion
+        let acc = Right<string, T>({} as T); // tslint:disable-line no-object-literal-type-assertion
 
         for (const key in this.config) {
             if (this.config.hasOwnProperty(key)) {

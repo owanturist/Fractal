@@ -5,7 +5,7 @@ interface Pattern<T, R> {
 
 export abstract class Maybe<T> {
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
-        return value == null ? Nothing : Just(value);
+        return value == null ? Nothing() : Just(value);
     }
 
     public static props<T extends object, K extends keyof T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
@@ -154,6 +154,6 @@ namespace Variations {
     }
 }
 
-export const Nothing: Maybe<any> = new Variations.Nothing();
+export const Nothing = <T>(): Maybe<T> => new Variations.Nothing();
 
 export const Just = <T>(value: T): Maybe<T> => new Variations.Just(value);

@@ -1,17 +1,17 @@
 {
   "compilerOptions": {
-    "allowJs": false,
+    "downlevelIteration": true,
     "outDir": "dist",
     "module": "commonjs",
     "target": "es3",
     "sourceMap": false,
     "inlineSourceMap": false,
     "inlineSources": false,
-    "noImplicitAny": true,
+    "noImplicitReturns": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
-    "noImplicitThis": true,
-    "strict": true
+    "strict": true,
+    "strictNullChecks": true
   },
   "include": [
     "./src/**/*.ts"

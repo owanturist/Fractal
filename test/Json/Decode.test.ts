@@ -175,7 +175,7 @@ test('Json.Decode.nullable', t => {
 
     t.deepEqual(
         decoder.decode(null),
-        Right(Nothing)
+        Right(Nothing())
     );
 
     t.deepEqual(
@@ -212,7 +212,7 @@ test('Json.Decode.maybe', t => {
 
     t.deepEqual(
         Decode.maybe(Decode.field('s1', Decode.number)).decode(input),
-        Right(Nothing)
+        Right(Nothing())
     );
 
     t.deepEqual(
@@ -222,12 +222,12 @@ test('Json.Decode.maybe', t => {
 
     t.deepEqual(
         Decode.maybe(Decode.field('s3', Decode.number)).decode(input),
-        Right(Nothing)
+        Right(Nothing())
     );
 
     t.deepEqual(
         Decode.field('s1', Decode.maybe(Decode.number)).decode(input),
-        Right(Nothing)
+        Right(Nothing())
     );
 
     t.deepEqual(

@@ -89,7 +89,7 @@ test('Either.ap()', t => {
     );
 
     t.deepEqual(
-        Left('1').ap(Right((a: number) => a * 2)),
+        Left<string, number>('1').ap(Right((a: number) => a * 2)),
         Left('1')
     );
 
@@ -106,13 +106,26 @@ test('Either.ap()', t => {
 
 test('Either.map()', t => {
     t.deepEqual(
-        Left('err').map(a => a * 2),
+        Left<string, number>('err').map(a => a * 2),
         Left('err')
     );
 
     t.deepEqual(
         Right(1).map(a => a * 2),
         Right(2)
+    );
+
+    interface Foo {
+        bar: Either<string, number>;
+    }
+
+    const foo: Foo = {
+        bar: Left('err')
+    };
+
+    t.deepEqual(
+        foo.bar.map(a => a * 2),
+        Left('err')
     );
 });
 
@@ -128,7 +141,7 @@ test('Either.chain()', t => {
     );
 
     t.deepEqual(
-        Left('err').chain(a => Right(a * 2)),
+        Left<string, number>('err').chain(a => Right(a * 2)),
         Left('err')
     );
 
@@ -182,7 +195,7 @@ test('Either.swap()', t => {
 
 test('Either.bimap()', t => {
     t.deepEqual(
-        Left('err').bimap(err => err + '_', a => a * 2),
+        Left<string, number>('err').bimap(err => err + '_', a => a * 2),
         Left('err_')
     );
 
@@ -229,7 +242,7 @@ test('Either.orElse()', t => {
 test('Either.toMaybe()', t => {
     t.deepEqual(
         Left('err').toMaybe(),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(

@@ -9,12 +9,12 @@ import {
 test('Maybe.fromNullable()', t => {
     t.deepEqual(
         Maybe.fromNullable(undefined),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
         Maybe.fromNullable(null),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
@@ -29,24 +29,24 @@ test('Maybe.fromNullable()', t => {
 });
 
 test('Maybe.isNothing', t => {
-    t.true(Nothing.isNothing);
+    t.true(Nothing().isNothing);
 
     t.false(Just(1).isNothing);
 });
 
 test('Maybe.isJust', t => {
-    t.false(Nothing.isJust);
+    t.false(Nothing().isJust);
 
     t.true(Just(1).isJust);
 });
 
 test('Maybe.isEqual()', t => {
     t.false(
-        Just(1).isEqual(Nothing)
+        Just(1).isEqual(Nothing())
     );
 
     t.false(
-        Nothing.isEqual(Just(1))
+        Nothing().isEqual(Just(1))
     );
 
     t.false(
@@ -62,13 +62,13 @@ test('Maybe.isEqual()', t => {
     );
 
     t.true(
-        Nothing.isEqual(Nothing)
+        Nothing().isEqual(Nothing())
     );
 });
 
 test('Maybe.getOrElse()', t => {
     t.is(
-        Nothing.getOrElse(1),
+        Nothing().getOrElse(1),
         1
     );
 
@@ -80,18 +80,18 @@ test('Maybe.getOrElse()', t => {
 
 test('Maybe.ap()', t => {
     t.deepEqual(
-        Nothing.ap(Nothing),
-        Nothing
+        Nothing().ap(Nothing()),
+        Nothing()
     );
 
     t.deepEqual(
-        Nothing.ap(Just((a: number) => a * 2)),
-        Nothing
+        Nothing<number>().ap(Just((a: number) => a * 2)),
+        Nothing()
     );
 
     t.deepEqual(
-        Just(0).ap(Nothing),
-        Nothing
+        Just(0).ap(Nothing()),
+        Nothing()
     );
 
     t.deepEqual(
@@ -102,30 +102,43 @@ test('Maybe.ap()', t => {
 
 test('Maybe.map()', t => {
     t.deepEqual(
-        Nothing.map((a: number) => a * 2),
-        Nothing
+        Nothing<number>().map(a => a * 2),
+        Nothing()
     );
 
     t.deepEqual(
         Just(1).map(a => a * 2),
         Just(2)
     );
+
+    interface Foo {
+        bar: Maybe<number>;
+    }
+
+    const foo: Foo = {
+        bar: Nothing()
+    };
+
+    t.deepEqual(
+        foo.bar.map(a => a * 2),
+        Nothing()
+    );
 });
 
 test('Maybe.chain()', t => {
     t.deepEqual(
-        Nothing.chain(() => Nothing),
-        Nothing
+        Nothing().chain(Nothing),
+        Nothing()
     );
 
     t.deepEqual(
-        Just(1).chain(() => Nothing),
-        Nothing
+        Just(1).chain(Nothing),
+        Nothing()
     );
 
     t.deepEqual(
-        Nothing.chain(a => Just(a * 2)),
-        Nothing
+        Nothing<number>().chain(a => Just(a * 2)),
+        Nothing()
     );
 
     t.deepEqual(
@@ -136,17 +149,17 @@ test('Maybe.chain()', t => {
 
 test('Maybe.orElse()', t => {
     t.deepEqual(
-        Nothing.orElse(() => Nothing),
-        Nothing
+        Nothing().orElse(Nothing),
+        Nothing()
     );
 
     t.deepEqual(
-        Just(1).orElse(() => Nothing),
+        Just(1).orElse(Nothing),
         Just(1)
     );
 
     t.deepEqual(
-        Nothing.orElse(() => Just(2)),
+        Nothing().orElse(() => Just(2)),
         Just(2)
     );
 
@@ -158,7 +171,7 @@ test('Maybe.orElse()', t => {
 
 test('Maybe.cata()', t => {
     t.is(
-        Nothing.cata({
+        Nothing<number>().cata({
             Nothing: () => 1,
             Just: a => a * 2
         }),
@@ -182,9 +195,9 @@ test('Maybe.props()', t => {
 
     t.deepEqual(
         Maybe.props({
-            foo: Nothing
+            foo: Nothing()
         }),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
@@ -198,26 +211,26 @@ test('Maybe.props()', t => {
 
     t.deepEqual(
         Maybe.props({
-            foo: Nothing,
-            bar: Nothing
+            foo: Nothing(),
+            bar: Nothing()
         }),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
         Maybe.props({
-            foo: Nothing,
+            foo: Nothing(),
             bar: Just(1)
         }),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
         Maybe.props({
             foo: Just('foo'),
-            bar: Nothing
+            bar: Nothing()
         }),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
@@ -251,10 +264,10 @@ test('Maybe.props()', t => {
         Maybe.props({
             foo: Just('foo'),
             bar: Maybe.props({
-                baz: Nothing
+                baz: Nothing()
             })
         }),
-        Nothing
+        Nothing()
     );
 
     t.deepEqual(
@@ -280,8 +293,8 @@ test('Maybe.all()', t => {
     );
 
     t.deepEqual(
-        Maybe.all([ Nothing ]),
-        Nothing
+        Maybe.all([ Nothing() ]),
+        Nothing()
     );
 
     t.deepEqual(
@@ -290,18 +303,18 @@ test('Maybe.all()', t => {
     );
 
     t.deepEqual(
-        Maybe.all([ Nothing, Nothing ]),
-        Nothing
+        Maybe.all([ Nothing(), Nothing() ]),
+        Nothing()
     );
 
     t.deepEqual(
-        Maybe.all([ Nothing, Just(2) ]),
-        Nothing
+        Maybe.all([ Nothing(), Just(2) ]),
+        Nothing()
     );
 
     t.deepEqual(
-        Maybe.all([ Just(1), Nothing ]),
-        Nothing
+        Maybe.all([ Just(1), Nothing() ]),
+        Nothing()
     );
 
     t.deepEqual(

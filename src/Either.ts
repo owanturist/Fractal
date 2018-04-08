@@ -19,15 +19,15 @@ export abstract class Either<E, T> {
 
     public static fromMaybe<E, T>(error: E, maybe: Maybe<T>): Either<E, T> {
         return maybe.fold(
-            (): Either<E, T> => Left(error),
+            () => Left(error),
             Right
-        );
+        ) as Either<E, T>;
     }
 
     public static props<E, T extends object, K extends keyof T>(
         config: {[ K in keyof T ]: Either<E, T[ K ]>}
     ): Either<E, T> {
-        let acc = Right({} as T); // tslint:disable-line no-object-literal-type-assertion
+        let acc = Right<E, T>({} as T); // tslint:disable-line no-object-literal-type-assertion
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
@@ -47,7 +47,7 @@ export abstract class Either<E, T> {
     }
 
     public static all<E, T>(list: Array<Either<E, T>>): Either<E, Array<T>> {
-        let acc = Right([] as Array<T>);
+        let acc = Right<E, Array<T>>([]);
 
         for (const item of list) {
             acc = acc.chain(
@@ -154,7 +154,7 @@ namespace Variations {
         }
 
         public toMaybe(): Maybe<T> {
-            return Nothing;
+            return Nothing<T>();
         }
     }
 
@@ -225,6 +225,6 @@ namespace Variations {
     }
 }
 
-export const Left = <E>(error: E): Either<E, any> => new Variations.Left(error);
+export const Left = <E, T>(error: E): Either<E, T> => new Variations.Left(error);
 
-export const Right = <T>(value: T): Either<any, T> => new Variations.Right(value);
+export const Right = <E, T>(value: T): Either<E, T> => new Variations.Right(value);
