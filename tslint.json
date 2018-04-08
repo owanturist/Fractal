@@ -19,7 +19,7 @@
     "ban-comma-operator": true,
     "no-duplicate-switch-case": true,
     "no-dynamic-delete": true,
-    "no-for-in-array": false, // requires type information
+    "no-for-in-array": true,
     "no-invalid-template-strings": true,
     "no-invalid-this": true,
     "no-object-literal-type-assertion": false,
