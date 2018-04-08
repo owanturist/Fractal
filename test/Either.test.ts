@@ -11,25 +11,17 @@ import {
 } from '../src/Either';
 
 test('Either.fromNullable()', t => {
-    t.deepEqual(
-        Either.fromNullable('err', undefined),
-        Left('err')
-    );
+    const e1: Either<string, number> = Either.fromNullable('err', undefined);
+    const e2: Either<string, boolean> = Either.fromNullable('err', null);
+    const e3: Either<string, number> = Either.fromNullable('err', 0);
+    const e4: Either<string, string> = Either.fromNullable('err', 'str');
+    const e5: Either<string, boolean> = Either.fromNullable('err', true);
 
-    t.deepEqual(
-        Either.fromNullable('err', null),
-        Left('err')
-    );
-
-    t.deepEqual(
-        Either.fromNullable('err', 0),
-        Right(0)
-    );
-
-    t.deepEqual(
-        Either.fromNullable('err', ''),
-        Right('')
-    );
+    t.deepEqual(e1, Left('err'));
+    t.deepEqual(e2, Left('err'));
+    t.deepEqual(e3, Right(0));
+    t.deepEqual(e4, Right('str'));
+    t.deepEqual(e5, Right(true));
 });
 
 test('Either.isLeft', t => {
