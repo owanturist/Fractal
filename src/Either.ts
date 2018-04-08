@@ -19,7 +19,7 @@ export abstract class Either<E, T> {
 
     public static fromMaybe<E, T>(error: E, maybe: Maybe<T>): Either<E, T> {
         return maybe.fold(
-            () => Left(error),
+            (): Either<E, T> => Left(error),
             Right
         ) as Either<E, T>;
     }
@@ -32,8 +32,8 @@ export abstract class Either<E, T> {
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T) => (config[ key ] as Either<E, T[ K ]>).map(
-                        (value: T[ K ]) => {
+                    (obj: T): Either<E, T> => (config[ key ] as Either<E, T[ K ]>).map(
+                        (value: T[ K ]): T => {
                             obj[ key ] = value;
 
                             return obj;
@@ -51,8 +51,8 @@ export abstract class Either<E, T> {
 
         for (const item of list) {
             acc = acc.chain(
-                (arr: Array<T>) => item.map(
-                    (value: T) => {
+                (arr: Array<T>): Either<E, Array<T>> => item.map(
+                    (value: T): Array<T> => {
                         arr.push(value);
 
                         return arr;

@@ -10,6 +10,13 @@ import {
 } from '../Either';
 import * as Encode from './Encode';
 
+const isArray = (input: any): input is Array<any> => input instanceof Array;
+
+const isObject = (input: any): input is {[ key: string ]: any} => {
+    return typeof input === 'object' && input !== null && !isArray(input);
+};
+
+
 export abstract class Decoder<T> {
     protected static run<T>(decoder: Decoder<T>, input: any, origin: Array<string>): Either<string, T> {
         return decoder.deserialize(input, origin);
@@ -67,7 +74,7 @@ class Chain<T, R> extends Decoder<R> {
 
     public deserialize(input: any, origin: Array<string>): Either<string, R> {
         return Decoder.run(this.decoder, input, origin).chain(
-            (value: T) => this.fn(value).decode(input)
+            (value: T): Either<string, R> => this.fn(value).decode(input)
         );
     }
 }
@@ -114,7 +121,7 @@ class List<T> extends Decoder<Array<T>> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, Array<T>> {
-        if (!(input instanceof Array)) {
+        if (!isArray(input)) {
             return Left(`Expecting a List but instead got: ${JSON.stringify(input)}`);
         }
 
@@ -122,15 +129,16 @@ class List<T> extends Decoder<Array<T>> {
 
         for (let index = 0; index < input.length; index++) {
             acc = acc.chain(
-                (accResult: Array<T>) => Decoder
-                    .run(this.decoder, input[ index ], origin.concat(`[${index}]`))
-                    .map(
-                        (itemResult: T) => {
-                            accResult.push(itemResult);
+                (accResult: Array<T>): Either<string, Array<T>> =>
+                    Decoder
+                        .run(this.decoder, input[ index ], origin.concat(`[${index}]`))
+                        .map(
+                            (itemResult: T): Array<T> => {
+                                accResult.push(itemResult);
 
-                            return accResult;
-                        }
-                    )
+                                return accResult;
+                            }
+                        )
             );
         }
 
@@ -138,17 +146,13 @@ class List<T> extends Decoder<Array<T>> {
     }
 }
 
-const isObject = <T extends object>(input: any): input is T => {
-    return typeof input === 'object' && input !== null && !(input instanceof Array);
-};
-
 class Dict<T, O extends {[ key: string ]: T }> extends Decoder<O> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, O> {
-        if (!isObject<O>(input)) {
+        if (!isObject(input)) {
             return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
 
@@ -157,15 +161,16 @@ class Dict<T, O extends {[ key: string ]: T }> extends Decoder<O> {
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (accResult: O) => Decoder
-                        .run(this.decoder, input[ key ], origin.concat(`.${key}`))
-                        .map(
-                            (itemResult: T) => {
-                                accResult[ key ] = itemResult;
+                    (accResult: O): Either<string, O> =>
+                        Decoder
+                            .run(this.decoder, input[ key ], origin.concat(`.${key}`))
+                            .map(
+                                (itemResult: T): O => {
+                                    accResult[ key ] = itemResult;
 
-                                return accResult;
-                            }
-                        )
+                                    return accResult;
+                                }
+                            )
                 );
             }
         }
@@ -180,7 +185,7 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, Array<[ string, T ]>> {
-        if (!isObject<{[ key: string ]: T }>(input)) {
+        if (!isObject(input)) {
             return Left(`Expecting an object but instead got: ${JSON.stringify(input)}`);
         }
 
@@ -189,15 +194,16 @@ class KeyValuePairs<T> extends Decoder<Array<[ string, T ]>> {
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (accResult: Array<[ string, T ]>) => Decoder
-                        .run(this.decoder, input[ key ], origin.concat(`.${key}`))
-                        .map(
-                            (itemResult: T) => {
-                                accResult.push([ key, itemResult ]);
+                    (accResult: Array<[ string, T ]>): Either<string, Array<[ string, T ]>> =>
+                        Decoder
+                            .run(this.decoder, input[ key ], origin.concat(`.${key}`))
+                            .map(
+                                (itemResult: T): Array<[ string, T ]> => {
+                                    accResult.push([ key, itemResult ]);
 
-                                return accResult;
-                            }
-                        )
+                                    return accResult;
+                                }
+                            )
                 );
             }
         }
@@ -215,7 +221,7 @@ class Field<T> extends Decoder<T> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, T> {
-        if (isObject<{[ key: string ]: T }>(input) && this.key in input) {
+        if (isObject(input) && this.key in input) {
             return Decoder.run(this.decoder, input[ this.key ], origin.concat(`.${this.key}`));
         }
 
@@ -235,7 +241,7 @@ class Index<T> extends Decoder<T> {
     }
 
     public deserialize(input: any, origin: Array<string>): Either<string, T> {
-        if (!(input instanceof Array)) {
+        if (!isArray(input)) {
             return Left(`Expecting an array but instead got: ${JSON.stringify(input)}`);
         }
 
@@ -275,9 +281,10 @@ class OneOf<T> extends Decoder<T> {
 
         for (const decoder of this.decoders) {
             acc = acc.orElse(
-                (accErr: string) => Decoder
-                    .run(decoder, input, origin)
-                    .leftMap((err: string) => accErr + '\n' + err)
+                (accErr: string): Either<string, T> =>
+                    Decoder
+                        .run(decoder, input, origin)
+                        .leftMap((err: string): string => accErr + '\n' + err)
             );
         }
 
@@ -306,9 +313,9 @@ class Props<T extends object, K extends keyof T> extends Decoder<T> {
         for (const key in this.config) {
             if (this.config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T) => Decoder.run(
+                    (obj: T): Either<string, T> => Decoder.run(
                         (this.config[ key ] as Decoder<T[ K ]>).map(
-                            (value: T[ K ]) => {
+                            (value: T[ K ]): T => {
                                 obj[ key ] = value;
 
                                 return obj;

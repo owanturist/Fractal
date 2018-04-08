@@ -14,8 +14,8 @@ export abstract class Maybe<T> {
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T) => (config[ key ] as Maybe<T[ K ]>).map(
-                        (value: T[ K ]) => {
+                    (obj: T): Maybe<T> => (config[ key ] as Maybe<T[ K ]>).map(
+                        (value: T[ K ]): T => {
                             obj[ key ] = value;
 
                             return obj;
@@ -33,8 +33,8 @@ export abstract class Maybe<T> {
 
         for (const item of list) {
             acc = acc.chain(
-                (arr: Array<T>) => item.map(
-                    (value: T) => {
+                (arr: Array<T>): Maybe<Array<T>> => item.map(
+                    (value: T): Array<T> => {
                         arr.push(value);
 
                         return arr;
