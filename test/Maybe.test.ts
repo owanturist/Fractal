@@ -24,16 +24,16 @@ test('Maybe.fromNullable()', t => {
     t.deepEqual(m7, Nothing());
 });
 
-test('Maybe.isNothing', t => {
-    t.true(Nothing().isNothing);
+test('Maybe.isNothing()', t => {
+    t.true(Nothing().isNothing());
 
-    t.false(Just(1).isNothing);
+    t.false(Just(1).isNothing());
 });
 
-test('Maybe.isJust', t => {
-    t.false(Nothing().isJust);
+test('Maybe.isJust()', t => {
+    t.false(Nothing().isJust());
 
-    t.true(Just(1).isJust);
+    t.true(Just(1).isJust());
 });
 
 test('Maybe.isEqual()', t => {
