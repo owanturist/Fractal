@@ -24,16 +24,16 @@ test('Either.fromNullable()', t => {
     t.deepEqual(e5, Right(true));
 });
 
-test('Either.isLeft', t => {
-    t.true(Left('err').isLeft);
+test('Either.isLeft()', t => {
+    t.true(Left('err').isLeft());
 
-    t.false(Right(1).isLeft);
+    t.false(Right(1).isLeft());
 });
 
-test('Either.isRight', t => {
-    t.false(Left('err').isRight);
+test('Either.isRight()', t => {
+    t.false(Left('err').isRight());
 
-    t.true(Right(1).isRight);
+    t.true(Right(1).isRight());
 });
 
 test('Either.isEqual()', t => {

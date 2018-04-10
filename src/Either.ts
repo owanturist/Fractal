@@ -1,22 +1,19 @@
+import * as Interfaces from './Interfaces';
 import {
-    Maybe,
     Nothing,
     Just
 } from './Maybe';
 
-interface Pattern<E, T, R> {
-    Left(error: E): R;
-    Right(value: T): R;
-}
+export interface Pattern<E, T, R> extends Interfaces.Either.Pattern<E, T, R> {}
 
-export abstract class Either<E, T> {
+export abstract class Either<E, T> implements Interfaces.Either<E, T> {
     public static fromNullable<E, T>(error: E, value: null | undefined): Either<E, T>;
     public static fromNullable<E, T>(error: E, value: T): Either<E, T>; // tslint:disable-line
     public static fromNullable<E, T>(error: E, value: T | null | undefined): Either<E, T> {
         return value == null ? Left(error) : Right(value);
     }
 
-    public static fromMaybe<E, T>(error: E, maybe: Maybe<T>): Either<E, T> {
+    public static fromMaybe<E, T>(error: E, maybe: Interfaces.Maybe<T>): Either<E, T> {
         return maybe.fold(
             (): Either<E, T> => Left(error),
             Right
@@ -63,42 +60,40 @@ export abstract class Either<E, T> {
         return acc;
     }
 
-    public abstract readonly isLeft: boolean;
-
-    public abstract readonly isRight: boolean;
-
+    public abstract isLeft(): boolean;
+    public abstract isRight(): boolean;
     public abstract isEqual(another: Either<E, T>): boolean;
 
     public abstract getOrElse(defaults: T): T;
 
     public abstract ap<R>(eitherFn: Either<E, (value: T) => R>): Either<E, R>;
-
     public abstract map<R>(fn: (value: T) => R): Either<E, R>;
-
     public abstract chain<R>(fn: (value: T) => Either<E, R>): Either<E, R>;
-
-    public abstract fold<R>(leftFn: (error: E) => R, rightFn: (value: T) => R): R;
-
-    public abstract cata<R>(pattern: Pattern<E, T, R>): R;
-
-    public abstract swap(): Either<T, E>;
-
     public abstract bimap<S, R>(leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R>;
-
+    public abstract swap(): Either<T, E>;
     public abstract leftMap<S>(fn: (error: E) => S): Either<S, T>;
-
     public abstract orElse(fn: (error: E) => Either<E, T>): Either<E, T>;
 
-    public abstract toMaybe(): Maybe<T>;
+
+    public abstract fold<R>(leftFn: (error: E) => R, rightFn: (value: T) => R): R;
+    public abstract cata<R>(pattern: Pattern<E, T, R>): R;
+
+    public abstract toMaybe(): Interfaces.Maybe<T>;
 }
 
 namespace Variations {
-    export class Left<E, T> implements Either<E, T> {
-        public readonly isLeft: boolean = true;
+    export class Left<E, T> extends Either<E, T> {
+        constructor(private readonly error: E) {
+            super();
+        }
 
-        public readonly isRight: boolean = false;
+        public isLeft(): boolean {
+            return true;
+        }
 
-        constructor(private readonly error: E) {}
+        public isRight(): boolean {
+            return false;
+        }
 
         public isEqual(another: Either<E, T>): boolean {
             return another
@@ -124,22 +119,14 @@ namespace Variations {
             return this as any as Either<E, R>;
         }
 
-        public fold<R>(leftFn: (error: E) => R): R {
-            return leftFn(this.error);
-        }
-
-        public cata<R>(pattern: Pattern<E, T, R>): R {
-            return pattern.Left(this.error);
-        }
-
-        public swap(): Either<T, E> {
-            return new Right(this.error);
-        }
-
         public bimap<S, R>(leftFn: (error: E) => S): Either<S, R> {
             return new Left(
                 leftFn(this.error)
             );
+        }
+
+        public swap(): Either<T, E> {
+            return new Right(this.error);
         }
 
         public leftMap<S>(fn: (error: E) => S): Either<S, T> {
@@ -152,17 +139,31 @@ namespace Variations {
             return fn(this.error);
         }
 
-        public toMaybe(): Maybe<T> {
+        public fold<R>(leftFn: (error: E) => R): R {
+            return leftFn(this.error);
+        }
+
+        public cata<R>(pattern: Pattern<E, T, R>): R {
+            return pattern.Left(this.error);
+        }
+
+        public toMaybe(): Interfaces.Maybe<T> {
             return Nothing<T>();
         }
     }
 
-    export class Right<E, T> implements Either<E, T> {
-        public readonly isLeft: boolean = false;
+    export class Right<E, T> extends Either<E, T> {
+        constructor(private readonly value: T) {
+            super();
+        }
 
-        public readonly isRight: boolean = true;
+        public isLeft(): boolean {
+            return false;
+        }
 
-        constructor(private readonly value: T) {}
+        public isRight(): boolean {
+            return true;
+        }
 
         public isEqual(another: Either<E, T>): boolean {
             return another
@@ -192,22 +193,14 @@ namespace Variations {
             return fn(this.value);
         }
 
-        public fold<R>(_leftFn: (error: E) => R, rightFn: (value: T) => R): R {
-            return rightFn(this.value);
-        }
-
-        public cata<R>(pattern: Pattern<E, T, R>): R {
-            return pattern.Right(this.value);
-        }
-
-        public swap(): Either<T, E> {
-            return new Left(this.value);
-        }
-
         public bimap<S, R>(_leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R> {
             return new Right(
                 rightFn(this.value)
             );
+        }
+
+        public swap(): Either<T, E> {
+            return new Left(this.value);
         }
 
         public leftMap<S>(): Either<S, T> {
@@ -218,7 +211,15 @@ namespace Variations {
             return this;
         }
 
-        public toMaybe(): Maybe<T> {
+        public fold<R>(_leftFn: (error: E) => R, rightFn: (value: T) => R): R {
+            return rightFn(this.value);
+        }
+
+        public cata<R>(pattern: Pattern<E, T, R>): R {
+            return pattern.Right(this.value);
+        }
+
+        public toMaybe(): Interfaces.Maybe<T> {
             return Just(this.value);
         }
     }

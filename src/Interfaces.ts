@@ -20,3 +20,31 @@ export namespace Maybe {
         Just(value: T): R;
     }
 }
+
+export interface Either<E, T> {
+    isLeft(): boolean;
+    isRight(): boolean;
+    isEqual(another: Either<E, T>): boolean;
+
+    getOrElse(defaults: T): T;
+
+    ap<R>(eitherFn: Either<E, (value: T) => R>): Either<E, R>;
+    map<R>(fn: (value: T) => R): Either<E, R>;
+    chain<R>(fn: (value: T) => Either<E, R>): Either<E, R>;
+    bimap<S, R>(leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R>;
+    swap(): Either<T, E>;
+    leftMap<S>(fn: (error: E) => S): Either<S, T>;
+    orElse(fn: (error: E) => Either<E, T>): Either<E, T>;
+
+    fold<R>(leftFn: (error: E) => R, rightFn: (value: T) => R): R;
+    cata<R>(pattern: Either.Pattern<E, T, R>): R;
+
+    toMaybe(): Maybe<T>;
+}
+
+export namespace Either {
+    export interface Pattern<E, T, R> {
+        Left(error: E): R;
+        Right(value: T): R;
+    }
+}
