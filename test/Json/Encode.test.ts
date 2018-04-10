@@ -9,12 +9,22 @@ test('Json.Encode.nill', t => {
         Encode.nill.encode(0),
         'null'
     );
+
+    t.is(
+        Encode.nill.serialize(),
+        null
+    );
 });
 
 test('Json.Encode.string', t => {
     t.is(
         Encode.string('msg').encode(0),
         '"msg"'
+    );
+
+    t.is(
+        Encode.string('msg').serialize(),
+        'msg'
     );
 });
 
@@ -23,12 +33,22 @@ test('Json.Encode.number', t => {
         Encode.number(1).encode(0),
         '1'
     );
+
+    t.is(
+        Encode.number(1).serialize(),
+        1
+    );
 });
 
 test('Json.Encode.boolean', t => {
     t.is(
         Encode.boolean(false).encode(0),
         'false'
+    );
+
+    t.is(
+        Encode.boolean(false).serialize(),
+        false
     );
 });
 
@@ -40,6 +60,15 @@ test('Json.Encode.list', t => {
             Encode.number(1)
         ]).encode(0),
         '[1,2,1]'
+    );
+
+    t.deepEqual(
+        Encode.list([
+            Encode.number(1),
+            Encode.number(2),
+            Encode.number(1)
+        ]).serialize(),
+        [ 1, 2, 1 ]
     );
 
     t.is(
@@ -110,6 +139,23 @@ test('Json.Encode.object', t => {
             })
         }).encode(0),
         '{"foo":{"bar":{"baz":0}}}'
+    );
+
+    t.deepEqual(
+        Encode.object({
+            foo: Encode.object({
+                bar: Encode.object({
+                    baz: Encode.number(0)
+                })
+            })
+        }).serialize(),
+        {
+            foo: {
+                bar: {
+                    baz: 0
+                }
+            }
+        }
     );
 
     t.is(

@@ -1,31 +1,20 @@
-export type Serializable<T>
-    = null
-    | string
-    | boolean
-    | number
-    | Array<T>
-    | {[ K in keyof T ]: T[ K ] }
-    ;
+import * as Interfaces from '../Interfaces';
 
-export abstract class Value {
-    protected static run<T>(value: Value): Serializable<T> {
-        return value.serialize();
-    }
-
+export abstract class Value implements Interfaces.Json.Value {
     public encode(indent: number): string {
         return JSON.stringify(this.serialize(), null, indent);
     }
 
-    protected abstract serialize<T>(): Serializable<T>;
+    public abstract serialize(): Interfaces.Serializable;
 }
 
 namespace Encode {
-    export class Primitive<T extends Serializable<never>> extends Value {
+    export class Primitive<T extends null | string | boolean | number> extends Value {
         constructor(private readonly primitive: T) {
             super();
         }
 
-        protected serialize(): T {
+        public serialize(): T {
             return this.primitive;
         }
     }
@@ -35,11 +24,11 @@ namespace Encode {
             super();
         }
 
-        protected serialize<T extends Serializable<T>>(): Array<T> {
-            const result: Array<T> = [];
+        public serialize(): Array<Interfaces.Serializable> {
+            const result: Array<Interfaces.Serializable> = [];
 
             for (const value of this.list) {
-                result.push(Value.run(value) as T);
+                result.push(value.serialize());
             }
 
             return result;
@@ -51,16 +40,16 @@ namespace Encode {
             super();
         }
 
-        public serialize<T, K extends keyof T>(): {[ K in keyof T ]: T[ K ]} {
-            const result = {} as {[ K in keyof T ]: Serializable<T[ K ]>};
+        public serialize(): {[ key: string ]: Interfaces.Serializable } {
+            const result: {[ key: string ]: Interfaces.Serializable } = {};
 
-            for (const key in this.object as {[ K in keyof T ]: Value }) {
+            for (const key in this.object) {
                 if (this.object.hasOwnProperty(key)) {
-                    result[ key ] = Value.run<T[ K ]>(this.object[ key ]) ;
+                    result[ key ] = this.object[ key ].serialize();
                 }
             }
 
-            return result as T;
+            return result;
         }
     }
 }

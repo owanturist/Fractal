@@ -337,7 +337,7 @@ class Encoder extends Encode.Value {
         super();
     }
 
-    protected serialize(): any {
+    public serialize(): any {
         return this.js;
     }
 

@@ -1,3 +1,14 @@
+interface SerializableArray extends Array<Serializable> {}
+
+export type Serializable
+    = null
+    | string
+    | boolean
+    | number
+    | SerializableArray
+    | {[ key: string ]: Serializable }
+    ;
+
 export interface Maybe<T> {
     isNothing(): boolean;
     isJust(): boolean;
@@ -46,5 +57,12 @@ export namespace Either {
     export interface Pattern<E, T, R> {
         Left(error: E): R;
         Right(value: T): R;
+    }
+}
+
+export namespace Json {
+    export interface Value {
+        serialize(): Serializable;
+        encode(indent: number): string;
     }
 }
