@@ -559,7 +559,7 @@ test('Json.Decode.fromEither()', t => {
     };
 
     const decoder = Decode.string.chain(
-        str => Decode.fromEither(toDecimal(str))
+        str => Decode.Decoder.fromEither(toDecimal(str))
     );
 
     t.deepEqual(

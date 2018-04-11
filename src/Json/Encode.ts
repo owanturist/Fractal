@@ -1,14 +1,16 @@
 import * as Interfaces from '../Interfaces';
 
-export abstract class Value implements Interfaces.Json.Value {
-    public encode(indent: number): string {
-        return JSON.stringify(this.serialize(), null, indent);
-    }
-
-    public abstract serialize(): Interfaces.Serializable;
-}
+export type Value = Interfaces.Json.Value;
 
 namespace Encode {
+    abstract class Value implements Value {
+        public encode(indent: number): string {
+            return JSON.stringify(this.serialize(), null, indent);
+        }
+
+        public abstract serialize(): Interfaces.Serializable;
+    }
+
     export class Primitive<T extends null | string | boolean | number> extends Value {
         constructor(private readonly primitive: T) {
             super();

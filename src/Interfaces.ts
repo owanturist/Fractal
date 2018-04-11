@@ -1,3 +1,7 @@
+export type Readonly<T> = {
+    readonly [ K in keyof T ]: T[ K ];
+};
+
 interface SerializableArray extends Array<Serializable> {}
 
 export type Serializable
@@ -26,10 +30,10 @@ export interface Maybe<T> {
 }
 
 export namespace Maybe {
-    export interface Pattern<T, R> {
+    export type Pattern<T, R> = Readonly<{
         Nothing(): R;
         Just(value: T): R;
-    }
+    }>;
 }
 
 export interface Either<E, T> {
@@ -54,15 +58,23 @@ export interface Either<E, T> {
 }
 
 export namespace Either {
-    export interface Pattern<E, T, R> {
+    export type Pattern<E, T, R> = Readonly<{
         Left(error: E): R;
         Right(value: T): R;
-    }
+    }>;
 }
 
 export namespace Json {
     export interface Value {
         serialize(): Serializable;
         encode(indent: number): string;
+    }
+
+    export interface Decoder<T> {
+        map<R>(fn: (value: T) => R): Decoder<R>;
+        chain<R>(fn: (value: T) => Decoder<R>): Decoder<R>;
+
+        decode(input: any, origin?: Array<string>): Either<string, T>;
+        decodeJSON(input: string): Either<string, T>;
     }
 }
