@@ -14,11 +14,15 @@ export class List<T> implements Interfaces.List<T> {
     }
 
     public static empty<T>(): Interfaces.List<T> {
-        return new List([]);
+        return new List<T>([]);
     }
 
     public static singleton<T>(element: T): Interfaces.List<T> {
         return new List([ element ]);
+    }
+
+    public static fromArray<T>(array: Array<T>): Interfaces.List<T> {
+        return new List(array);
     }
 
     public static repeat<T>(count: number, element: T): Interfaces.List<T> {
@@ -312,7 +316,7 @@ export class List<T> implements Interfaces.List<T> {
     }
 
     public take(count: number): Interfaces.List<T> {
-        return new List(this.array.slice(0, number));
+        return new List(this.array.slice(0, count));
     }
 
     public takeWhile(fn: (element: T) => boolean): Interfaces.List<T> {
@@ -363,12 +367,12 @@ export class List<T> implements Interfaces.List<T> {
 
     public uniqueBy(fn: (element: T) => Interfaces.Comparable): Interfaces.List<T> {
         const result: Array<T> = [];
-        const acc: {[ key: string ]: boolean} | {[ key: number ]: boolean} = {};
+        const acc: {[ key: string ]: boolean} = {};
 
         for (const element of this.array) {
             const key = fn(element);
 
-            if (acc[ key ] !== true) {
+            if (!acc[ key ]) {
                 acc[ key ] = true;
                 result.push(element);
             }

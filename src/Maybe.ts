@@ -1,4 +1,10 @@
 import * as Interfaces from './Interfaces';
+import {
+    isArray
+} from './Basics';
+import {
+    List
+} from './List';
 
 export type Pattern<T, R> = Interfaces.Maybe.Pattern<T, R>;
 
@@ -31,10 +37,13 @@ export abstract class Maybe<T> implements Interfaces.Maybe<T> {
         return acc;
     }
 
-    public static all<T>(list: Array<Interfaces.Maybe<T>>): Interfaces.Maybe<Array<T>> {
+    public static all<T>(
+        list: Array<Interfaces.Maybe<T>> | Interfaces.List<Interfaces.Maybe<T>>
+    ): Interfaces.Maybe<Interfaces.List<T>> {
+        const list_: Array<Interfaces.Maybe<T>> = isArray(list) ? list : list.toArray();
         let acc = Just([] as Array<T>);
 
-        for (const item of list) {
+        for (const item of list_) {
             acc = acc.chain(
                 (arr: Array<T>): Interfaces.Maybe<Array<T>> => item.map(
                     (value: T): Array<T> => {
@@ -46,7 +55,7 @@ export abstract class Maybe<T> implements Interfaces.Maybe<T> {
             );
         }
 
-        return acc;
+        return acc.map(List.fromArray);
     }
 
     public abstract isNothing(): boolean;

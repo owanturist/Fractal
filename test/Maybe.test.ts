@@ -5,6 +5,9 @@ import {
     Nothing,
     Just
 } from '../src/Maybe';
+import {
+    List
+} from '../src/List';
 
 test('Maybe.fromNullable()', t => {
     const m1: Maybe<{}> = Maybe.fromNullable(undefined);
@@ -285,7 +288,7 @@ test('Maybe.props()', t => {
 test('Maybe.all()', t => {
     t.deepEqual(
         Maybe.all([]),
-        Just([])
+        Just(List.empty())
     );
 
     t.deepEqual(
@@ -295,7 +298,7 @@ test('Maybe.all()', t => {
 
     t.deepEqual(
         Maybe.all([ Just(1) ]),
-        Just([ 1 ])
+        Just(List.singleton(1))
     );
 
     t.deepEqual(
@@ -315,6 +318,6 @@ test('Maybe.all()', t => {
 
     t.deepEqual(
         Maybe.all([ Just(1), Just(2) ]),
-        Just([ 1, 2 ])
+        Just(List.of(1, 2))
     );
 });
