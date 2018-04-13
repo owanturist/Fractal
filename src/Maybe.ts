@@ -1,29 +1,41 @@
-import * as Interfaces from './Interfaces';
 import {
+    Readonly,
     isArray
 } from './Basics';
 import {
     List
 } from './List';
+import {
+    Either,
+    Left,
+    Right
+} from './Either';
 
-export type Pattern<T, R> = Interfaces.Maybe.Pattern<T, R>;
+export type Pattern<T, R> = Readonly<{
+    Nothing(): R;
+    Just(value: T): R;
+}>;
 
-export abstract class Maybe<T> implements Interfaces.Maybe<T> {
-    public static fromNullable<T>(value: undefined | null): Interfaces.Maybe<T>;
-    public static fromNullable<T>(value: T): Interfaces.Maybe<T>;
-    public static fromNullable<T>(value: T | null | undefined): Interfaces.Maybe<T> {
+export abstract class Maybe<T> {
+    public static fromNullable<T>(value: undefined | null): Maybe<T>;
+    public static fromNullable<T>(value: T): Maybe<T>;
+    public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
         return value == null ? Nothing() : Just(value);
     }
 
+    public static fromEither<E, T>(either: Either<E, T>): Maybe<T> {
+        return either.fold(Nothing, Just) as Maybe<T>;
+    }
+
     public static props<T extends object, K extends keyof T>(
-        config: {[ K in keyof T ]: Interfaces.Maybe<T[ K ]>}
-    ): Interfaces.Maybe<T> {
+        config: {[ K in keyof T ]: Maybe<T[ K ]>}
+    ): Maybe<T> {
         let acc = Just({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Interfaces.Maybe<T> => (config[ key ] as Interfaces.Maybe<T[ K ]>).map(
+                    (obj: T): Maybe<T> => (config[ key ] as Maybe<T[ K ]>).map(
                         (value: T[ K ]): T => {
                             obj[ key ] = value;
 
@@ -37,15 +49,13 @@ export abstract class Maybe<T> implements Interfaces.Maybe<T> {
         return acc;
     }
 
-    public static all<T>(
-        list: Array<Interfaces.Maybe<T>> | Interfaces.List<Interfaces.Maybe<T>>
-    ): Interfaces.Maybe<Interfaces.List<T>> {
-        const list_: Array<Interfaces.Maybe<T>> = isArray(list) ? list : list.toArray();
-        let acc = Just([] as Array<T>);
+    public static all<T>(list: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
+        const list_: Array<Maybe<T>> = isArray(list) ? list : list.toArray();
+        let acc = Just<Array<T>>([]);
 
         for (const item of list_) {
             acc = acc.chain(
-                (arr: Array<T>): Interfaces.Maybe<Array<T>> => item.map(
+                (arr: Array<T>): Maybe<Array<T>> => item.map(
                     (value: T): Array<T> => {
                         arr.push(value);
 
@@ -60,17 +70,19 @@ export abstract class Maybe<T> implements Interfaces.Maybe<T> {
 
     public abstract isNothing(): boolean;
     public abstract isJust(): boolean;
-    public abstract isEqual(another: Interfaces.Maybe<T>): boolean;
+    public abstract isEqual(another: Maybe<T>): boolean;
 
     public abstract getOrElse(defaults: T): T;
 
-    public abstract ap<R>(maybeFn: Interfaces.Maybe<(value: T) => R>): Interfaces.Maybe<R>;
-    public abstract map<R>(fn: (value: T) => R): Interfaces.Maybe<R>;
-    public abstract chain<R>(fn: (value: T) => Interfaces.Maybe<R>): Interfaces.Maybe<R>;
-    public abstract orElse(fn: () => Interfaces.Maybe<T>): Interfaces.Maybe<T>;
+    public abstract ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
+    public abstract map<R>(fn: (value: T) => R): Maybe<R>;
+    public abstract chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+    public abstract orElse(fn: () => Maybe<T>): Maybe<T>;
 
     public abstract fold<R>(nothingFn: () => R, justFn: (value: T) => R): R;
     public abstract cata<R>(pattern: Pattern<T, R>): R;
+
+    public abstract toEither<E>(error: E): Either<E, T>;
 }
 
 namespace Variations {
@@ -83,7 +95,7 @@ namespace Variations {
             return false;
         }
 
-        public isEqual(another: Interfaces.Maybe<T>): boolean {
+        public isEqual(another: Maybe<T>): boolean {
             return another.isNothing();
         }
 
@@ -91,19 +103,19 @@ namespace Variations {
             return defaults;
         }
 
-        public ap<R>(): Interfaces.Maybe<R> {
-            return this as any as Interfaces.Maybe<R>;
+        public ap<R>(): Maybe<R> {
+            return this as any as Maybe<R>;
         }
 
-        public map<R>(): Interfaces.Maybe<R> {
-            return this as any as Interfaces.Maybe<R>;
+        public map<R>(): Maybe<R> {
+            return this as any as Maybe<R>;
         }
 
-        public chain<R>(): Interfaces.Maybe<R> {
-            return this as any as Interfaces.Maybe<R>;
+        public chain<R>(): Maybe<R> {
+            return this as any as Maybe<R>;
         }
 
-        public orElse(fn: () => Interfaces.Maybe<T>): Interfaces.Maybe<T> {
+        public orElse(fn: () => Maybe<T>): Maybe<T> {
             return fn();
         }
 
@@ -113,6 +125,10 @@ namespace Variations {
 
         public cata<R>(pattern: Pattern<T, R>): R {
             return pattern.Nothing();
+        }
+
+        public toEither<E>(error: E): Either<E, T> {
+            return Left(error);
         }
     }
 
@@ -129,7 +145,7 @@ namespace Variations {
             return true;
         }
 
-        public isEqual(another: Interfaces.Maybe<T>): boolean {
+        public isEqual(another: Maybe<T>): boolean {
             return another.fold(
                 (): boolean => false,
                 (value: T): boolean => value === this.value
@@ -140,23 +156,23 @@ namespace Variations {
             return this.value;
         }
 
-        public ap<R>(maybeFn: Interfaces.Maybe<(value: T) => R>): Interfaces.Maybe<R> {
+        public ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R> {
             return maybeFn.map(
                 (fn: (value: T) => R): R => fn(this.value)
             );
         }
 
-        public map<R>(fn: (value: T) => R): Interfaces.Maybe<R> {
+        public map<R>(fn: (value: T) => R): Maybe<R> {
             return new Just(
                 fn(this.value)
             );
         }
 
-        public chain<R>(fn: (value: T) => Interfaces.Maybe<R>): Interfaces.Maybe<R> {
+        public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
             return fn(this.value);
         }
 
-        public orElse(): Interfaces.Maybe<T> {
+        public orElse(): Maybe<T> {
             return this;
         }
 
@@ -167,9 +183,13 @@ namespace Variations {
         public cata<R>(pattern: Pattern<T, R>): R {
             return pattern.Just(this.value);
         }
+
+        public toEither<E>(): Either<E, T> {
+            return Right(this.value);
+        }
     }
 }
 
-export const Nothing = <T>(): Interfaces.Maybe<T> => new Variations.Nothing();
+export const Nothing = <T>(): Maybe<T> => new Variations.Nothing();
 
-export const Just = <T>(value: T): Interfaces.Maybe<T> => new Variations.Just(value);
+export const Just = <T>(value: T): Maybe<T> => new Variations.Just(value);

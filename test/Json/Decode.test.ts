@@ -11,6 +11,9 @@ import {
     Left,
     Right
 } from '../../src/Either';
+import {
+    List
+} from '../../src/List';
 import * as Decode from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
@@ -157,7 +160,7 @@ test('Json.Decode.oneOf', t => {
             Decode.number,
             Decode.nill(0)
         ])).decode([1, 2, null, 1]),
-        Right([1, 2, 0, 1])
+        Right(List.of(1, 2, 0, 1))
     );
 });
 
@@ -266,7 +269,7 @@ test('Json.Decode.list', t => {
 
     t.deepEqual(
         decoder.decode([ 'str1', 'str2' ]),
-        Right([ 'str1', 'str2' ])
+        Right(List.of('str1', 'str2'))
     );
 });
 
@@ -304,8 +307,8 @@ test('Json.Decode.dict', t => {
     );
 });
 
-test('Json.Decode.keyValuePairs', t => {
-    const decoder = Decode.keyValuePairs(Decode.string);
+test('Json.Decode.keyValue', t => {
+    const decoder = Decode.keyValue(Decode.string);
 
     t.deepEqual(
         decoder.decode(1),
@@ -334,10 +337,10 @@ test('Json.Decode.keyValuePairs', t => {
 
     t.deepEqual(
         decoder.decode({ s1: 'str1', s2: 'str2' }),
-        Right([
+        Right(List.of(
             [ 's1', 'str1' ],
             [ 's2', 'str2' ]
-        ])
+        ))
     );
 });
 
@@ -435,7 +438,7 @@ test('Json.Decode.at', t => {
 test('Json.Decode.lazy', t => {
     interface Comment {
         message: string;
-        responses: Array<Comment>;
+        responses: List<Comment>;
     }
 
     const decoder: Decode.Decoder<Comment> = Decode.props({
@@ -472,19 +475,19 @@ test('Json.Decode.lazy', t => {
         }),
         Right({
             message: 'msg',
-            responses: [{
+            responses: List.of({
                 message: 'msg-1',
-                responses: []
+                responses: List.empty()
             }, {
                 message: 'msg-2',
-                responses: [{
+                responses: List.of({
                     message: 'msg-2-1',
-                    responses: []
+                    responses: List.empty()
                 }, {
                     message: 'msg-2-2',
-                    responses: []
-                }]
-            }]
+                    responses: List.empty()
+                })
+            })
         })
     );
 });
@@ -669,14 +672,8 @@ test('Json.Decode realworld example', t => {
     interface User {
         id: number;
         username: string;
-        comments: Array<Comment>;
+        comments: List<Comment>;
     }
-
-    const user = (id: number, username: string, comments: Array<Comment>): User => ({
-        id,
-        username,
-        comments
-    });
 
     const userDecoder: Decode.Decoder<User> = Decode.props({
         id: Decode.field('id', Decode.number),
@@ -687,14 +684,8 @@ test('Json.Decode realworld example', t => {
     interface Comment {
         id: number;
         text: string;
-        responses: Array<Response>;
+        responses: List<Response>;
     }
-
-    const comment = (id: number, text: string, responses: Array<Response>): Comment => ({
-        id,
-        text,
-        responses
-    });
 
     const commentDecoder: Decode.Decoder<Comment> = Decode.props({
         id: Decode.field('id', Decode.number),
@@ -708,12 +699,6 @@ test('Json.Decode realworld example', t => {
         user: User;
     }
 
-    const response = (id: number, text: string, user: User): Response => ({
-        id,
-        text,
-        user
-    });
-
     const responseDecoder: Decode.Decoder<Response> = Decode.props({
         id: Decode.field('id', Decode.number),
         text: Decode.field('text', Decode.string),
@@ -721,48 +706,92 @@ test('Json.Decode realworld example', t => {
     });
 
     t.deepEqual(
-        userDecoder.decode(
-            user(0, 'u-zero', [
-                comment(0, 'c-zero', []),
-                comment(1, 'c-one', []),
-                comment(2, 'c-two', [
-                    response(0, 'r-zero', user(1, 'u-one', [])),
-                    response(1, 'r-one', user(2, 'u-two', [])),
-                    {
-                        id: 2,
-                        text: 0,
-                        user: null
-                    } as any
-                ])
-            ])
-        ),
+        userDecoder.decode({
+            id: 0,
+            username: 'u-zero',
+            comments: [
+                {
+                    id: 0,
+                    text: 'c-zero',
+                    responses: []
+                },
+                {
+                    id: 1,
+                    text: 'c-one',
+                    responses: []
+                },
+                {
+                    id: 2,
+                    text: 'c-two',
+                    responses: [
+                        {
+                            id: 0,
+                            text: 'r-zero',
+                            user: {
+                                id: 1,
+                                username: 'u-one',
+                                comments: []
+                            }
+                        },
+                        {
+                            id: 1,
+                            text: 'r-one',
+                            user: {
+                                id: 2,
+                                username: 'u-two',
+                                comments: []
+                            }
+                        },
+                        {
+                            id: 2,
+                            text: 0,
+                            user: null
+                        }
+                    ]
+                }
+            ]
+        }),
         Left('Expecting a String at _.comments[2].responses[2].text but instead got: 0')
     );
 
     t.deepEqual(
-        userDecoder.decode(
-            user(0, 'u-zero', [
-                comment(0, 'c-zero', [
-                    response(0, 'r-zero', user(1, 'u-one', []))
-                ])
-            ])
-        ),
+        userDecoder.decode({
+            id: 0,
+            username: 'u-zero',
+            comments: [
+                {
+                    id: 0,
+                    text: 'c-zero',
+                    responses: [
+                        {
+                            id: 0,
+                            text: 'r-zero',
+                            user: {
+                                id: 1,
+                                username: 'u-one',
+                                comments: []
+                            }
+                        }
+                    ]
+                }
+            ]
+        }),
         Right({
             id: 0,
             username: 'u-zero',
-            comments: [{
+            comments: List.singleton({
                 id: 0,
                 text: 'c-zero',
-                responses: [{
+                responses: List.singleton({
                     id: 0,
                     text: 'r-zero',
                     user: {
                         id: 1,
                         username: 'u-one',
-                        comments: []
+                        comments: List.empty()
                     }
-                }]
-            }]
+                })
+            })
         })
     );
 });

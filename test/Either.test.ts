@@ -9,6 +9,9 @@ import {
     Left,
     Right
 } from '../src/Either';
+import {
+    List
+} from '../src/List';
 
 test('Either.fromNullable()', t => {
     const e1: Either<string, number> = Either.fromNullable('err', undefined);
@@ -345,7 +348,7 @@ test('Either.props()', t => {
 test('Either.all()', t => {
     t.deepEqual(
         Either.all([]),
-        Right([])
+        Right(List.empty())
     );
 
     t.deepEqual(
@@ -355,7 +358,7 @@ test('Either.all()', t => {
 
     t.deepEqual(
         Either.all([ Right(1) ]),
-        Right([ 1 ])
+        Right(List.singleton(1))
     );
 
     t.deepEqual(
@@ -375,6 +378,6 @@ test('Either.all()', t => {
 
     t.deepEqual(
         Either.all([ Right(1), Right(2) ]),
-        Right([ 1, 2 ])
+        Right(List.of(1, 2))
     );
 });

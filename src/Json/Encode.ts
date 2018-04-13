@@ -1,17 +1,26 @@
-import * as Interfaces from '../Interfaces';
+import {
+    Serializable,
+    isArray
+} from '../Basics';
+import {
+    List as List_
+} from '../List';
 
-export type Value = Interfaces.Json.Value;
+export interface Value {
+    serialize(): Serializable;
+    encode(indent: number): string;
+}
 
 namespace Encode {
-    abstract class Value implements Value {
+    abstract class Encoder implements Value {
         public encode(indent: number): string {
             return JSON.stringify(this.serialize(), null, indent);
         }
 
-        public abstract serialize(): Interfaces.Serializable;
+        public abstract serialize(): Serializable;
     }
 
-    export class Primitive<T extends null | string | boolean | number> extends Value {
+    export class Primitive<T extends null | string | boolean | number> extends Encoder {
         constructor(private readonly primitive: T) {
             super();
         }
@@ -21,15 +30,16 @@ namespace Encode {
         }
     }
 
-    export class List extends Value {
-        constructor(private readonly list: Array<Value>) {
+    export class List extends Encoder {
+        constructor(private readonly list: List_<Value> | Array<Value>) {
             super();
         }
 
-        public serialize(): Array<Interfaces.Serializable> {
-            const result: Array<Interfaces.Serializable> = [];
+        public serialize(): Array<Serializable> {
+            const list = isArray(this.list) ? this.list : this.list.toArray();
+            const result: Array<Serializable> = [];
 
-            for (const value of this.list) {
+            for (const value of list) {
                 result.push(value.serialize());
             }
 
@@ -37,13 +47,13 @@ namespace Encode {
         }
     }
 
-    export class Object extends Value {
+    export class Object extends Encoder {
         constructor(private readonly object: {[ key: string ]: Value}) {
             super();
         }
 
-        public serialize(): {[ key: string ]: Interfaces.Serializable } {
-            const result: {[ key: string ]: Interfaces.Serializable } = {};
+        public serialize(): {[ key: string ]: Serializable } {
+            const result: {[ key: string ]: Serializable } = {};
 
             for (const key in this.object) {
                 if (this.object.hasOwnProperty(key)) {
@@ -62,5 +72,5 @@ export const string = (string: string): Value => new Encode.Primitive(string);
 export const number = (number: number): Value => new Encode.Primitive(number);
 export const boolean = (boolean: boolean): Value => new Encode.Primitive(boolean);
 
-export const list = (list: Array<Value>): Value => new Encode.List(list);
+export const list = (list: List_<Value> | Array<Value>): Value => new Encode.List(list);
 export const object = (object: {[ key: string ]: Value }): Value => new Encode.Object(object);
