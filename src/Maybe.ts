@@ -27,16 +27,14 @@ export abstract class Maybe<T> {
         return either.fold(Nothing, Just) as Maybe<T>;
     }
 
-    public static props<T extends object, K extends keyof T>(
-        config: {[ K in keyof T ]: Maybe<T[ K ]>}
-    ): Maybe<T> {
+    public static props<T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
         let acc = Just({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Maybe<T> => (config[ key ] as Maybe<T[ K ]>).map(
-                        (value: T[ K ]): T => {
+                    (obj: T): Maybe<T> => config[ key ].map(
+                        (value: T[ keyof T ]): T => {
                             obj[ key ] = value;
 
                             return obj;

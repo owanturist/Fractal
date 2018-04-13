@@ -6,6 +6,10 @@ import {
     Just
 } from '../src/Maybe';
 import {
+    Left,
+    Right
+} from '../src/Either';
+import {
     List
 } from '../src/List';
 
@@ -15,8 +19,8 @@ test('Maybe.fromNullable()', t => {
     const m3: Maybe<number> = Maybe.fromNullable(0);
     const m4: Maybe<string> = Maybe.fromNullable('str');
     const m5: Maybe<boolean> = Maybe.fromNullable(true);
-    const m6: Maybe<number> = Maybe.fromNullable<number>(null);
-    const m7: Maybe<boolean> = Maybe.fromNullable<boolean>(null);
+    const m6: Maybe<number> = Maybe.fromNullable(null);
+    const m7: Maybe<boolean> = Maybe.fromNullable(null);
 
     t.deepEqual(m1, Nothing());
     t.deepEqual(m2, Nothing());
@@ -27,162 +31,15 @@ test('Maybe.fromNullable()', t => {
     t.deepEqual(m7, Nothing());
 });
 
-test('Maybe.isNothing()', t => {
-    t.true(Nothing().isNothing());
-
-    t.false(Just(1).isNothing());
-});
-
-test('Maybe.isJust()', t => {
-    t.false(Nothing().isJust());
-
-    t.true(Just(1).isJust());
-});
-
-test('Maybe.isEqual()', t => {
-    t.false(
-        Just(1).isEqual(Nothing())
-    );
-
-    t.false(
-        Nothing().isEqual(Just(1))
-    );
-
-    t.false(
-        Just(1).isEqual(Just(0))
-    );
-
-    t.false(
-        Just([]).isEqual(Just([]))
-    );
-
-    t.true(
-        Just(1).isEqual(Just(1))
-    );
-
-    t.true(
-        Nothing().isEqual(Nothing())
-    );
-});
-
-test('Maybe.getOrElse()', t => {
-    t.is(
-        Nothing().getOrElse(1),
-        1
-    );
-
-    t.is(
-        Just(0).getOrElse(1),
-        0
-    );
-});
-
-test('Maybe.ap()', t => {
+test('Maybe.fromEither()', t => {
     t.deepEqual(
-        Nothing().ap(Nothing()),
+        Maybe.fromEither(Left('err')),
         Nothing()
     );
 
     t.deepEqual(
-        Nothing<number>().ap(Just((a: number) => a * 2)),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Just(0).ap(Nothing()),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Just(1).ap(Just((a: number) => a * 2)),
-        Just(2)
-    );
-});
-
-test('Maybe.map()', t => {
-    t.deepEqual(
-        Nothing<number>().map(a => a * 2),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Just(1).map(a => a * 2),
-        Just(2)
-    );
-
-    interface Foo {
-        bar: Maybe<number>;
-    }
-
-    const foo: Foo = {
-        bar: Nothing()
-    };
-
-    t.deepEqual(
-        foo.bar.map(a => a * 2),
-        Nothing()
-    );
-});
-
-test('Maybe.chain()', t => {
-    t.deepEqual(
-        Nothing().chain(Nothing),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Just(1).chain(Nothing),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Nothing<number>().chain(a => Just(a * 2)),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Just(1).chain(a => Just(a * 2)),
-        Just(2)
-    );
-});
-
-test('Maybe.orElse()', t => {
-    t.deepEqual(
-        Nothing().orElse(Nothing),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Just(1).orElse(Nothing),
+        Maybe.fromEither(Right(1)),
         Just(1)
-    );
-
-    t.deepEqual(
-        Nothing().orElse(() => Just(2)),
-        Just(2)
-    );
-
-    t.deepEqual(
-        Just(1).orElse(() => Just(2)),
-        Just(1)
-    );
-});
-
-test('Maybe.cata()', t => {
-    t.is(
-        Nothing<number>().cata({
-            Nothing: () => 1,
-            Just: a => a * 2
-        }),
-        1
-    );
-
-    t.is(
-        Just(1).cata({
-            Nothing: () => 1,
-            Just: a => a * 2
-        }),
-        2
     );
 });
 
@@ -269,13 +126,15 @@ test('Maybe.props()', t => {
         Nothing()
     );
 
+    const shape = {
+        foo: Just('foo'),
+        bar: Maybe.props({
+            baz: Just(1)
+        })
+    };
+
     t.deepEqual(
-        Maybe.props({
-            foo: Just('foo'),
-            bar: Maybe.props({
-                baz: Just(1)
-            })
-        }),
+        Maybe.props(shape),
         Just({
             foo: 'foo',
             bar: {
@@ -283,9 +142,19 @@ test('Maybe.props()', t => {
             }
         })
     );
+
+    t.deepEqual(
+        shape,
+        {
+            foo: Just('foo'),
+            bar: Maybe.props({
+                baz: Just(1)
+            })
+        }
+    );
 });
 
-test('Maybe.all()', t => {
+test('Maybe.all<Array>()', t => {
     t.deepEqual(
         Maybe.all([]),
         Just(List.empty())
@@ -316,8 +185,235 @@ test('Maybe.all()', t => {
         Nothing()
     );
 
+    const list = [ Just(1), Just(2) ];
+
     t.deepEqual(
-        Maybe.all([ Just(1), Just(2) ]),
+        Maybe.all(list),
         Just(List.of(1, 2))
+    );
+
+    t.deepEqual(
+        list,
+        [ Just(1), Just(2) ]
+    );
+});
+
+test('Maybe.all<List>()', t => {
+    t.deepEqual(
+        Maybe.all(List.empty()),
+        Just(List.empty())
+    );
+
+    t.deepEqual(
+        Maybe.all(List.singleton(Nothing())),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Maybe.all(List.singleton(Just(1))),
+        Just(List.singleton(1))
+    );
+
+    t.deepEqual(
+        Maybe.all(List.of(Nothing(), Nothing())),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Maybe.all(List.of(Nothing(), Just(2))),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Maybe.all(List.of(Just(1), Nothing())),
+        Nothing()
+    );
+
+    const list = List.of(Just(1), Just(2));
+
+    t.deepEqual(
+        Maybe.all(list),
+        Just(List.of(1, 2))
+    );
+
+    t.deepEqual(
+        list,
+        List.of(Just(1), Just(2))
+    );
+});
+
+test('Maybe.isNothing()', t => {
+    t.true(Nothing().isNothing());
+
+    t.false(Just(1).isNothing());
+});
+
+test('Maybe.isJust()', t => {
+    t.false(Nothing().isJust());
+
+    t.true(Just(1).isJust());
+});
+
+test('Maybe.isEqual()', t => {
+    t.false(
+        Just(1).isEqual(Nothing())
+    );
+
+    t.false(
+        Nothing().isEqual(Just(1))
+    );
+
+    t.false(
+        Just(1).isEqual(Just(0))
+    );
+
+    t.false(
+        Just([]).isEqual(Just([]))
+    );
+
+    t.true(
+        Just(1).isEqual(Just(1))
+    );
+
+    t.true(
+        Nothing().isEqual(Nothing())
+    );
+});
+
+test('Maybe.getOrElse()', t => {
+    t.is(
+        Nothing().getOrElse(1),
+        1
+    );
+
+    t.is(
+        Just(0).getOrElse(1),
+        0
+    );
+});
+
+test('Maybe.ap()', t => {
+    t.deepEqual(
+        Nothing().ap(Nothing()),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Nothing<number>().ap(Just((a: number) => a * 2)),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Just(0).ap(Nothing()),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Just(1).ap(Just((a: number) => a * 2)),
+        Just(2)
+    );
+});
+
+test('Maybe.map()', t => {
+    t.deepEqual(
+        Nothing<number>().map(a => a * 2),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Just(1).map(a => a * 2),
+        Just(2)
+    );
+});
+
+test('Maybe.chain()', t => {
+    t.deepEqual(
+        Nothing().chain(Nothing),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Just(1).chain(Nothing),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Nothing<number>().chain(a => Just(a * 2)),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Just(1).chain(a => Just(a * 2)),
+        Just(2)
+    );
+});
+
+test('Maybe.orElse()', t => {
+    t.deepEqual(
+        Nothing().orElse(Nothing),
+        Nothing()
+    );
+
+    t.deepEqual(
+        Just(1).orElse(Nothing),
+        Just(1)
+    );
+
+    t.deepEqual(
+        Nothing().orElse(() => Just(2)),
+        Just(2)
+    );
+
+    t.deepEqual(
+        Just(1).orElse(() => Just(2)),
+        Just(1)
+    );
+});
+
+test('Maybe.fold()', t => {
+    t.is(
+        Nothing<number>().fold(
+            () => 1,
+            a => a * 2
+        ),
+        1
+    );
+
+    t.is(
+        Just(1).fold(
+            () => 1,
+            a => a * 2
+        ),
+        2
+    );
+});
+
+test('Maybe.cata()', t => {
+    t.is(
+        Nothing<number>().cata({
+            Nothing: () => 1,
+            Just: a => a * 2
+        }),
+        1
+    );
+
+    t.is(
+        Just(1).cata({
+            Nothing: () => 1,
+            Just: a => a * 2
+        }),
+        2
+    );
+});
+
+test('Maybe.toEither()', t => {
+    t.deepEqual(
+        Nothing().toEither('err'),
+        Left('err')
+    );
+
+    t.deepEqual(
+        Just(1).toEither('err'),
+        Right(1)
     );
 });
