@@ -1,11 +1,17 @@
 import {
-    Value
-} from '../Basics';
-import {
     List as List_
 } from '../List';
 
-export type Value = Value;
+interface ValueArray extends Array<Value> {}
+
+export type Value
+    = null
+    | string
+    | boolean
+    | number
+    | ValueArray
+    | {[ key: string ]: Value }
+    ;
 
 export abstract class Encoder {
     public encode(indent: number): string {

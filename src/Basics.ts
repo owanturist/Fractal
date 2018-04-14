@@ -2,17 +2,6 @@ export type Readonly<T> = {
     readonly [ K in keyof T ]: T[ K ];
 };
 
-interface ValueArray extends Array<Value> {}
-
-export type Value
-    = null
-    | string
-    | boolean
-    | number
-    | ValueArray
-    | {[ key: string ]: Value }
-    ;
-
 export type Comparable = string | number;
 
 export abstract class Order {
@@ -84,15 +73,3 @@ export namespace Order {
         GT(): T;
     }>;
 }
-
-export const isString = (value: Value): value is string => typeof value === 'string';
-
-export const isNumber = (value: Value): value is number => typeof value === 'number';
-
-export const isBoolean = (value: Value): value is boolean => typeof value === 'boolean';
-
-export const isArray = (input: Value): input is Array<Value> => input instanceof Array;
-
-export const isObject = (input: Value): input is {[ key: string ]: Value} => {
-    return typeof input === 'object' && input !== null && !isArray(input);
-};
