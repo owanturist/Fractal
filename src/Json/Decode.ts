@@ -396,7 +396,7 @@ export const fail = <T>(msg: string): Decoder<T> => new Decode.Fail(msg);
 export const succeed = <T>(value: T): Decoder<T> => new Decode.Succeed(value);
 export const oneOf = <T>(decoders: List_<Decoder<T>> | Array<Decoder<T>>): Decoder<T> => {
     return new Decode.OneOf(
-        List_.isList(decoders) ? decoders.toArray() : decoders
+        List_.toArray(decoders)
     );
 };
 
@@ -410,7 +410,7 @@ export const props = <T>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T
 export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Decode.Index(index, decoder);
 export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Decode.Field(key, decoder);
 export const at = <T>(keys: List_<string> | Array<string>, decoder: Decoder<T>): Decoder<T> => {
-    const keys_ = List_.isList(keys) ? keys.toArray() : keys;
+    const keys_ = List_.toArray(keys);
     let acc = decoder;
 
     for (let i = keys_.length - 1; i >= 0; i--) {

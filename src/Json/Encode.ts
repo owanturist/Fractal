@@ -75,7 +75,7 @@ export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boole
 
 export const list = (listOrArray: List_<Encoder> | Array<Encoder>): Encoder => {
     return new Encode.List(
-        List_.isList(listOrArray) ? listOrArray.toArray() : listOrArray
+        List_.toArray(listOrArray)
     );
 };
 export const object = (object: {[ key: string ]: Encoder }): Encoder => new Encode.Object(object);

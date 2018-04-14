@@ -50,7 +50,7 @@ export abstract class Maybe<T> {
     }
 
     public static all<T>(listOrArray: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
-        const array: Array<Maybe<T>> = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
+        const array: Array<Maybe<T>> = List.toArray(listOrArray);
         let acc = Just<Array<T>>([]);
 
         for (const item of array) {
