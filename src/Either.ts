@@ -30,16 +30,14 @@ export abstract class Either<E, T> implements Either<E, T> {
         ) as Either<E, T>;
     }
 
-    public static props<E, T extends object, K extends keyof T>(
-        config: {[ K in keyof T ]: Either<E, T[ K ]>}
-    ): Either<E, T> {
+    public static props<E, T>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
         let acc = Right<E, T>({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Either<E, T> => (config[ key ] as Either<E, T[ K ]>).map(
-                        (value: T[ K ]): T => {
+                    (obj: T): Either<E, T> => config[ key ].map(
+                        (value: T[ keyof T ]): T => {
                             obj[ key ] = value;
 
                             return obj;
@@ -159,7 +157,7 @@ namespace Variations {
         }
 
         public toMaybe(): Maybe<T> {
-            return Nothing<T>();
+            return Nothing();
         }
     }
 

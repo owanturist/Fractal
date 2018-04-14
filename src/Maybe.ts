@@ -3,13 +3,13 @@ import {
     isArray
 } from './Basics';
 import {
-    List
-} from './List';
-import {
     Either,
     Left,
     Right
 } from './Either';
+import {
+    List
+} from './List';
 
 export type Pattern<T, R> = Readonly<{
     Nothing(): R;
@@ -17,7 +17,7 @@ export type Pattern<T, R> = Readonly<{
 }>;
 
 export abstract class Maybe<T> {
-    public static fromNullable<T>(value: undefined | null): Maybe<T>;
+    public static fromNullable<T>(value: null | undefined): Maybe<T>;
     public static fromNullable<T>(value: T): Maybe<T>;
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
         return value == null ? Nothing() : Just(value);

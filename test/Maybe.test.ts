@@ -154,7 +154,7 @@ test('Maybe.props()', t => {
     );
 });
 
-test('Maybe.all<Array>()', t => {
+test('Maybe.all()', t => {
     t.deepEqual(
         Maybe.all([]),
         Just(List.empty())
@@ -185,48 +185,17 @@ test('Maybe.all<Array>()', t => {
         Nothing()
     );
 
-    const list = [ Just(1), Just(2) ];
+    const array = [ Just(1), Just(2) ];
 
     t.deepEqual(
-        Maybe.all(list),
+        Maybe.all(array),
         Just(List.of(1, 2))
     );
 
     t.deepEqual(
-        list,
-        [ Just(1), Just(2) ]
-    );
-});
-
-test('Maybe.all<List>()', t => {
-    t.deepEqual(
-        Maybe.all(List.empty()),
-        Just(List.empty())
-    );
-
-    t.deepEqual(
-        Maybe.all(List.singleton(Nothing())),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Maybe.all(List.singleton(Just(1))),
-        Just(List.singleton(1))
-    );
-
-    t.deepEqual(
-        Maybe.all(List.of(Nothing(), Nothing())),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Maybe.all(List.of(Nothing(), Just(2))),
-        Nothing()
-    );
-
-    t.deepEqual(
-        Maybe.all(List.of(Just(1), Nothing())),
-        Nothing()
+        array,
+        [ Just(1), Just(2) ],
+        'checking of Array immutability'
     );
 
     const list = List.of(Just(1), Just(2));
@@ -238,7 +207,8 @@ test('Maybe.all<List>()', t => {
 
     t.deepEqual(
         list,
-        List.of(Just(1), Just(2))
+        List.of(Just(1), Just(2)),
+        'checking of List immutability'
     );
 });
 
