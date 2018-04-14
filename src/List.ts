@@ -1,7 +1,6 @@
 import {
     Comparable,
-    Order,
-    isArray
+    Order
 } from './Basics';
 import {
     Maybe,
@@ -10,6 +9,10 @@ import {
 } from './Maybe';
 
 export abstract class List<T> {
+    public static isList(something: any): something is List<any> {
+        return something instanceof List;
+    }
+
     public static of<T>(...elements: Array<T>): List<T> {
         return new ListImpl(elements);
     }
@@ -57,8 +60,8 @@ export abstract class List<T> {
     }
 
     public static zip<T, R>(left: List<T> | Array<T>, right: List<R> | Array<R>): List<[ T, R ]> {
-        const left_: Array<T> = isArray(left) ? left : left.toArray();
-        const right_: Array<R> = isArray(right) ? right : right.toArray();
+        const left_: Array<T> = List.isList(left) ? left.toArray() : left;
+        const right_: Array<R> = List.isList(right) ? right.toArray() : right;
         const result: Array<[ T, R ]> = [];
 
         for (let index = 0; index < left_.length && index < right_.length; index++) {
@@ -68,12 +71,12 @@ export abstract class List<T> {
         return new ListImpl(result);
     }
 
-    public static unzip<T, R>(list: List<[ T, R ]> | Array<[ T, R ]>): [ List<T>, List<R> ] {
-        const list_: Array<[ T, R ]> = isArray(list) ? list : list.toArray();
+    public static unzip<T, R>(listOrArray: List<[ T, R ]> | Array<[ T, R ]>): [ List<T>, List<R> ] {
+        const array: Array<[ T, R ]> = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
         const left: Array<T> = [];
         const right: Array<R> = [];
 
-        for (const [ leftElement, rightElement ] of list_) {
+        for (const [ leftElement, rightElement ] of array) {
             left.push(leftElement);
             right.push(rightElement);
         }
@@ -81,33 +84,33 @@ export abstract class List<T> {
         return [ new ListImpl(left), new ListImpl(right) ];
     }
 
-    public static sum(list: List<number> | Array<number>): number {
-        const list_: Array<number> = isArray(list) ? list : list.toArray();
+    public static sum(listOrArray: List<number> | Array<number>): number {
+        const array: Array<number> = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
         let result = 0;
 
-        for (const element of list_) {
+        for (const element of array) {
             result += element;
         }
 
         return result;
     }
 
-    public static product(list: List<number> | Array<number>): number {
-        const list_: Array<number> = isArray(list) ? list : list.toArray();
+    public static product(listOrArray: List<number> | Array<number>): number {
+        const array: Array<number> = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
         let result = 1;
 
-        for (const element of list_) {
+        for (const element of array) {
             result *= element;
         }
 
         return result;
     }
 
-    public static minimum(list: List<Comparable> | Array<Comparable>): Maybe<Comparable> {
-        const list_: Array<Comparable> = isArray(list) ? list : list.toArray();
+    public static minimum(listOrArra: List<Comparable> | Array<Comparable>): Maybe<Comparable> {
+        const array: Array<Comparable> = List.isList(listOrArra) ? listOrArra.toArray() : listOrArra;
         let result = Nothing<Comparable>();
 
-        for (const element of list_) {
+        for (const element of array) {
             result = result.fold(
                 (): Maybe<Comparable> => Just(element),
                 (prev: Comparable): Maybe<Comparable> => {
@@ -119,11 +122,11 @@ export abstract class List<T> {
         return result;
     }
 
-    public static maximum(list: List<Comparable> | Array<Comparable>): Maybe<Comparable> {
-        const list_: Array<Comparable> = isArray(list) ? list : list.toArray();
+    public static maximum(listOrArray: List<Comparable> | Array<Comparable>): Maybe<Comparable> {
+        const array: Array<Comparable> = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
         let result = Nothing<Comparable>();
 
-        for (const element of list_) {
+        for (const element of array) {
             result = result.fold(
                 (): Maybe<Comparable> => Just(element),
                 (prev: Comparable): Maybe<Comparable> => {
@@ -142,9 +145,9 @@ export abstract class List<T> {
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
-                const value: List<T[ keyof T ]> | Array<T[ keyof T ]> = config[ key ];
+                const listOrArray: List<T[ keyof T ]> | Array<T[ keyof T ]> = config[ key ];
 
-                config_[ key ] = isArray(value) ? value : value.toArray();
+                config_[ key ] = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
 
                 maxLength = config_[ key ].length > maxLength ? config_[ key ].length : maxLength;
             }
@@ -166,12 +169,12 @@ export abstract class List<T> {
     }
 
     public static all<T>(listOfLists: List<List<T>> | List<Array<T>> | Array<List<T>> | Array<Array<T>>): List<T> {
-        const listOfLists_: Array<List<T> | Array<T>> = isArray(listOfLists) ? listOfLists : listOfLists.toArray();
+        const listOfLists_: Array<List<T> | Array<T>> = List.isList(listOfLists) ? listOfLists.toArray() : listOfLists;
         let result: Array<T> = [];
 
-        for (const list of listOfLists_) {
+        for (const listOrArray of listOfLists_) {
             result = result.concat(
-                isArray(list) ? list : list.toArray()
+                List.isList(listOrArray) ? listOrArray.toArray() : listOrArray
             );
         }
 
@@ -201,8 +204,8 @@ export abstract class List<T> {
 
     public abstract updateIf(fn: (element: T) => Maybe<T>): List<T>;
     public abstract cons(element: T): List<T>;
-    public abstract append(another: List<T> | Array<T>): List<T>;
-    public abstract concat(another: List<T> | Array<T>): List<T>;
+    public abstract append(listOrArray: List<T> | Array<T>): List<T>;
+    public abstract concat(listOrArray: List<T> | Array<T>): List<T>;
     public abstract intersperse(gap: T): List<T>;
     public abstract partition(fn: (element: T) => boolean): [ List<T>, List<T> ];
     public abstract map<R>(fn: (element: T) => R): List<R>;
@@ -437,19 +440,19 @@ class ListImpl<T> extends List<T> {
         );
     }
 
-    public append(another: List<T> | Array<T>): List<T> {
-        const another_ = isArray(another) ? another : another.toArray();
+    public append(listOrArray: List<T> | Array<T>): List<T> {
+        const array = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
 
         return new ListImpl(
-            another_.concat(this.array)
+            array.concat(this.array)
         );
     }
 
-    public concat(another: List<T> | Array<T>): List<T> {
-        const another_ = isArray(another) ? another : another.toArray();
+    public concat(listOrArray: List<T> | Array<T>): List<T> {
+        const array = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
 
         return new ListImpl(
-            this.array.concat(another_)
+            this.array.concat(array)
         );
     }
 
@@ -492,10 +495,10 @@ class ListImpl<T> extends List<T> {
         let result: Array<R> = [];
 
         for (const element of this.array) {
-            const next = fn(element);
+            const listOrArray = fn(element);
 
             result = result.concat(
-                isArray(next) ? next : next.toArray()
+                List.isList(listOrArray) ? listOrArray.toArray() : listOrArray
             );
         }
 

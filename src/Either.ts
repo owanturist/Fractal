@@ -1,6 +1,5 @@
 import {
-    Readonly,
-    isArray
+    Readonly
 } from './Basics';
 import {
     Maybe,
@@ -51,7 +50,7 @@ export abstract class Either<E, T> implements Either<E, T> {
     }
 
     public static all<E, T>(listOrArray: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {
-        const array = isArray(listOrArray) ? listOrArray : listOrArray.toArray();
+        const array = List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
         let acc = Right<E, Array<T>>([]);
 
         for (const item of array) {

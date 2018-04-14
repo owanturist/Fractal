@@ -125,14 +125,14 @@ test('Json.Decode.value', t => {
         },
         Right: value => {
             t.deepEqual(
-                value.serialize(),
+                value,
                 { foo: 'bar' }
             );
         }
     });
 });
 
-test('Json.Decode.nill', t => {
+test('Json.Decode.nill()', t => {
     t.deepEqual(
         Decode.nill(0).decode(0),
         Left('Expecting null but instead got: 0')
@@ -151,21 +151,21 @@ test('Json.Decode.nill', t => {
     );
 });
 
-test('Json.Decode.fail', t => {
+test('Json.Decode.fail()', t => {
     t.deepEqual(
         Decode.fail('msg').decode(null),
         Left('msg')
     );
 });
 
-test('Json.Decode.succeed', t => {
+test('Json.Decode.succeed()', t => {
     t.deepEqual(
         Decode.succeed(1).decode(null),
         Right(1)
     );
 });
 
-test('Json.Decode.oneOf', t => {
+test('Json.Decode.oneOf()', t => {
     t.deepEqual(
         Decode.oneOf([]).decode(null),
         Left('Expecting at least one Decoder for oneOf but instead got 0')
@@ -217,17 +217,8 @@ test('Json.Decode.oneOf', t => {
     );
 });
 
-test('Json.Decode.nullable', t => {
+test('Json.Decode.nullable()', t => {
     const decoder = Decode.nullable(Decode.string);
-
-    t.deepEqual(
-        decoder.decode(undefined),
-        Left(
-            'I ran into the following problems:\n\n' +
-            'Expecting null but instead got: undefined\n' +
-            'Expecting a String but instead got: undefined'
-        )
-    );
 
     t.deepEqual(
         decoder.decode(null),
@@ -260,7 +251,7 @@ test('Json.Decode.nullable', t => {
     );
 });
 
-test('Json.Decode.maybe', t => {
+test('Json.Decode.maybe()', t => {
     const input = {
         s1: 'str',
         s2: 1
@@ -297,7 +288,7 @@ test('Json.Decode.maybe', t => {
     );
 });
 
-test('Json.Decode.list', t => {
+test('Json.Decode.list()', t => {
     const decoder = Decode.list(Decode.string);
 
     t.deepEqual(
@@ -330,7 +321,7 @@ test('Json.Decode.list', t => {
     );
 });
 
-test('Json.Decode.dict', t => {
+test('Json.Decode.dict()', t => {
     const decoder = Decode.dict(Decode.string);
 
     t.deepEqual(
@@ -368,7 +359,7 @@ test('Json.Decode.dict', t => {
     );
 });
 
-test('Json.Decode.keyValue', t => {
+test('Json.Decode.keyValue()', t => {
     const decoder = Decode.keyValue(Decode.string);
 
     t.deepEqual(
@@ -501,7 +492,7 @@ test('Json.Decode.props()', t => {
     );
 });
 
-test('Json.Decode.index', t => {
+test('Json.Decode.index()', t => {
     const decoder = Decode.index(1, Decode.string);
 
     t.deepEqual(
@@ -534,7 +525,7 @@ test('Json.Decode.index', t => {
     );
 });
 
-test('Json.Decode.field', t => {
+test('Json.Decode.field()', t => {
     const decoder = Decode.field('foo', Decode.string);
 
     t.deepEqual(
@@ -570,7 +561,7 @@ test('Json.Decode.field', t => {
     );
 });
 
-test('Json.Decode.at', t => {
+test('Json.Decode.at()', t => {
     const decoder = Decode.at([ 'foo', 'bar' ], Decode.string);
 
     t.deepEqual(
@@ -612,7 +603,7 @@ test('Json.Decode.at', t => {
     );
 });
 
-test('Json.Decode.lazy', t => {
+test('Json.Decode.lazy()', t => {
     interface Comment {
         message: string;
         responses: List<Comment>;
@@ -669,7 +660,7 @@ test('Json.Decode.lazy', t => {
     );
 });
 
-test('Json.Decode.map', t => {
+test('Json.Decode.map()', t => {
     const decoder = Decode.string.map(t1 => ({ t1 }));
 
     t.deepEqual(
@@ -692,7 +683,7 @@ test('Json.Decode.map', t => {
     );
 });
 
-test('Json.Decode.chain', t => {
+test('Json.Decode.chain()', t => {
     const decoder = Decode.number.chain(
         t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg')
     );
@@ -720,7 +711,7 @@ test('Json.Decode.chain', t => {
     );
 });
 
-test('Json.Decode.decodeJSON', t => {
+test('Json.Decode.decodeJSON()', t => {
     const decoder = Decode.props({
         t1: Decode.field('s1', Decode.string),
         t2: Decode.field('s2', Decode.string)

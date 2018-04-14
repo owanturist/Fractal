@@ -1,6 +1,5 @@
 import {
-    Value,
-    isArray
+    Value
 } from '../Basics';
 import {
     List as List_
@@ -70,7 +69,7 @@ export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boole
 
 export const list = (listOrArray: List_<Encoder> | Array<Encoder>): Encoder => {
     return new Encode.List(
-        isArray(listOrArray) ? listOrArray : listOrArray.toArray()
+        List_.isList(listOrArray) ? listOrArray.toArray() : listOrArray
     );
 };
 export const object = (object: {[ key: string ]: Encoder }): Encoder => new Encode.Object(object);
