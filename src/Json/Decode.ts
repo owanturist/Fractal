@@ -338,19 +338,13 @@ namespace Decode {
         }
     }
 
-    class Encoder extends Encode.Encoder {
+    export class Encoder extends Encode.Encoder {
         constructor(private readonly js: any) {
             super();
         }
 
         public serialize(): any {
             return this.js;
-        }
-    }
-
-    export class Value extends Decoder<any> {
-        public deserialize(input: any): Either<string, Encoder> {
-            return Right(new Encoder(input));
         }
     }
 
@@ -399,7 +393,13 @@ export const fromMaybe = <T>(error: string, maybe: Maybe_<T>): Decoder<T> => may
 export const string: Decoder<string> = new Decode.Primitive('a String', isString);
 export const number: Decoder<number> = new Decode.Primitive('a Number', isNumber);
 export const boolean: Decoder<boolean> = new Decode.Primitive('a Boolean', isBoolean);
-export const value: Decoder<Encode.Encoder> = new Decode.Value();
+export const value: Decoder<Encode.Encoder> = new (
+    class extends Decoder<any> {
+        public deserialize(input: any): Either<string, Decode.Encoder> {
+            return Right(new Decode.Encoder(input));
+        }
+    }
+)();
 
 export const nill = <T>(defaults: T): Decoder<T> => new Decode.Nill(defaults);
 export const fail = <T>(msg: string): Decoder<T> => new Decode.Fail(msg);
