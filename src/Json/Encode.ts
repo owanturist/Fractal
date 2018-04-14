@@ -1,25 +1,22 @@
 import {
-    Serializable,
+    Value,
     isArray
 } from '../Basics';
 import {
     List as List_
 } from '../List';
 
-export interface Value {
-    serialize(): Serializable;
-    encode(indent: number): string;
+export type Value = Value;
+
+export abstract class Encoder {
+    public encode(indent: number): string {
+        return JSON.stringify(this.serialize(), null, indent);
+    }
+
+    public abstract serialize(): Value;
 }
 
 namespace Encode {
-    abstract class Encoder implements Value {
-        public encode(indent: number): string {
-            return JSON.stringify(this.serialize(), null, indent);
-        }
-
-        public abstract serialize(): Serializable;
-    }
-
     export class Primitive<T extends null | string | boolean | number> extends Encoder {
         constructor(private readonly primitive: T) {
             super();
@@ -31,15 +28,14 @@ namespace Encode {
     }
 
     export class List extends Encoder {
-        constructor(private readonly list: List_<Value> | Array<Value>) {
+        constructor(private readonly array: Array<Encoder>) {
             super();
         }
 
-        public serialize(): Array<Serializable> {
-            const list = isArray(this.list) ? this.list : this.list.toArray();
-            const result: Array<Serializable> = [];
+        public serialize(): Array<Value> {
+            const result: Array<Value> = [];
 
-            for (const value of list) {
+            for (const value of this.array) {
                 result.push(value.serialize());
             }
 
@@ -48,12 +44,12 @@ namespace Encode {
     }
 
     export class Object extends Encoder {
-        constructor(private readonly object: {[ key: string ]: Value}) {
+        constructor(private readonly object: {[ key: string ]: Encoder}) {
             super();
         }
 
-        public serialize(): {[ key: string ]: Serializable } {
-            const result: {[ key: string ]: Serializable } = {};
+        public serialize(): {[ key: string ]: Value } {
+            const result: {[ key: string ]: Value } = {};
 
             for (const key in this.object) {
                 if (this.object.hasOwnProperty(key)) {
@@ -66,11 +62,15 @@ namespace Encode {
     }
 }
 
-export const nill: Value = new Encode.Primitive(null);
+export const nill: Encoder = new Encode.Primitive(null);
 
-export const string = (string: string): Value => new Encode.Primitive(string);
-export const number = (number: number): Value => new Encode.Primitive(number);
-export const boolean = (boolean: boolean): Value => new Encode.Primitive(boolean);
+export const string = (string: string): Encoder => new Encode.Primitive(string);
+export const number = (number: number): Encoder => new Encode.Primitive(number);
+export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
 
-export const list = (list: List_<Value> | Array<Value>): Value => new Encode.List(list);
-export const object = (object: {[ key: string ]: Value }): Value => new Encode.Object(object);
+export const list = (listOrArray: List_<Encoder> | Array<Encoder>): Encoder => {
+    return new Encode.List(
+        isArray(listOrArray) ? listOrArray : listOrArray.toArray()
+    );
+};
+export const object = (object: {[ key: string ]: Encoder }): Encoder => new Encode.Object(object);

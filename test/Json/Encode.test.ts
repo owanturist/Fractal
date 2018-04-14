@@ -3,6 +3,9 @@
 import test from 'ava';
 
 import * as Encode from '../../src/Json/Encode';
+import {
+    List
+} from '../../src/List';
 
 test('Json.Encode.nill', t => {
     t.is(
@@ -62,13 +65,46 @@ test('Json.Encode.list', t => {
         '[1,2,1]'
     );
 
+    const array = [
+        Encode.number(1),
+        Encode.number(2),
+        Encode.number(1)
+    ];
+
     t.deepEqual(
-        Encode.list([
+        Encode.list(array).serialize(),
+        [ 1, 2, 1 ]
+    );
+
+    t.deepEqual(
+        array,
+        [
             Encode.number(1),
             Encode.number(2),
             Encode.number(1)
-        ]).serialize(),
+        ],
+        'checking of Array immutability'
+    );
+
+    const list = List.of(
+        Encode.number(1),
+        Encode.number(2),
+        Encode.number(1)
+    );
+
+    t.deepEqual(
+        Encode.list(list).serialize(),
         [ 1, 2, 1 ]
+    );
+
+    t.deepEqual(
+        list,
+            List.of(
+            Encode.number(1),
+            Encode.number(2),
+            Encode.number(1)
+        ),
+        'checking of List immutability'
     );
 
     t.is(
@@ -115,7 +151,7 @@ test('Json.Encode.object', t => {
         foo: boolean;
     }
 
-    const encoder = (foo: Foo): Encode.Value => Encode.object({
+    const encoder = (foo: Foo): Encode.Encoder => Encode.object({
         _bar: Encode.string(foo.bar),
         _baz: Encode.number(foo.baz),
         _foo: Encode.boolean(foo.foo)

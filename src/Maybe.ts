@@ -24,7 +24,10 @@ export abstract class Maybe<T> {
     }
 
     public static fromEither<E, T>(either: Either<E, T>): Maybe<T> {
-        return either.fold(Nothing, Just) as Maybe<T>;
+        return either.cata({
+            Left: Nothing,
+            Right: Just
+        }) as Maybe<T>;
     }
 
     public static props<T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
@@ -47,11 +50,11 @@ export abstract class Maybe<T> {
         return acc;
     }
 
-    public static all<T>(list: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
-        const list_: Array<Maybe<T>> = isArray(list) ? list : list.toArray();
+    public static all<T>(listOrArray: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
+        const array: Array<Maybe<T>> = isArray(listOrArray) ? listOrArray : listOrArray.toArray();
         let acc = Just<Array<T>>([]);
 
-        for (const item of list_) {
+        for (const item of array) {
             acc = acc.chain(
                 (arr: Array<T>): Maybe<Array<T>> => item.map(
                     (value: T): Array<T> => {

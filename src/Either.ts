@@ -24,10 +24,10 @@ export abstract class Either<E, T> implements Either<E, T> {
     }
 
     public static fromMaybe<E, T>(error: E, maybe: Maybe<T>): Either<E, T> {
-        return maybe.fold(
-            (): Either<E, T> => Left(error),
-            Right
-        ) as Either<E, T>;
+        return maybe.cata({
+            Nothing: (): Either<E, T> => Left(error),
+            Just: Right
+        }) as Either<E, T>;
     }
 
     public static props<E, T>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
@@ -50,11 +50,11 @@ export abstract class Either<E, T> implements Either<E, T> {
         return acc;
     }
 
-    public static all<E, T>(list: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {
-        const list_ = isArray(list) ? list : list.toArray();
+    public static all<E, T>(listOrArray: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {
+        const array = isArray(listOrArray) ? listOrArray : listOrArray.toArray();
         let acc = Right<E, Array<T>>([]);
 
-        for (const item of list_) {
+        for (const item of array) {
             acc = acc.chain(
                 (arr: Array<T>): Either<E, Array<T>> => item.map(
                     (value: T): Array<T> => {

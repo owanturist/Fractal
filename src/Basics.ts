@@ -2,15 +2,15 @@ export type Readonly<T> = {
     readonly [ K in keyof T ]: T[ K ];
 };
 
-interface SerializableArray extends Array<Serializable> {}
+interface ValueArray extends Array<Value> {}
 
-export type Serializable
+export type Value
     = null
     | string
     | boolean
     | number
-    | SerializableArray
-    | {[ key: string ]: Serializable }
+    | ValueArray
+    | {[ key: string ]: Value }
     ;
 
 export type Comparable = string | number;
