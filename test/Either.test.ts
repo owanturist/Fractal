@@ -196,19 +196,19 @@ test('Either.all()', t => {
     );
 });
 
-test('Either.isLeft()', t => {
+test('Either.prototype.isLeft()', t => {
     t.true(Left('err').isLeft());
 
     t.false(Right(1).isLeft());
 });
 
-test('Either.isRight()', t => {
+test('Either.prototype.isRight()', t => {
     t.false(Left('err').isRight());
 
     t.true(Right(1).isRight());
 });
 
-test('Either.isEqual()', t => {
+test('Either.prototype.isEqual()', t => {
     t.true(
         Left('err').isEqual(Left('err'))
     );
@@ -234,7 +234,7 @@ test('Either.isEqual()', t => {
     );
 });
 
-test('Either.getOrElse()', t => {
+test('Either.prototype.getOrElse()', t => {
     t.is(
         Left('err').getOrElse(1),
         1
@@ -246,7 +246,7 @@ test('Either.getOrElse()', t => {
     );
 });
 
-test('Either.ap()', t => {
+test('Either.prototype.ap()', t => {
     t.deepEqual(
         Left('1').ap(Left('2')),
         Left('1')
@@ -268,7 +268,7 @@ test('Either.ap()', t => {
     );
 });
 
-test('Either.map()', t => {
+test('Either.prototype.map()', t => {
     t.deepEqual(
         Left<string, number>('err').map(a => a * 2),
         Left('err')
@@ -293,7 +293,7 @@ test('Either.map()', t => {
     );
 });
 
-test('Either.chain()', t => {
+test('Either.prototype.chain()', t => {
     t.deepEqual(
         Left('err').chain(() => Left('err')),
         Left('err')
@@ -315,7 +315,7 @@ test('Either.chain()', t => {
     );
 });
 
-test('Either.bimap()', t => {
+test('Either.prototype.bimap()', t => {
     t.deepEqual(
         Left<string, number>('err').bimap(err => err + '_', a => a * 2),
         Left('err_')
@@ -327,7 +327,7 @@ test('Either.bimap()', t => {
     );
 });
 
-test('Either.swap()', t => {
+test('Either.prototype.swap()', t => {
     t.deepEqual(
         Left('err').swap(),
         Right('err')
@@ -339,7 +339,7 @@ test('Either.swap()', t => {
     );
 });
 
-test('Either.leftMap()', t => {
+test('Either.prototype.leftMap()', t => {
     t.deepEqual(
         Left('err').leftMap(err => err + '_'),
         Left('err_')
@@ -351,7 +351,7 @@ test('Either.leftMap()', t => {
     );
 });
 
-test('Either.orElse()', t => {
+test('Either.prototype.orElse()', t => {
     t.deepEqual(
         Left('err').orElse(err => Left(err + '_')),
         Left('err_')
@@ -373,7 +373,7 @@ test('Either.orElse()', t => {
     );
 });
 
-test('Either.fold()', t => {
+test('Either.prototype.fold()', t => {
     t.deepEqual(
         Left<string, number>('err').fold(err => err + '_', a => '_' + a.toString()),
         'err_'
@@ -385,7 +385,7 @@ test('Either.fold()', t => {
     );
 });
 
-test('Either.cata()', t => {
+test('Either.prototype.cata()', t => {
     t.is(
         Left<string, number>('err').cata({
             Left: err => err + '_',
@@ -403,7 +403,7 @@ test('Either.cata()', t => {
     );
 });
 
-test('Either.toMaybe()', t => {
+test('Either.prototype.toMaybe()', t => {
     t.deepEqual(
         Left('err').toMaybe(),
         Nothing()

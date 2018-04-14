@@ -660,7 +660,7 @@ test('Json.Decode.lazy()', t => {
     );
 });
 
-test('Json.Decode.map()', t => {
+test('Json.Decode.prototype.map()', t => {
     const decoder = Decode.string.map(t1 => ({ t1 }));
 
     t.deepEqual(
@@ -683,7 +683,7 @@ test('Json.Decode.map()', t => {
     );
 });
 
-test('Json.Decode.chain()', t => {
+test('Json.Decode.prototype.chain()', t => {
     const decoder = Decode.number.chain(
         t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg')
     );
@@ -711,32 +711,7 @@ test('Json.Decode.chain()', t => {
     );
 });
 
-test('Json.Decode.decodeJSON()', t => {
-    const decoder = Decode.props({
-        t1: Decode.field('s1', Decode.string),
-        t2: Decode.field('s2', Decode.string)
-    });
-
-    t.deepEqual(
-        decoder.decodeJSON('invalid'),
-        Left('Unexpected token i in JSON at position 0')
-    );
-
-    t.deepEqual(
-        decoder.decodeJSON('{"s1":1}'),
-        Left('Expecting a String at _.s1 but instead got: 1')
-    );
-
-    t.deepEqual(
-        decoder.decodeJSON('{"s1":"str1","s2":"str2"}'),
-        Right({
-            t1: 'str1',
-            t2: 'str2'
-        })
-    );
-});
-
-test('Json.Decode realworld example', t => {
+test('Json.Decode.prototype.decode', t => {
     interface User {
         id: number;
         username: string;
@@ -860,6 +835,31 @@ test('Json.Decode realworld example', t => {
                     }
                 })
             })
+        })
+    );
+});
+
+test('Json.Decode.prototype.decodeJSON()', t => {
+    const decoder = Decode.props({
+        t1: Decode.field('s1', Decode.string),
+        t2: Decode.field('s2', Decode.string)
+    });
+
+    t.deepEqual(
+        decoder.decodeJSON('invalid'),
+        Left('Unexpected token i in JSON at position 0')
+    );
+
+    t.deepEqual(
+        decoder.decodeJSON('{"s1":1}'),
+        Left('Expecting a String at _.s1 but instead got: 1')
+    );
+
+    t.deepEqual(
+        decoder.decodeJSON('{"s1":"str1","s2":"str2"}'),
+        Right({
+            t1: 'str1',
+            t2: 'str2'
         })
     );
 });

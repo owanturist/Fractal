@@ -212,19 +212,19 @@ test('Maybe.all()', t => {
     );
 });
 
-test('Maybe.isNothing()', t => {
+test('Maybe.prototype.isNothing()', t => {
     t.true(Nothing().isNothing());
 
     t.false(Just(1).isNothing());
 });
 
-test('Maybe.isJust()', t => {
+test('Maybe.prototype.isJust()', t => {
     t.false(Nothing().isJust());
 
     t.true(Just(1).isJust());
 });
 
-test('Maybe.isEqual()', t => {
+test('Maybe.prototype.isEqual()', t => {
     t.false(
         Just(1).isEqual(Nothing())
     );
@@ -250,7 +250,7 @@ test('Maybe.isEqual()', t => {
     );
 });
 
-test('Maybe.getOrElse()', t => {
+test('Maybe.prototype.getOrElse()', t => {
     t.is(
         Nothing().getOrElse(1),
         1
@@ -262,7 +262,7 @@ test('Maybe.getOrElse()', t => {
     );
 });
 
-test('Maybe.ap()', t => {
+test('Maybe.prototype.ap()', t => {
     t.deepEqual(
         Nothing().ap(Nothing()),
         Nothing()
@@ -284,7 +284,7 @@ test('Maybe.ap()', t => {
     );
 });
 
-test('Maybe.map()', t => {
+test('Maybe.prototype.map()', t => {
     t.deepEqual(
         Nothing<number>().map(a => a * 2),
         Nothing()
@@ -296,7 +296,7 @@ test('Maybe.map()', t => {
     );
 });
 
-test('Maybe.chain()', t => {
+test('Maybe.prototype.chain()', t => {
     t.deepEqual(
         Nothing().chain(Nothing),
         Nothing()
@@ -318,7 +318,7 @@ test('Maybe.chain()', t => {
     );
 });
 
-test('Maybe.orElse()', t => {
+test('Maybe.prototype.orElse()', t => {
     t.deepEqual(
         Nothing().orElse(Nothing),
         Nothing()
@@ -340,7 +340,7 @@ test('Maybe.orElse()', t => {
     );
 });
 
-test('Maybe.fold()', t => {
+test('Maybe.prototype.fold()', t => {
     t.is(
         Nothing<number>().fold(
             () => 1,
@@ -358,7 +358,7 @@ test('Maybe.fold()', t => {
     );
 });
 
-test('Maybe.cata()', t => {
+test('Maybe.prototype.cata()', t => {
     t.is(
         Nothing<number>().cata({
             Nothing: () => 1,
@@ -376,7 +376,7 @@ test('Maybe.cata()', t => {
     );
 });
 
-test('Maybe.toEither()', t => {
+test('Maybe.prototype.toEither()', t => {
     t.deepEqual(
         Nothing().toEither('err'),
         Left('err')
