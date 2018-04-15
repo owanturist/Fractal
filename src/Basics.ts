@@ -73,3 +73,15 @@ export namespace Order {
         GT(): T;
     }>;
 }
+
+export const compare = <T extends Comparable>(left: T, right: T): Order => {
+    if (left < right) {
+        return LT;
+    }
+
+    if (left > right) {
+        return GT;
+    }
+
+    return EQ;
+};
