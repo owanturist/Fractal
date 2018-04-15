@@ -660,7 +660,7 @@ test('Json.Decode.lazy()', t => {
     );
 });
 
-test('Json.Decode.prototype.map()', t => {
+test('Json.Decode.Decoder.prototype.map()', t => {
     const decoder = Decode.string.map(t1 => ({ t1 }));
 
     t.deepEqual(
@@ -683,7 +683,7 @@ test('Json.Decode.prototype.map()', t => {
     );
 });
 
-test('Json.Decode.prototype.chain()', t => {
+test('Json.Decode.Decoder.prototype.chain()', t => {
     const decoder = Decode.number.chain(
         t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg')
     );
@@ -711,7 +711,7 @@ test('Json.Decode.prototype.chain()', t => {
     );
 });
 
-test('Json.Decode.prototype.decode', t => {
+test('Json.Decode.Decoder.prototype.decode', t => {
     interface User {
         id: number;
         username: string;
@@ -839,7 +839,7 @@ test('Json.Decode.prototype.decode', t => {
     );
 });
 
-test('Json.Decode.prototype.decodeJSON()', t => {
+test('Json.Decode.Decoder.prototype.decodeJSON()', t => {
     const decoder = Decode.props({
         t1: Decode.field('s1', Decode.string),
         t2: Decode.field('s2', Decode.string)
