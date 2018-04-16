@@ -81,7 +81,10 @@ export abstract class List<T> {
         const result: Array<[ T, R ]> = [];
 
         for (let index = 0; index < left_.length && index < right_.length; index++) {
-            result.push([ left_[ index ], right_[ index ]]);
+            result.push([
+                left_[ index ],
+                right_[ index ]
+            ]);
         }
 
         return new ListImpl(result);
@@ -122,42 +125,42 @@ export abstract class List<T> {
         return result;
     }
 
-    public static minimum(listOrArra: List<Comparable> | Array<Comparable>): Maybe<Comparable> {
-        const array: Array<Comparable> = List.toArray(listOrArra);
-        let result = Nothing<Comparable>();
+    public static minimum(listOrArray: List<string> | Array<string>): Maybe<string>;
+    public static minimum(listOrArray: List<number> | Array<number>): Maybe<number>;
+    public static minimum<T extends Comparable>(listOrArray: List<T> | Array<T>): Maybe<T> {
+        const array: Array<T> = List.toArray(listOrArray);
+        let result = Nothing<T>();
 
         for (const element of array) {
             result = result.fold(
-                (): Maybe<Comparable> => Just(element),
-                (prev: Comparable): Maybe<Comparable> => {
-                    return element < prev ? Just(element) : result;
-                }
+                (): Maybe<T> => Just(element),
+                (prev: T): Maybe<T> => element < prev ? Just(element) : result
             );
         }
 
         return result;
     }
 
-    public static maximum(listOrArray: List<Comparable> | Array<Comparable>): Maybe<Comparable> {
-        const array: Array<Comparable> = List.toArray(listOrArray);
-        let result = Nothing<Comparable>();
+    public static maximum(listOrArray: List<string> | Array<string>): Maybe<string>;
+    public static maximum(listOrArray: List<number> | Array<number>): Maybe<number>;
+    public static maximum<T extends Comparable>(listOrArray: List<T> | Array<T>): Maybe<T> {
+        const array: Array<T> = List.toArray(listOrArray);
+        let result = Nothing<T>();
 
         for (const element of array) {
             result = result.fold(
-                (): Maybe<Comparable> => Just(element),
-                (prev: Comparable): Maybe<Comparable> => {
-                    return element > prev ? Just(element) : result;
-                }
+                (): Maybe<T> => Just(element),
+                (prev: T): Maybe<T> => element > prev ? Just(element) : result
             );
         }
 
         return result;
     }
 
-    public static props<T extends object>(config: {[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}): List<T> {
+    public static props<T>(config: {[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}): List<T> {
         const config_ = {} as {[ K in keyof T ]: Array<T[ K ]>};
         const result: Array<T> = [];
-        let maxLength = 0;
+        const lengths = [];
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
@@ -165,11 +168,13 @@ export abstract class List<T> {
 
                 config_[ key ] = List.toArray(listOrArray);
 
-                maxLength = config_[ key ].length > maxLength ? config_[ key ].length : maxLength;
+                lengths.push(config_[ key ].length);
             }
         }
 
-        for (let index = 0; index < maxLength; index++) {
+        const minLength = List.minimum(lengths).getOrElse(0);
+
+        for (let index = 0; index < minLength; index++) {
             const element = {} as T;
 
             for (const key in config_) {
