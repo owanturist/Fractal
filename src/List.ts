@@ -13,6 +13,14 @@ export abstract class List<T> {
         return something instanceof List;
     }
 
+    public static fromArray<T>(array: Array<T>): List<T> {
+        return new ListImpl(array.slice());
+    }
+
+    public static toArray<T>(listOrArray: List<T> | Array<T>): Array<T> {
+        return List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
+    }
+
     public static of<T>(...elements: Array<T>): List<T> {
         return new ListImpl(elements);
     }
@@ -25,15 +33,11 @@ export abstract class List<T> {
         return new ListImpl([ element ]);
     }
 
-    public static fromArray<T>(array: Array<T>): List<T> {
-        return new ListImpl(array.slice());
-    }
-
-    public static toArray<T>(listOrArray: List<T> | Array<T>): Array<T> {
-        return List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
-    }
-
     public static repeat<T>(count: number, element: T): List<T> {
+        if (count <= 0) {
+            return new ListImpl<T>([]);
+        }
+
         const result: Array<T> = [];
 
         for (let index = 0; index < count; index++) {
@@ -44,6 +48,10 @@ export abstract class List<T> {
     }
 
     public static initialize<T>(count: number, creator: (index: number) => T): List<T> {
+        if (count <= 0) {
+            return new ListImpl<T>([]);
+        }
+
         const result: Array<T> = [];
 
         for (let index = 0; index < count; index++) {
@@ -54,9 +62,13 @@ export abstract class List<T> {
     }
 
     public static range(start: number, end: number): List<number> {
+        if (start > end) {
+            return new ListImpl<number>([]);
+        }
+
         const result: Array<number> = [];
 
-        for (let index = start; index < end; index++) {
+        for (let index = start; index <= end; index++) {
             result.push(index);
         }
 
