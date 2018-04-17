@@ -616,3 +616,39 @@ test('List.props()', t => {
         ])
     );
 });
+
+test('List.all()', t => {
+    t.deepEqual(
+        List.all([]),
+        List.fromArray([])
+    );
+
+    t.deepEqual(
+        List.all([
+            [],
+            List.fromArray([]),
+            []
+        ]),
+        List.fromArray([])
+    );
+
+    t.deepEqual(
+        List.all([
+            [ 0, 1, 2 ],
+            List.fromArray([]),
+            [],
+            List.fromArray([ 3, 4 ])
+        ]),
+        List.fromArray([ 0, 1, 2, 3, 4 ])
+    );
+
+    t.deepEqual(
+        List.all(List.fromArray([
+            [ 'a', 'b', 'c' ],
+            List.fromArray([]),
+            [],
+            List.fromArray([ 'd', 'e' ])
+        ])),
+        List.fromArray([ 'a', 'b', 'c', 'd', 'e' ])
+    );
+});
