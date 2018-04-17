@@ -35,6 +35,11 @@ test('List.fromArray() & List.prototype.toArray()', t => {
 
     t.deepEqual(list.toArray(), array);
     t.not(list.toArray(), array);
+    t.deepEqual(
+        array,
+        [ 0, 1, 2 ],
+        'Array hasn\'t been mutated'
+    );
 });
 
 test('List.toArray()', t => {
@@ -95,11 +100,21 @@ test('List.toArray()', t => {
     const array = [ 0, 1, 2 ];
     const list = List.fromArray(array);
 
-    t.deepEqual(List.toArray(list), array);
-    t.not(List.toArray(list), array);
-
     t.deepEqual(List.toArray(array), array);
     t.is(List.toArray(array), array);
+    t.deepEqual(
+        array,
+        [ 0, 1, 2 ],
+        'Array hasn\'t been mutated'
+    );
+
+    t.deepEqual(List.toArray(list), array);
+    t.not(List.toArray(list), array);
+    t.deepEqual(
+        list,
+        List.fromArray(array),
+        'List hasn\'t been mutated'
+    );
 });
 
 test('List.of()', t => {
@@ -316,6 +331,28 @@ test('List.zip()', t => {
             [ 4, '4' ]
         ])
     );
+
+    const first = [ 0, 1, 2 ];
+    const second = List.fromArray([ '0', '1', '2' ]);
+
+    t.deepEqual(
+        List.zip(first, second),
+        List.fromArray([
+            [ 0, '0' ],
+            [ 1, '1' ],
+            [ 2, '2' ]
+        ])
+    );
+    t.deepEqual(
+        first,
+        [ 0, 1, 2 ],
+        'Array hasn\'t been mutated'
+    );
+    t.deepEqual(
+        second,
+        List.fromArray([ '0', '1', '2' ]),
+        'List hasn\'t been mutated'
+    );
 });
 
 test('List.unzip()', t => {
@@ -327,42 +364,46 @@ test('List.unzip()', t => {
         ]
     );
 
+    const array: Array<[ number, string ]> = [
+        [ 0, '0' ]
+    ];
+
     t.deepEqual(
-        List.unzip([
-            [ 0, '0' ]
-        ]),
+        List.unzip(array),
         [
             List.fromArray([ 0 ]),
             List.fromArray([ '0' ])
         ]
     );
-
     t.deepEqual(
-        List.unzip([
-            [ 0, '0' ],
-            [ 1, '1' ],
-            [ 2, '2' ],
-            [ 3, '3' ],
-            [ 4, '4' ]
-        ]),
+        array,
         [
-            List.fromArray([ 0, 1, 2, 3, 4 ]),
-            List.fromArray([ '0', '1', '2', '3', '4' ])
-        ]
+            [ 0, '0' ]
+        ],
+        'Array hasn\'t been mutated'
     );
 
+    const list = List.fromArray<[ number, string ]>([
+        [ 0, '0' ],
+        [ 1, '1' ],
+        [ 2, '2' ]
+    ]);
+
     t.deepEqual(
-        List.unzip(List.fromArray<[ number, string ]>([
+        List.unzip(list),
+        [
+            List.fromArray([ 0, 1, 2 ]),
+            List.fromArray([ '0', '1', '2' ])
+        ]
+    );
+    t.deepEqual(
+        list,
+        List.fromArray<[ number, string ]>([
             [ 0, '0' ],
             [ 1, '1' ],
-            [ 2, '2' ],
-            [ 3, '3' ],
-            [ 4, '4' ]
-        ])),
-        [
-            List.fromArray([ 0, 1, 2, 3, 4 ]),
-            List.fromArray([ '0', '1', '2', '3', '4' ])
-        ]
+            [ 2, '2' ]
+        ]),
+        'List hasn\'t been mutated'
     );
 });
 
@@ -377,14 +418,22 @@ test('List.sum()', t => {
         1
     );
 
-    t.is(
-        List.sum([ 0, 1, 2, 3, 4 ]),
-        10
+    const array = [ 0, 1, 2, 3, 4 ];
+
+    t.is(List.sum(array), 10);
+    t.deepEqual(
+        array,
+        [ 0, 1, 2, 3, 4 ],
+        'Array hasn\'t been mutated'
     );
 
-    t.is(
-        List.sum(List.fromArray([ 0, 1, 2, 3, 4 ])),
-        10
+    const list = List.fromArray([ 0, 1, 2, 3, 4 ]);
+
+    t.is(List.sum(list), 10);
+    t.deepEqual(
+        list,
+        List.fromArray([ 0, 1, 2, 3, 4 ]),
+        'List hasn\'t been mutated'
     );
 });
 
@@ -399,14 +448,22 @@ test('List.product()', t => {
         0
     );
 
-    t.is(
-        List.product([ 1, 2, 3, 4 ]),
-        24
+    const array = [ 1, 2, 3, 4 ];
+
+    t.is(List.product(array), 24);
+    t.deepEqual(
+        array,
+        [ 1, 2, 3, 4 ],
+        'Array hasn\'t been mutated'
     );
 
-    t.is(
-        List.product(List.fromArray([ 1, 2, 3, 4 ])),
-        24
+    const list = List.fromArray([ 1, 2, 3, 4 ]);
+
+    t.is(List.product(list), 24);
+    t.deepEqual(
+        list,
+        List.fromArray([ 1, 2, 3, 4 ]),
+        'List hasn\'t been mutated'
     );
 });
 
@@ -431,9 +488,13 @@ test('List.minimum()', t => {
         Just(-2)
     );
 
+    const array = [ 'b', 'c', 'a', 'e', 'd' ];
+
+    t.deepEqual(List.minimum(array), Just('a'));
     t.deepEqual(
-        List.minimum([ 'b', 'c', 'a', 'e', 'd' ]),
-        Just('a')
+        array,
+        [ 'b', 'c', 'a', 'e', 'd' ],
+        'Array hasn\'t been mutated'
     );
 
     t.deepEqual(
@@ -441,9 +502,13 @@ test('List.minimum()', t => {
         Just(-2)
     );
 
+    const list = List.fromArray([ 'b', 'c', 'a', 'e', 'd' ]);
+
+    t.deepEqual(List.minimum(list), Just('a'));
     t.deepEqual(
-        List.minimum(List.fromArray([ 'b', 'c', 'a', 'e', 'd' ])),
-        Just('a')
+        list,
+        List.fromArray([ 'b', 'c', 'a', 'e', 'd' ]),
+        'List hasn\'t been mutated'
     );
 });
 
@@ -468,9 +533,13 @@ test('List.maximum()', t => {
         Just(2)
     );
 
+    const array = [ 'b', 'c', 'a', 'e', 'd' ];
+
+    t.deepEqual(List.maximum(array), Just('e'));
     t.deepEqual(
-        List.maximum([ 'b', 'c', 'a', 'e', 'd' ]),
-        Just('e')
+        array,
+        [ 'b', 'c', 'a', 'e', 'd' ],
+        'Array hasn\'t been mutated'
     );
 
     t.deepEqual(
@@ -478,9 +547,13 @@ test('List.maximum()', t => {
         Just(2)
     );
 
+    const list = List.fromArray([ 'b', 'c', 'a', 'e', 'd' ]);
+
+    t.deepEqual(List.maximum(list), Just('e'));
     t.deepEqual(
-        List.maximum(List.fromArray([ 'b', 'c', 'a', 'e', 'd' ])),
-        Just('e')
+        list,
+        List.fromArray([ 'b', 'c', 'a', 'e', 'd' ]),
+        'List hasn\'t been mutated'
     );
 });
 
@@ -564,11 +637,13 @@ test('List.props()', t => {
         ])
     );
 
+    const object = {
+        foo: [ 0, 1 ],
+        bar: List.fromArray([ '0', '1' ])
+    };
+
     t.deepEqual(
-        List.props({
-            foo: [ 0, 1 ],
-            bar: [ '0', '1' ]
-        }),
+        List.props(object),
         List.fromArray([
             {
                 foo: 0,
@@ -579,6 +654,15 @@ test('List.props()', t => {
                 bar: '1'
             }
         ])
+    );
+
+    t.deepEqual(
+        object,
+        {
+            foo: [ 0, 1 ],
+            bar: List.fromArray([ '0', '1' ])
+        },
+        'Object hasn\'t been mutated'
     );
 
     t.deepEqual(
@@ -632,23 +716,47 @@ test('List.all()', t => {
         List.fromArray([])
     );
 
+    const array = [
+        [ 0, 1, 2 ],
+        List.fromArray([]),
+        [],
+        List.fromArray([ 3, 4 ])
+    ];
+
     t.deepEqual(
-        List.all([
+        List.all(array),
+        List.fromArray([ 0, 1, 2, 3, 4 ])
+    );
+    t.deepEqual(
+        array,
+        [
             [ 0, 1, 2 ],
             List.fromArray([]),
             [],
             List.fromArray([ 3, 4 ])
-        ]),
-        List.fromArray([ 0, 1, 2, 3, 4 ])
+        ],
+        'Array hasn\'t been mutated'
     );
 
+    const list = List.fromArray([
+        [ 'a', 'b', 'c' ],
+        List.fromArray([]),
+        [],
+        List.fromArray([ 'd', 'e' ])
+    ]);
+
     t.deepEqual(
-        List.all(List.fromArray([
+        List.all(list),
+        List.fromArray([ 'a', 'b', 'c', 'd', 'e' ])
+    );
+    t.deepEqual(
+        list,
+        List.fromArray([
             [ 'a', 'b', 'c' ],
             List.fromArray([]),
             [],
             List.fromArray([ 'd', 'e' ])
-        ])),
-        List.fromArray([ 'a', 'b', 'c', 'd', 'e' ])
+        ]),
+        'Object hasn\'t been mutated'
     );
 });
