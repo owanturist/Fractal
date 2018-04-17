@@ -98,7 +98,7 @@ export abstract class List<T> {
     ): List<[ T1, T2, T3, T4 ]> | List<[ T1, T2, T3 ]> | List<[ T1, T2 ]> {
         const first_: Array<T1> = List.toArray(first);
         const second_: Array<T2> = List.toArray(second);
-        const minimumLength2 = List.minimum([ first_.length, second_.length ]).getOrElse(0);
+        const minimumLength2 = first_.length < second_.length ? first_.length : second_.length;
 
         if (typeof third === 'undefined') {
             const result: Array<[ T1, T2 ]> = [];
@@ -114,7 +114,7 @@ export abstract class List<T> {
         }
 
         const third_: Array<T3> = List.toArray(third);
-        const minimumLength3 = List.minimum([ minimumLength2, third_.length ]).getOrElse(0);
+        const minimumLength3 = minimumLength2 < third_.length ? minimumLength2 : third_.length;
 
         if (typeof fourth === 'undefined') {
             const result: Array<[ T1, T2, T3 ]> = [];
@@ -131,7 +131,7 @@ export abstract class List<T> {
         }
 
         const fourth_: Array<T4> = List.toArray(fourth);
-        const minimumLength4 = List.minimum([ minimumLength3, fourth_.length ]).getOrElse(0);
+        const minimumLength4 = minimumLength3 < fourth_.length ? minimumLength3 : fourth_.length;
         const result: Array<[ T1, T2, T3, T4 ]> = [];
 
         for (let index = 0; index < minimumLength4; index++) {
@@ -274,21 +274,20 @@ export abstract class List<T> {
     public static props<T>(config: {[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}): List<T> {
         const config_ = {} as {[ K in keyof T ]: Array<T[ K ]>};
         const result: Array<T> = [];
-        const lengths = [];
+        let minimumLength: Maybe<number> = Nothing();
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
-                const listOrArray: List<T[ keyof T ]> | Array<T[ keyof T ]> = config[ key ];
+                const array: Array<T[ keyof T ]> = List.toArray(config[ key ]);
 
-                config_[ key ] = List.toArray(listOrArray);
-
-                lengths.push(config_[ key ].length);
+                config_[ key ] = array;
+                minimumLength = minimumLength
+                    .map((length: number): number => length < array.length ? length : array.length)
+                    .orElse((): Maybe<number> => Just(array.length));
             }
         }
 
-        const minLength = List.minimum(lengths).getOrElse(0);
-
-        for (let index = 0; index < minLength; index++) {
+        for (let index = 0; index < minimumLength.getOrElse(0); index++) {
             const element = {} as T;
 
             for (const key in config_) {
