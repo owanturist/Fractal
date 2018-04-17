@@ -75,15 +75,71 @@ export abstract class List<T> {
         return new ListImpl(result);
     }
 
-    public static zip<T, R>(left: List<T> | Array<T>, right: List<R> | Array<R>): List<[ T, R ]> {
-        const left_: Array<T> = List.toArray(left);
-        const right_: Array<R> = List.toArray(right);
-        const result: Array<[ T, R ]> = [];
+    public static zip<T1, T2, T3, T4>(
+        first: List<T1> | Array<T1>,
+        second: List<T2> | Array<T2>,
+        third: List<T3> | Array<T3>,
+        fourth: List<T4> | Array<T4>
+    ): List<[ T1, T2, T3, T4 ]>;
+    public static zip<T1, T2, T3>(
+        first: List<T1> | Array<T1>,
+        second: List<T2> | Array<T2>,
+        third: List<T3> | Array<T3>
+    ): List<[ T1, T2, T3 ]>;
+    public static zip<T1, T2, >(
+        first: List<T1> | Array<T1>,
+        second: List<T2> | Array<T2>
+    ): List<[ T1, T2 ]>;
+    public static zip<T1, T2, T3, T4>(
+        first: List<T1> | Array<T1>,
+        second: List<T2> | Array<T2>,
+        third?: List<T3> | Array<T3>,
+        fourth?: List<T4> | Array<T4>
+    ): List<[ T1, T2, T3, T4 ]> | List<[ T1, T2, T3 ]> | List<[ T1, T2 ]> {
+        const first_: Array<T1> = List.toArray(first);
+        const second_: Array<T2> = List.toArray(second);
+        const minimumLength2 = List.minimum([ first_.length, second_.length ]).getOrElse(0);
 
-        for (let index = 0; index < left_.length && index < right_.length; index++) {
+        if (typeof third === 'undefined') {
+            const result: Array<[ T1, T2 ]> = [];
+
+            for (let index = 0; index < minimumLength2; index++) {
+                result.push([
+                    first_[ index ],
+                    second_[ index ]
+                ]);
+            }
+
+            return new ListImpl(result);
+        }
+
+        const third_: Array<T3> = List.toArray(third);
+        const minimumLength3 = List.minimum([ minimumLength2, third_.length ]).getOrElse(0);
+
+        if (typeof fourth === 'undefined') {
+            const result: Array<[ T1, T2, T3 ]> = [];
+
+            for (let index = 0; index < minimumLength3; index++) {
+                result.push([
+                    first_[ index ],
+                    second_[ index ],
+                    third_[ index ]
+                ]);
+            }
+
+            return new ListImpl(result);
+        }
+
+        const fourth_: Array<T4> = List.toArray(fourth);
+        const minimumLength4 = List.minimum([ minimumLength3, fourth_.length ]).getOrElse(0);
+        const result: Array<[ T1, T2, T3, T4 ]> = [];
+
+        for (let index = 0; index < minimumLength4; index++) {
             result.push([
-                left_[ index ],
-                right_[ index ]
+                first_[ index ],
+                second_[ index ],
+                third_[ index ],
+                fourth_[ index ]
             ]);
         }
 
