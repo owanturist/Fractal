@@ -1,5 +1,3 @@
-/* tslint:disable: no-magic-numbers */
-
 import test from 'ava';
 
 import {
@@ -386,8 +384,10 @@ test('List.zip()', t => {
 
 test('List.unzip()', t => {
     t.deepEqual(
-        List.unzip([]),
+        List.unzip<number, string>([]),
         [
+            List.fromArray<number>([]),
+            List.fromArray<string>([]),
             List.fromArray([]),
             List.fromArray([])
         ]
@@ -433,6 +433,35 @@ test('List.unzip()', t => {
             [ 2, '2' ]
         ]),
         'List hasn\'t been mutated'
+    );
+
+    t.deepEqual(
+        List.unzip([
+            [ 4, 5, 6 ],
+            [ 3, 4, 5 ],
+            [ 2, 3, 4 ],
+            [ 1, 2, 3 ]
+        ]),
+        [
+            List.fromArray([ 4, 3, 2, 1 ]),
+            List.fromArray([ 5, 4, 3, 2 ]),
+            List.fromArray([ 6, 5, 4, 3 ])
+        ]
+    );
+
+    t.deepEqual(
+        List.unzip(List.fromArray<[ number, number, number, number ]>([
+            [ 4, 5, 6, 7 ],
+            [ 3, 4, 5, 6 ],
+            [ 2, 3, 4, 5 ],
+            [ 1, 2, 3, 4 ]
+        ])),
+        [
+            List.fromArray([ 4, 3, 2, 1 ]),
+            List.fromArray([ 5, 4, 3, 2 ]),
+            List.fromArray([ 6, 5, 4, 3 ]),
+            List.fromArray([ 7, 6, 5, 4 ])
+        ]
     );
 });
 

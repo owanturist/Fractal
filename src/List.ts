@@ -146,17 +146,75 @@ export abstract class List<T> {
         return new ListImpl(result);
     }
 
-    public static unzip<T, R>(listOrArray: List<[ T, R ]> | Array<[ T, R ]>): [ List<T>, List<R> ] {
-        const array: Array<[ T, R ]> = List.toArray(listOrArray);
-        const left: Array<T> = [];
-        const right: Array<R> = [];
+    public static unzip<T1, T2, T3, T4>(
+        listOrArray: List<[ T1, T2, T3, T4 ]> | Array<[ T1, T2, T3, T4 ]>
+    ): [ List<T1>, List<T2>, List<T3>, List<T4> ];
+    public static unzip<T1, T2, T3>(
+        listOrArray: List<[ T1, T2, T3 ]> | Array<[ T1, T2, T3 ]>
+    ): [ List<T1>, List<T2>, List<T3> ];
+    public static unzip<T1, T2>(
+        listOrArray: List<[ T1, T2 ]> | Array<[ T1, T2 ]>
+    ): [ List<T1>, List<T2> ];
+    public static unzip<T1, T2, T3, T4, R extends [ T1, T2, T3, T4 ] | [ T1, T2, T3 ] | [ T1, T2 ]>(
+        listOrArray: List<R> | Array<R>
+    ): [ List<T1>, List<T2>, List<T3>, List<T4> ] | [ List<T1>, List<T2>, List<T3> ] | [ List<T1>, List<T2> ] {
+        const array: Array<R> = List.toArray(listOrArray);
 
-        for (const [ leftElement, rightElement ] of array) {
-            left.push(leftElement);
-            right.push(rightElement);
+        if (array.length === 0) {
+            return [
+                new ListImpl([]),
+                new ListImpl([]),
+                new ListImpl([]),
+                new ListImpl([])
+            ];
         }
 
-        return [ new ListImpl(left), new ListImpl(right) ];
+        const first: Array<T1> = [];
+        const second: Array<T2> = [];
+
+        if (typeof array[ 0 ][ 2 ] === 'undefined') {
+            for (const [ firstElement, secondElement ] of array) {
+                first.push(firstElement);
+                second.push(secondElement);
+            }
+
+            return [
+                new ListImpl(first),
+                new ListImpl(second)
+            ];
+        }
+
+        const third: Array<T3> = [];
+
+        if (typeof array[ 0 ][ 3 ] === 'undefined') {
+            for (const [ firstElement, secondElement, thirdElement ] of array as Array<[ T1, T2, T3 ]>) {
+                first.push(firstElement);
+                second.push(secondElement);
+                third.push(thirdElement);
+            }
+
+            return [
+                new ListImpl(first),
+                new ListImpl(second),
+                new ListImpl(third)
+            ];
+        }
+
+        const fourth: Array<T4> = [];
+
+        for (const [ firstElement, secondElement, thirdElement, fourthElement ] of array as Array<[ T1, T2, T3, T4 ]>) {
+            first.push(firstElement);
+            second.push(secondElement);
+            third.push(thirdElement);
+            fourth.push(fourthElement);
+        }
+
+        return [
+            new ListImpl(first),
+            new ListImpl(second),
+            new ListImpl(third),
+            new ListImpl(fourth)
+        ];
     }
 
     public static sum(listOrArray: List<number> | Array<number>): number {

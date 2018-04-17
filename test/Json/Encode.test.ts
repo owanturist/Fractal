@@ -1,5 +1,3 @@
-/* tslint:disable: no-magic-numbers */
-
 import test from 'ava';
 
 import * as Encode from '../../src/Json/Encode';
