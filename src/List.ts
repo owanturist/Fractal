@@ -14,7 +14,7 @@ export abstract class List<T> {
     }
 
     public static fromArray<T>(array: Array<T>): List<T> {
-        return new ListImpl(array.slice());
+        return new Proxy(array.slice());
     }
 
     public static toArray<T>(listOrArray: List<T> | Array<T>): Array<T> {
@@ -22,20 +22,20 @@ export abstract class List<T> {
     }
 
     public static of<T>(...elements: Array<T>): List<T> {
-        return new ListImpl(elements);
+        return new Proxy(elements);
     }
 
     public static empty<T>(): List<T> {
-        return new ListImpl<T>([]);
+        return new Proxy<T>([]);
     }
 
     public static singleton<T>(element: T): List<T> {
-        return new ListImpl([ element ]);
+        return new Proxy([ element ]);
     }
 
     public static repeat<T>(count: number, element: T): List<T> {
         if (count <= 0) {
-            return new ListImpl<T>([]);
+            return new Proxy<T>([]);
         }
 
         const result: Array<T> = [];
@@ -44,12 +44,12 @@ export abstract class List<T> {
             result.push(element);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public static initialize<T>(count: number, creator: (index: number) => T): List<T> {
         if (count <= 0) {
-            return new ListImpl<T>([]);
+            return new Proxy<T>([]);
         }
 
         const result: Array<T> = [];
@@ -58,12 +58,12 @@ export abstract class List<T> {
             result.push(creator(index));
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public static range(start: number, end: number): List<number> {
         if (start > end) {
-            return new ListImpl<number>([]);
+            return new Proxy<number>([]);
         }
 
         const result: Array<number> = [];
@@ -72,7 +72,7 @@ export abstract class List<T> {
             result.push(index);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public static zip<T1, T2, T3, T4>(
@@ -110,7 +110,7 @@ export abstract class List<T> {
                 ]);
             }
 
-            return new ListImpl(result);
+            return new Proxy(result);
         }
 
         const third_: Array<T3> = List.toArray(third);
@@ -127,7 +127,7 @@ export abstract class List<T> {
                 ]);
             }
 
-            return new ListImpl(result);
+            return new Proxy(result);
         }
 
         const fourth_: Array<T4> = List.toArray(fourth);
@@ -143,7 +143,7 @@ export abstract class List<T> {
             ]);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public static unzip<T1, T2, T3, T4>(
@@ -162,10 +162,10 @@ export abstract class List<T> {
 
         if (array.length === 0) {
             return [
-                new ListImpl([]),
-                new ListImpl([]),
-                new ListImpl([]),
-                new ListImpl([])
+                new Proxy([]),
+                new Proxy([]),
+                new Proxy([]),
+                new Proxy([])
             ];
         }
 
@@ -179,8 +179,8 @@ export abstract class List<T> {
             }
 
             return [
-                new ListImpl(first),
-                new ListImpl(second)
+                new Proxy(first),
+                new Proxy(second)
             ];
         }
 
@@ -194,9 +194,9 @@ export abstract class List<T> {
             }
 
             return [
-                new ListImpl(first),
-                new ListImpl(second),
-                new ListImpl(third)
+                new Proxy(first),
+                new Proxy(second),
+                new Proxy(third)
             ];
         }
 
@@ -210,10 +210,10 @@ export abstract class List<T> {
         }
 
         return [
-            new ListImpl(first),
-            new ListImpl(second),
-            new ListImpl(third),
-            new ListImpl(fourth)
+            new Proxy(first),
+            new Proxy(second),
+            new Proxy(third),
+            new Proxy(fourth)
         ];
     }
 
@@ -299,7 +299,7 @@ export abstract class List<T> {
             result.push(element);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public static all<T>(listOfLists: List<List<T> | Array<T>> | Array<List<T> | Array<T>>): List<T> {
@@ -312,7 +312,7 @@ export abstract class List<T> {
             );
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public abstract isEmpty(): boolean;
@@ -356,7 +356,7 @@ export abstract class List<T> {
     public abstract toArray(): Array<T>;
 }
 
-class ListImpl<T> extends List<T> {
+class Proxy<T> extends List<T> {
     constructor(private readonly array: Array<T>) {
         super();
     }
@@ -388,7 +388,7 @@ class ListImpl<T> extends List<T> {
             result.push(this.array[ index ]);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public member(something: T): boolean {
@@ -416,7 +416,7 @@ class ListImpl<T> extends List<T> {
         }
 
         return Just(
-            new ListImpl(this.array.slice(1))
+            new Proxy(this.array.slice(1))
         );
     }
 
@@ -434,7 +434,7 @@ class ListImpl<T> extends List<T> {
         }
 
         return Just(
-            new ListImpl(this.array.slice(0, -1))
+            new Proxy(this.array.slice(0, -1))
         );
     }
 
@@ -447,7 +447,7 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public reject(fn: (element: T) => boolean): List<T> {
@@ -459,7 +459,7 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public remove(fn: (element: T) => boolean): List<T> {
@@ -476,11 +476,11 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public take(count: number): List<T> {
-        return new ListImpl(this.array.slice(0, count));
+        return new Proxy(this.array.slice(0, count));
     }
 
     public takeWhile(fn: (element: T) => boolean): List<T> {
@@ -490,15 +490,15 @@ class ListImpl<T> extends List<T> {
             if (fn(element)) {
                 result.push(element);
             } else {
-                return new ListImpl(result);
+                return new Proxy(result);
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public drop(count: number): List<T> {
-        return new ListImpl(this.array.slice(count));
+        return new Proxy(this.array.slice(count));
     }
 
     public dropWhile(fn: (element: T) => boolean): List<T> {
@@ -514,7 +514,7 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public unique(): List<T> {
@@ -526,7 +526,7 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public uniqueBy(fn: (element: T) => Comparable): List<T> {
@@ -542,7 +542,7 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public replaceIf(fn: (element: T) => boolean, next: T): List<T> {
@@ -552,7 +552,7 @@ class ListImpl<T> extends List<T> {
             result.push(fn(element) ? next : element);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
 
@@ -565,11 +565,11 @@ class ListImpl<T> extends List<T> {
             );
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public cons(element: T): List<T> {
-        return new ListImpl(
+        return new Proxy(
             [ element ].concat(this.array)
         );
     }
@@ -577,7 +577,7 @@ class ListImpl<T> extends List<T> {
     public append(listOrArray: List<T> | Array<T>): List<T> {
         const array = List.toArray(listOrArray);
 
-        return new ListImpl(
+        return new Proxy(
             array.concat(this.array)
         );
     }
@@ -585,7 +585,7 @@ class ListImpl<T> extends List<T> {
     public concat(listOrArray: List<T> | Array<T>): List<T> {
         const array = List.toArray(listOrArray);
 
-        return new ListImpl(
+        return new Proxy(
             this.array.concat(array)
         );
     }
@@ -597,7 +597,7 @@ class ListImpl<T> extends List<T> {
             result.push(gap, this.array[ index ]);
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public partition(fn: (element: T) => boolean): [ List<T>, List<T> ] {
@@ -612,7 +612,7 @@ class ListImpl<T> extends List<T> {
             }
         }
 
-        return [ new ListImpl(success), new ListImpl(failure) ];
+        return [ new Proxy(success), new Proxy(failure) ];
     }
 
     public map<R>(fn: (element: T) => R): List<R> {
@@ -622,7 +622,7 @@ class ListImpl<T> extends List<T> {
             result.push(fn(element));
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public chain<R>(fn: ((element: T) => List<R>) | ((element: T) => Array<R>)): List<R> {
@@ -636,7 +636,7 @@ class ListImpl<T> extends List<T> {
             );
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public filterMap<R>(fn: (element: T) => Maybe<R>): List<R> {
@@ -653,7 +653,7 @@ class ListImpl<T> extends List<T> {
             );
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public indexedMap<R>(fn: (index: number, element: T) => R): List<R> {
@@ -663,7 +663,7 @@ class ListImpl<T> extends List<T> {
             result.push(fn(index, this.array[ index ]));
         }
 
-        return new ListImpl(result);
+        return new Proxy(result);
     }
 
     public foldl<R>(fn: (element: T, acc: R) => R, acc: R): R {
@@ -717,7 +717,7 @@ class ListImpl<T> extends List<T> {
     }
 
     public sortBy(fn: (element: T) => Comparable): List<T> {
-        return new ListImpl(
+        return new Proxy(
             this.array.slice().sort(
                 (prev: T, next: T): number => {
                     const a = fn(prev).valueOf();
@@ -734,7 +734,7 @@ class ListImpl<T> extends List<T> {
     }
 
     public sortWith(fn: (prev: T, next: T) => Order): List<T> {
-        return new ListImpl(
+        return new Proxy(
             this.array.slice().sort(
                 (prev: T, next: T): number => fn(prev, next).cata({
                     LT: () => -1,
