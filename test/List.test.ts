@@ -1232,3 +1232,44 @@ test('List.prototype.uniqueBy()', t => {
     t.is(result41, list4, 'List hasn\'t been changed');
     t.not(result42, list4, 'List hasn\'t been mutated');
 });
+
+test('List.prototype.replaceIf()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.replaceIf(a => a > 0, 5);
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.replaceIf(a => a > 0, 5);
+    const result22 = list2.replaceIf(a => a < 0, 5);
+    const result23 = list2.replaceIf(a => a === 0, 5);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0, 5, 5, 5, 5 ]));
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, List.fromArray([ 5, 1, 2, 3, 4 ]));
+    t.not(result21, list2, 'List hasn\'t been mutated');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.updateIf()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.updateIf(a => a > 0 ? Just(a * a) : Nothing());
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.updateIf(a => a > 0 ? Just(a * a) : Nothing());
+    const result22 = list2.updateIf(a => a < 0 ? Just(a * a) : Nothing());
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0, 1, 4, 9, 16 ]));
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.not(result21, list2, 'List hasn\'t been mutated');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+});

@@ -606,6 +606,10 @@ class Proxy<T> extends List<T> {
     }
 
     public replaceIf(fn: (element: T) => boolean, next: T): List<T> {
+        if (this.array.length === 0) {
+            return this;
+        }
+
         const result: Array<T> = [];
 
         for (const element of this.array) {
@@ -617,6 +621,10 @@ class Proxy<T> extends List<T> {
 
 
     public updateIf(fn: (element: T) => Maybe<T>): List<T> {
+        if (this.array.length === 0) {
+            return this;
+        }
+
         const result: Array<T> = [];
 
         for (const element of this.array) {
