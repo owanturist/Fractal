@@ -706,9 +706,13 @@ class Proxy<T> extends List<T> {
     }
 
     public intersperse(gap: T): List<T> {
+        if (this.array.length < 2) {
+            return this;
+        }
+
         const result = this.array.slice(0, 1);
 
-        for (let index = 1; index < length; index++) {
+        for (let index = 1; index < this.array.length; index++) {
             result.push(gap, this.array[ index ]);
         }
 

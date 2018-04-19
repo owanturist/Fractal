@@ -1517,3 +1517,31 @@ test('List.prototype.concat()', t => {
 
     t.deepEqual(source2, List.fromArray([ 0, 1, 2 ]), 'Source List hasn\'t been changed');
 });
+
+test('List.prototype.intersperse()', t => {
+    const source1: List<number> = List.fromArray([]);
+    const result1 = source1.intersperse(5);
+
+    t.deepEqual(result1, List.fromArray([]), 'Result List is correct');
+    t.deepEqual(source1, List.fromArray([]), 'Source List hasn\'t been changed');
+    t.is(result1, source1, 'Source List has been returned as result List');
+
+    const source2 = List.fromArray([ 0 ]);
+    const result2 = source2.intersperse(5);
+
+    t.deepEqual(result2, List.fromArray([ 0 ]), 'Result List is correct');
+    t.deepEqual(source2, List.fromArray([ 0 ]), 'Source List hasn\'t been changed');
+    t.is(result2, source2, 'Source List has been returned as result List');
+
+    const source3 = List.fromArray([ 0, 1 ]);
+    const result3 = source3.intersperse(5);
+
+    t.deepEqual(result3, List.fromArray([ 0, 5, 1 ]), 'Result List is correct');
+    t.deepEqual(source3, List.fromArray([ 0, 1 ]), 'Source List hasn\'t been changed');
+    t.not(result3, source3, 'Source List hasn\'t been returned as result List');
+
+    t.deepEqual(
+        List.fromArray([ 0, 1, 2, 3, 4 ]).intersperse(5),
+        List.fromArray([ 0, 5, 1, 5, 2, 5, 3, 5, 4 ])
+    );
+});
