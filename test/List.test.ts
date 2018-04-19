@@ -1377,3 +1377,143 @@ test('List.prototype.pop()', t => {
         ])
     );
 });
+
+test('List.prototype.append()', t => {
+    const source1: List<number> = List.fromArray([]);
+
+    const array11: Array<number> = [];
+    const result11 = source1.append(array11);
+
+    t.deepEqual(result11, List.fromArray([]), 'Result List is correct');
+    t.deepEqual(array11, [], 'Appended Array hasn\'t been changed');
+    t.not(source1, result11, 'Source List hasn\'t been returned as result List');
+
+    const array12 = [ 0, 1, 2 ];
+    const result12 = source1.append(array12);
+
+    t.deepEqual(result12, List.fromArray([ 0, 1, 2 ]), 'Result List is correct');
+    t.deepEqual(array12, [ 0, 1, 2 ], 'Appended Array hasn\'t been changed');
+    t.not(source1, result12, 'Source List hasn\'t been returned as result List');
+
+    const list11: List<number> = List.fromArray([]);
+    const result13 = source1.append(list11);
+
+    t.deepEqual(result13, List.fromArray([]), 'Result List is correct');
+    t.deepEqual(list11, List.fromArray([]), 'Appended Array hasn\'t been changed');
+    t.is(result13, list11, 'Appended List has been returned as result List');
+    t.not(source1, result13, 'Source List hasn\'t been returned as result List');
+
+    const list12 = List.fromArray([ 0, 1, 2 ]);
+    const result14 = source1.append(list12);
+
+    t.deepEqual(result14, List.fromArray([ 0, 1, 2 ]), 'Result List is correct');
+    t.deepEqual(list12, List.fromArray([ 0, 1, 2 ]), 'Appended Array hasn\'t been changed');
+    t.is(result14, list12, 'Appended List has been returned as result List');
+    t.not(source1, result14, 'Source List hasn\'t been returned as result List');
+
+    t.deepEqual(source1, List.fromArray([]), 'Source List hasn\'t been changed');
+
+    const source2: List<number> = List.fromArray([ 3, 4, 5 ]);
+
+    const array21: Array<number> = [];
+    const result21 = source2.append(array21);
+
+    t.deepEqual(result21, List.fromArray([ 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(array21, [], 'Appended Array hasn\'t been changed');
+    t.is(source2, result21, 'Source List has been returned as result');
+
+    const array22: Array<number> = [ 0, 1, 2 ];
+    const result22 = source2.append(array22);
+
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(array22, [ 0, 1, 2 ], 'Appended Array hasn\'t been changed');
+    t.not(source2, result22, 'Source List hasn\'t been returned as result List');
+
+    const list21: List<number> = List.fromArray([]);
+    const result23 = source2.append(list21);
+
+    t.deepEqual(result23, List.fromArray([ 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(list21, List.fromArray([]), 'Appended Array hasn\'t been changed');
+    t.not(result23, list21, 'Appended List hasn\'t been returned as result List');
+    t.is(source2, result23, 'Source List has been returned as result');
+
+    const list22: List<number> = List.fromArray([ 0, 1, 2 ]);
+    const result24 = source2.append(list22);
+
+    t.deepEqual(result24, List.fromArray([ 0, 1, 2, 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(list22, List.fromArray([ 0, 1, 2 ]), 'Appended Array hasn\'t been changed');
+    t.not(result24, list22, 'Appended List hasn\'t been returned as result List');
+    t.not(source2, result24, 'Source List hasn\'t been returned as result List');
+
+    t.deepEqual(source2, List.fromArray([ 3, 4, 5 ]), 'Source List hasn\'t been changed');
+});
+
+test('List.prototype.concat()', t => {
+    const source1: List<number> = List.fromArray([]);
+
+    const array11: Array<number> = [];
+    const result11 = source1.concat(array11);
+
+    t.deepEqual(result11, List.fromArray([]), 'Result List is correct');
+    t.deepEqual(array11, [], 'Appended Array hasn\'t been changed');
+    t.not(source1, result11, 'Source List hasn\'t been returned as result List');
+
+    const array12 = [ 3, 4, 5 ];
+    const result12 = source1.concat(array12);
+
+    t.deepEqual(result12, List.fromArray([ 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(array12, [ 3, 4, 5 ], 'Appended Array hasn\'t been changed');
+    t.not(source1, result12, 'Source List hasn\'t been returned as result List');
+
+    const list11: List<number> = List.fromArray([]);
+    const result13 = source1.concat(list11);
+
+    t.deepEqual(result13, List.fromArray([]), 'Result List is correct');
+    t.deepEqual(list11, List.fromArray([]), 'Appended Array hasn\'t been changed');
+    t.is(result13, list11, 'Appended List has been returned as result List');
+    t.not(source1, result13, 'Source List hasn\'t been returned as result List');
+
+    const list12 = List.fromArray([ 3, 4, 5 ]);
+    const result14 = source1.concat(list12);
+
+    t.deepEqual(result14, List.fromArray([ 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(list12, List.fromArray([ 3, 4, 5 ]), 'Appended Array hasn\'t been changed');
+    t.is(result14, list12, 'Appended List has been returned as result List');
+    t.not(source1, result14, 'Source List hasn\'t been returned as result List');
+
+    t.deepEqual(source1, List.fromArray([]), 'Source List hasn\'t been changed');
+
+    const source2: List<number> = List.fromArray([ 0, 1, 2 ]);
+
+    const array21: Array<number> = [];
+    const result21 = source2.concat(array21);
+
+    t.deepEqual(result21, List.fromArray([ 0, 1, 2 ]), 'Result List is correct');
+    t.deepEqual(array21, [], 'Appended Array hasn\'t been changed');
+    t.is(source2, result21, 'Source List has been returned as result');
+
+    const array22: Array<number> = [ 3, 4, 5 ];
+    const result22 = source2.concat(array22);
+
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(array22, [ 3, 4, 5 ], 'Appended Array hasn\'t been changed');
+    t.not(source2, result22, 'Source List hasn\'t been returned as result List');
+
+    const list21: List<number> = List.fromArray([]);
+    const result23 = source2.concat(list21);
+
+    t.deepEqual(result23, List.fromArray([ 0, 1, 2 ]), 'Result List is correct');
+    t.deepEqual(list21, List.fromArray([]), 'Appended Array hasn\'t been changed');
+    t.not(result23, list21, 'Appended List hasn\'t been returned as result List');
+    t.is(source2, result23, 'Source List has been returned as result');
+
+    const list22: List<number> = List.fromArray([ 3, 4, 5 ]);
+    const result24 = source2.concat(list22);
+
+    t.deepEqual(result24, List.fromArray([ 0, 1, 2, 3, 4, 5 ]), 'Result List is correct');
+    t.deepEqual(list22, List.fromArray([ 3, 4, 5 ]), 'Appended Array hasn\'t been changed');
+    t.not(result24, list22, 'Appended List hasn\'t been returned as result List');
+    t.not(source2, result24, 'Source List hasn\'t been returned as result List');
+
+    t.deepEqual(source2, List.fromArray([ 0, 1, 2 ]), 'Source List hasn\'t been changed');
+});

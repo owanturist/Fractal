@@ -674,7 +674,15 @@ class Proxy<T> extends List<T> {
     }
 
     public append(listOrArray: List<T> | Array<T>): List<T> {
+        if (this.array.length === 0) {
+            return List.isList(listOrArray) ? listOrArray : new Proxy(listOrArray);
+        }
+
         const array = List.toArray(listOrArray);
+
+        if (array.length === 0) {
+            return this;
+        }
 
         return new Proxy(
             array.concat(this.array)
@@ -682,7 +690,15 @@ class Proxy<T> extends List<T> {
     }
 
     public concat(listOrArray: List<T> | Array<T>): List<T> {
+        if (this.array.length === 0) {
+            return List.isList(listOrArray) ? listOrArray : new Proxy(listOrArray);
+        }
+
         const array = List.toArray(listOrArray);
+
+        if (array.length === 0) {
+            return this;
+        }
 
         return new Proxy(
             this.array.concat(array)
