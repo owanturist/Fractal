@@ -562,6 +562,10 @@ class Proxy<T> extends List<T> {
     }
 
     public unique(): List<T> {
+        if (this.array.length < 2) {
+            return this;
+        }
+
         const result: Array<T> = [];
 
         for (const element of this.array) {
@@ -570,12 +574,20 @@ class Proxy<T> extends List<T> {
             }
         }
 
+        if (result.length === this.array.length) {
+            return this;
+        }
+
         return new Proxy(result);
     }
 
     public uniqueBy(fn: (element: T) => Comparable): List<T> {
+        if (this.array.length < 2) {
+            return this;
+        }
+
         const result: Array<T> = [];
-        const acc: {[ key: string ]: boolean} = {};
+        const acc: {[ key: string ]: boolean } = {};
 
         for (const element of this.array) {
             const key = fn(element);
@@ -584,6 +596,10 @@ class Proxy<T> extends List<T> {
                 acc[ key ] = true;
                 result.push(element);
             }
+        }
+
+        if (result.length === this.array.length) {
+            return this;
         }
 
         return new Proxy(result);

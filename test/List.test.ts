@@ -1138,3 +1138,97 @@ test('List.prototype.dropWhile()', t => {
     t.is(result24, list2, 'List hasn\'t been mutated');
     t.not(result25, list2, 'List hasn\'t been mutated');
 });
+
+test('List.prototype.unique()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.unique();
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result2 = list2.unique();
+
+    t.deepEqual(result2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.is(result2, list2, 'List hasn\'t been changed');
+
+    const list3 = List.fromArray([{}, {}, {}, {}]);
+    const result3 = list3.unique();
+
+    t.deepEqual(result3, List.fromArray([{}, {}, {}, {}]));
+    t.deepEqual(list3, List.fromArray([{}, {}, {}, {}]));
+    t.is(result3, list3, 'List hasn\'t been changed');
+
+    const list4 = List.fromArray([ 0, 1, 2, 3, 4, 2, 3 ]);
+    const result4 = list4.unique();
+
+    t.deepEqual(result4, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(list4, List.fromArray([ 0, 1, 2, 3, 4, 2, 3 ]));
+    t.not(result4, list4, 'List hasn\'t been mutated');
+
+    const object = {};
+    const list5 = List.fromArray([{}, {}, object, {}, object, {}]);
+    const result5 = list5.unique();
+
+    t.deepEqual(result5, List.fromArray([{}, {}, object, {}, {}]));
+    t.deepEqual(list5, List.fromArray([{}, {}, object, {}, object, {}]));
+    t.not(result5, list5, 'List hasn\'t been mutated');
+
+    const list6 = List.fromArray([ 0 ]);
+    const result6 = list6.unique();
+
+    t.deepEqual(result6, List.fromArray([ 0 ]));
+    t.deepEqual(list6, List.fromArray([ 0 ]));
+    t.is(result6, list6, 'List hasn\'t been changed');
+});
+
+test('List.prototype.uniqueBy()', t => {
+    interface Movie {
+        readonly id: number;
+        readonly title: string;
+    }
+
+    const movie = (id: number, title: string): Movie => ({ id, title });
+
+    const list1 = List.fromArray<Movie>([]);
+    const result11 = list1.uniqueBy(movie => movie.id);
+    const result12 = list1.uniqueBy(movie => movie.title);
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result11, List.fromArray([]));
+    t.deepEqual(result12, List.fromArray([]));
+    t.is(result11, list1, 'List hasn\'t been changed');
+    t.is(result12, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray<Movie>([ movie(0, 'title_0') ]);
+    const result21 = list2.uniqueBy(movie => movie.id);
+    const result22 = list2.uniqueBy(movie => movie.title);
+
+    t.deepEqual(list2, List.fromArray([ movie(0, 'title_0') ]));
+    t.deepEqual(result21, List.fromArray([ movie(0, 'title_0') ]));
+    t.deepEqual(result22, List.fromArray([ movie(0, 'title_0') ]));
+    t.is(result21, list2, 'List hasn\'t been changed');
+    t.is(result22, list2, 'List hasn\'t been changed');
+
+    const list3 = List.fromArray<Movie>([ movie(0, 'title_0'), movie(1, 'title_1') ]);
+    const result31 = list3.uniqueBy(movie => movie.id);
+    const result32 = list3.uniqueBy(movie => movie.title);
+
+    t.deepEqual(list3, List.fromArray([ movie(0, 'title_0'), movie(1, 'title_1') ]));
+    t.deepEqual(result31, List.fromArray([ movie(0, 'title_0'), movie(1, 'title_1') ]));
+    t.deepEqual(result32, List.fromArray([ movie(0, 'title_0'), movie(1, 'title_1') ]));
+    t.is(result31, list3, 'List hasn\'t been changed');
+    t.is(result32, list3, 'List hasn\'t been changed');
+
+    const list4 = List.fromArray<Movie>([ movie(0, 'title_0'), movie(1, 'title_1'), movie(2, 'title_0') ]);
+    const result41 = list4.uniqueBy(movie => movie.id);
+    const result42 = list4.uniqueBy(movie => movie.title);
+
+    t.deepEqual(list4, List.fromArray([ movie(0, 'title_0'), movie(1, 'title_1'), movie(2, 'title_0') ]));
+    t.deepEqual(result41, List.fromArray([ movie(0, 'title_0'), movie(1, 'title_1'), movie(2, 'title_0') ]));
+    t.deepEqual(result42, List.fromArray([ movie(0, 'title_0'), movie(1, 'title_1') ]));
+    t.is(result41, list4, 'List hasn\'t been changed');
+    t.not(result42, list4, 'List hasn\'t been mutated');
+});
