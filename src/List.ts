@@ -382,6 +382,10 @@ class Proxy<T> extends List<T> {
     }
 
     public reverse(): List<T> {
+        if (this.array.length === 0) {
+            return this;
+        }
+
         const result: Array<T> = [];
 
         for (let index = this.array.length - 1; index >= 0; index--) {
@@ -425,7 +429,7 @@ class Proxy<T> extends List<T> {
             return Nothing();
         }
 
-        return Just(this.array[ this.array.length ]);
+        return Just(this.array[ this.array.length - 1 ]);
     }
 
     public init(): Maybe<List<T>> {
@@ -439,6 +443,10 @@ class Proxy<T> extends List<T> {
     }
 
     public filter(fn: (element: T) => boolean): List<T> {
+        if (this.array.length === 0) {
+            return this;
+        }
+
         const result: Array<T> = [];
 
         for (const element of this.array) {
@@ -451,6 +459,10 @@ class Proxy<T> extends List<T> {
     }
 
     public reject(fn: (element: T) => boolean): List<T> {
+        if (this.array.length === 0) {
+            return this;
+        }
+
         const result: Array<T> = [];
 
         for (const element of this.array) {
@@ -463,6 +475,10 @@ class Proxy<T> extends List<T> {
     }
 
     public remove(fn: (element: T) => boolean): List<T> {
+        if (this.array.length === 0 ) {
+            return this;
+        }
+
         const result: Array<T> = [];
         let removed = false;
 
@@ -480,7 +496,17 @@ class Proxy<T> extends List<T> {
     }
 
     public take(count: number): List<T> {
-        return new Proxy(this.array.slice(0, count));
+        if (count >= this.array.length) {
+            return this;
+        }
+
+        const result: Array<T> = this.array.slice(0, count);
+
+        if (result.length === this.array.length) {
+            return this;
+        }
+
+        return new Proxy(result);
     }
 
     public takeWhile(fn: (element: T) => boolean): List<T> {
@@ -494,11 +520,25 @@ class Proxy<T> extends List<T> {
             }
         }
 
+        if (result.length === this.array.length) {
+            return this;
+        }
+
         return new Proxy(result);
     }
 
     public drop(count: number): List<T> {
-        return new Proxy(this.array.slice(count));
+        if (count === 0) {
+            return this;
+        }
+
+        const result: Array<T> = this.array.slice(count);
+
+        if (result.length === this.array.length) {
+            return this;
+        }
+
+        return new Proxy(result);
     }
 
     public dropWhile(fn: (element: T) => boolean): List<T> {
@@ -512,6 +552,10 @@ class Proxy<T> extends List<T> {
                 dropped = true;
                 result.push(element);
             }
+        }
+
+        if (result.length === this.array.length) {
+            return this;
         }
 
         return new Proxy(result);

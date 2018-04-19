@@ -818,3 +818,323 @@ test('List.all()', t => {
         'Object hasn\'t been mutated'
     );
 });
+
+test('List.prototype.isEmpty()', t => {
+    t.false(List.fromArray([ 1 ]).isEmpty());
+    t.false(List.fromArray([ 'str' ]).isEmpty());
+    t.false(List.fromArray([ false ]).isEmpty());
+    t.false(List.fromArray([[]]).isEmpty());
+    t.false(List.fromArray([{}]).isEmpty());
+    t.true(List.fromArray([]).isEmpty());
+});
+
+test('List.prototype.size()', t => {
+    t.is(List.fromArray([]).size(), 0);
+    t.is(List.fromArray([ 0 ]).size(), 1);
+    t.is(List.fromArray([ 0, 1, 2 ]).size(), 3);
+});
+
+test('List.prototype.count()', t => {
+    t.is(
+        List.fromArray([ 0, 1, 2, 3, 4 ]).count(a => a < 0),
+        0
+    );
+
+    t.is(
+        List.fromArray([ 0, 1, 2, 3, 4 ]).count(a => a > 0),
+        4
+    );
+
+    t.is(
+        List.fromArray([ 0, 1, 2, 3, 4 ]).count(a => a === 0),
+        1
+    );
+});
+
+test('List.prototype.reverse()', t => {
+    const list1 = List.fromArray([]);
+    const result1 = list1.reverse();
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result2 = list2.reverse();
+
+    t.deepEqual(result2, List.fromArray([ 4, 3, 2, 1, 0 ]));
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.not(result2, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.member()', t => {
+    t.false(List.fromArray<number>([]).member(0));
+    t.false(List.fromArray([ 1 ]).member(0));
+    t.false(List.fromArray([ 1, 2, 3 ]).member(0));
+    t.true(List.fromArray([ 0 ]).member(0));
+    t.true(List.fromArray([ 1, 0, 2, 3 ]).member(0));
+
+    const object = {};
+
+    t.false(List.fromArray([{}]).member({}));
+    t.false(List.fromArray([{}]).member(object));
+    t.true(List.fromArray([{}, object]).member(object));
+});
+
+test('List.prototype.head()', t => {
+    t.deepEqual(
+        List.fromArray([]).head(),
+        Nothing()
+    );
+
+    t.deepEqual(
+        List.fromArray([ 0 ]).head(),
+        Just(0)
+    );
+
+    t.deepEqual(
+        List.fromArray([ 1, 2, 3 ]).head(),
+        Just(1)
+    );
+});
+
+test('List.prototype.tail()', t => {
+    t.deepEqual(
+        List.fromArray([]).tail(),
+        Nothing()
+    );
+
+    t.deepEqual(
+        List.fromArray([ 0 ]).tail(),
+        Just(List.fromArray([]))
+    );
+
+    t.deepEqual(
+        List.fromArray([ 1, 2, 3 ]).tail(),
+        Just(List.fromArray([ 2, 3 ]))
+    );
+});
+
+test('List.prototype.last()', t => {
+    t.deepEqual(
+        List.fromArray([]).last(),
+        Nothing()
+    );
+
+    t.deepEqual(
+        List.fromArray([ 0 ]).last(),
+        Just(0)
+    );
+
+    t.deepEqual(
+        List.fromArray([ 1, 2, 3 ]).last(),
+        Just(3)
+    );
+});
+
+test('List.prototype.init()', t => {
+    t.deepEqual(
+        List.fromArray([]).init(),
+        Nothing()
+    );
+
+    t.deepEqual(
+        List.fromArray([ 0 ]).init(),
+        Just(List.fromArray([]))
+    );
+
+    t.deepEqual(
+        List.fromArray([ 1, 2, 3 ]).init(),
+        Just(List.fromArray([ 1, 2 ]))
+    );
+});
+
+test('List.prototype.filter()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.filter(a => a > 0);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.filter(a => a > 0);
+    const result22 = list2.filter(a => a < 0);
+    const result23 = list2.filter(a => a === 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 1, 2, 3, 4 ]));
+    t.deepEqual(result22, List.fromArray([]));
+    t.deepEqual(result23, List.fromArray([ 0 ]));
+    t.not(result21, list2, 'List hasn\'t been mutated');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.reject()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.reject(a => a > 0);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.reject(a => a > 0);
+    const result22 = list2.reject(a => a < 0);
+    const result23 = list2.reject(a => a === 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0 ]));
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, List.fromArray([ 1, 2, 3, 4 ]));
+    t.not(result21, list2, 'List hasn\'t been mutated');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.remove()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.remove(a => a > 0);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.remove(a => a > 0);
+    const result22 = list2.remove(a => a < 0);
+    const result23 = list2.remove(a => a === 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0, 2, 3, 4 ]));
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, List.fromArray([ 1, 2, 3, 4 ]));
+    t.not(result21, list2, 'List hasn\'t been mutated');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.take()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result11 = list1.take(0);
+    const result12 = list1.take(1);
+    const result13 = list1.take(-1);
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result11, List.fromArray([]));
+    t.deepEqual(result12, List.fromArray([]));
+    t.deepEqual(result13, List.fromArray([]));
+    t.is(result11, list1, 'List hasn\'t been changed');
+    t.is(result12, list1, 'List hasn\'t been changed');
+    t.is(result13, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.take(0);
+    const result22 = list2.take(2);
+    const result23 = list2.take(5);
+    const result24 = list2.take(6);
+    const result25 = list2.take(-2);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([]));
+    t.deepEqual(result22, List.fromArray([ 0, 1 ]));
+    t.deepEqual(result23, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result24, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result25, List.fromArray([ 0, 1, 2 ]));
+    t.not(result21, list2, 'List hasn\'t been mutated');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.is(result23, list2, 'List hasn\'t been changed');
+    t.is(result24, list2, 'List hasn\'t been changed');
+    t.not(result25, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.takeWhile()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.takeWhile(a => a > 0);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.takeWhile(a => a >= 0);
+    const result22 = list2.takeWhile(a => a < 0);
+    const result23 = list2.takeWhile(a => a === 0);
+    const result24 = list2.takeWhile(a => a > 2);
+    const result25 = list2.takeWhile(a => a < 2);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result22, List.fromArray([]));
+    t.deepEqual(result23, List.fromArray([ 0 ]));
+    t.deepEqual(result24, List.fromArray([]));
+    t.deepEqual(result25, List.fromArray([ 0, 1 ]));
+    t.is(result21, list2, 'List hasn\'t been changed');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+    t.not(result24, list2, 'List hasn\'t been mutated');
+    t.not(result25, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.drop()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result11 = list1.drop(0);
+    const result12 = list1.drop(1);
+    const result13 = list1.drop(-1);
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result11, List.fromArray([]));
+    t.deepEqual(result12, List.fromArray([]));
+    t.deepEqual(result13, List.fromArray([]));
+    t.is(result11, list1, 'List hasn\'t been changed');
+    t.is(result12, list1, 'List hasn\'t been changed');
+    t.is(result13, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.drop(0);
+    const result22 = list2.drop(2);
+    const result23 = list2.drop(5);
+    const result24 = list2.drop(6);
+    const result25 = list2.drop(-2);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result22, List.fromArray([ 2, 3, 4 ]));
+    t.deepEqual(result23, List.fromArray([]));
+    t.deepEqual(result24, List.fromArray([]));
+    t.deepEqual(result25, List.fromArray([ 3, 4 ]));
+    t.is(result21, list2, 'List hasn\'t been changed');
+    t.not(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+    t.not(result24, list2, 'List hasn\'t been changed');
+    t.not(result25, list2, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.dropWhile()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.dropWhile(a => a > 0);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.deepEqual(list1, List.fromArray([]));
+    t.is(result1, list1, 'List hasn\'t been changed');
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.dropWhile(a => a >= 0);
+    const result22 = list2.dropWhile(a => a < 0);
+    const result23 = list2.dropWhile(a => a === 0);
+    const result24 = list2.dropWhile(a => a > 2);
+    const result25 = list2.dropWhile(a => a < 2);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([]));
+    t.deepEqual(result22, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, List.fromArray([ 1, 2, 3, 4 ]));
+    t.deepEqual(result24, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result25, List.fromArray([ 2, 3, 4 ]));
+    t.not(result21, list2, 'List hasn\'t been changed');
+    t.is(result22, list2, 'List hasn\'t been mutated');
+    t.not(result23, list2, 'List hasn\'t been mutated');
+    t.is(result24, list2, 'List hasn\'t been mutated');
+    t.not(result25, list2, 'List hasn\'t been mutated');
+});
