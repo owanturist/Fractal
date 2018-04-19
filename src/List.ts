@@ -338,6 +338,9 @@ export abstract class List<T> {
 
     public abstract updateIf(fn: (element: T) => Maybe<T>): List<T>;
     public abstract cons(element: T): List<T>;
+    public abstract uncons(): Maybe<[ T, List<T> ]>;
+    public abstract push(element: T): List<T>;
+    public abstract pop(): Maybe<[ T, List<T> ]>;
     public abstract append(listOrArray: List<T> | Array<T>): List<T>;
     public abstract concat(listOrArray: List<T> | Array<T>): List<T>;
     public abstract intersperse(gap: T): List<T>;
@@ -640,6 +643,34 @@ class Proxy<T> extends List<T> {
         return new Proxy(
             [ element ].concat(this.array)
         );
+    }
+
+    public uncons(): Maybe<[ T, List<T> ]> {
+        if (this.array.length === 0) {
+            return Nothing();
+        }
+
+        return Just<[ T, List<T> ]>([
+            this.array[ 0 ],
+            new Proxy(this.array.slice(1))
+        ]);
+    }
+
+    public push(element: T): List<T> {
+        return new Proxy(
+            this.array.concat([ element ])
+        );
+    }
+
+    public pop(): Maybe<[ T, List<T> ]> {
+        if (this.array.length === 0) {
+            return Nothing();
+        }
+
+        return Just<[ T, List<T> ]>([
+            this.array[ this.array.length - 1 ],
+            new Proxy(this.array.slice(0, -1))
+        ]);
     }
 
     public append(listOrArray: List<T> | Array<T>): List<T> {

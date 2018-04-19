@@ -1273,3 +1273,107 @@ test('List.prototype.updateIf()', t => {
     t.not(result21, list2, 'List hasn\'t been mutated');
     t.not(result22, list2, 'List hasn\'t been mutated');
 });
+
+test('List.prototype.cons()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.cons(1);
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result1, List.fromArray([ 1 ]));
+    t.not(result1, list1, 'List hasn\'t been mutated');
+
+    const list2 = List.fromArray([ 0 ]);
+    const result2 = list2.cons(1).cons(2).cons(3);
+
+    t.deepEqual(list2, List.fromArray([ 0 ]));
+    t.deepEqual(result2, List.fromArray([ 3, 2, 1, 0 ]));
+    t.not(result2, list2, 'List hasn\'t been mutated');
+
+    const list3 = List.fromArray<Array<number>>([[]]);
+    const result3 = list3.cons([ 1 ]).cons([ 2, 3 ]).cons([ 4, 5 ]);
+
+    t.deepEqual(list3, List.fromArray([[]]));
+    t.deepEqual(result3, List.fromArray([[ 4, 5 ], [ 2, 3 ], [ 1 ], []]));
+    t.not(result3, list3, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.uncons()', t => {
+    t.deepEqual(
+        List.fromArray([]).uncons(),
+        Nothing()
+    );
+
+    const list1 = List.fromArray([ 0 ]);
+
+    t.deepEqual(list1, List.fromArray([ 0 ]));
+    t.deepEqual(
+        list1.uncons(),
+        Just<[ number, List<number> ]>([
+            0,
+            List.fromArray([])
+        ])
+    );
+
+    const list2 = List.fromArray([ 0, 1, 2, 3 ]);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3 ]));
+    t.deepEqual(
+        list2.uncons(),
+        Just<[ number, List<number> ]>([
+            0,
+            List.fromArray([ 1, 2, 3 ])
+        ])
+    );
+});
+
+test('List.prototype.push()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.push(1);
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result1, List.fromArray([ 1 ]));
+    t.not(result1, list1, 'List hasn\'t been mutated');
+
+    const list2 = List.fromArray([ 0 ]);
+    const result2 = list2.push(1).push(2).push(3);
+
+    t.deepEqual(list2, List.fromArray([ 0 ]));
+    t.deepEqual(result2, List.fromArray([ 0, 1, 2, 3 ]));
+    t.not(result2, list2, 'List hasn\'t been mutated');
+
+    const list3 = List.fromArray<Array<number>>([[]]);
+    const result3 = list3.push([ 1 ]).push([ 2, 3 ]).push([ 4, 5 ]);
+
+    t.deepEqual(list3, List.fromArray([[]]));
+    t.deepEqual(result3, List.fromArray([[], [ 1 ], [ 2, 3 ], [ 4, 5 ]]));
+    t.not(result3, list3, 'List hasn\'t been mutated');
+});
+
+test('List.prototype.pop()', t => {
+    t.deepEqual(
+        List.fromArray([]).pop(),
+        Nothing()
+    );
+
+    const list1 = List.fromArray([ 0 ]);
+
+    t.deepEqual(list1, List.fromArray([ 0 ]));
+    t.deepEqual(
+        list1.pop(),
+        Just<[ number, List<number> ]>([
+            0,
+            List.fromArray([])
+        ])
+    );
+
+    const list2 = List.fromArray([ 0, 1, 2, 3 ]);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3 ]));
+    t.deepEqual(
+        list2.pop(),
+        Just<[ number, List<number> ]>([
+            3,
+            List.fromArray([ 0, 1, 2 ])
+        ])
+    );
+});
