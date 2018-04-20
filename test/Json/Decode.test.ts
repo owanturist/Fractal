@@ -13,6 +13,9 @@ import {
     Right
 } from '../../src/Either';
 import {
+    Record
+} from '../../src/Record';
+import {
     List
 } from '../../src/List';
 import * as Decode from '../../src/Json/Decode';
@@ -478,6 +481,26 @@ test('Json.Decode.props()', t => {
                 baz: Decode.field('saz', Decode.string)
             }))
         }).decode({
+            soo: 1,
+            sar: {
+                saz: '1'
+            }
+        }),
+        Right({
+            foo: 1,
+            bar: {
+                baz: '1'
+            }
+        })
+    );
+
+    t.deepEqual(
+        Decode.props(Record.of({
+            foo: Decode.field('soo', Decode.number),
+            bar: Decode.field('sar', Decode.props({
+                baz: Decode.field('saz', Decode.string)
+            }))
+        })).decode({
             soo: 1,
             sar: {
                 saz: '1'

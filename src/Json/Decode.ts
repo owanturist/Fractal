@@ -9,6 +9,9 @@ import {
     Right
 } from '../Either';
 import {
+    Record
+} from '../Record';
+import {
     List as List_
 } from '../List';
 import * as Encode from './Encode';
@@ -405,7 +408,9 @@ export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Decode.
 export const list = <T>(decoder: Decoder<T>): Decoder<List_<T>> => new Decode.List(decoder);
 export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => new Decode.Dict(decoder);
 export const keyValue = <T>(decoder: Decoder<T>): Decoder<List_<[ string, T ]>> => new Decode.KeyValue(decoder);
-export const props = <T>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Decode.Props(config);
+export const props = <T>(
+    config: Record<{[ K in keyof T ]: Decoder<T[ K ]>}> | {[ K in keyof T ]: Decoder<T[ K ]>}
+): Decoder<T> => new Decode.Props(Record.toObject(config));
 
 export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Decode.Index(index, decoder);
 export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Decode.Field(key, decoder);
