@@ -1759,3 +1759,51 @@ test('List.prototype.find()', t => {
     );
     t.deepEqual(result23, Just(movie(2, 'title_2')));
 });
+
+test('List.prototype.every()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.every(a => a >= 0);
+
+    t.deepEqual(result1, true);
+    t.deepEqual(list1, List.fromArray([]));
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.every(a => a >= 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, true);
+
+    const result22 = list2.every(a => a < 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result22, false);
+
+    const result23 = list2.every(a => a === 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, false);
+});
+
+test('List.prototype.any()', t => {
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.any(a => a >= 0);
+
+    t.deepEqual(result1, false);
+    t.deepEqual(list1, List.fromArray([]));
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.any(a => a >= 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, true);
+
+    const result22 = list2.any(a => a < 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result22, false);
+
+    const result23 = list2.any(a => a === 0);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, true);
+});
