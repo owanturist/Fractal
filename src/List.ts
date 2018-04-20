@@ -8,6 +8,8 @@ import {
     Just
 } from './Maybe';
 
+type Fallback<T> = List<T> | Array<T>;
+
 export abstract class List<T> {
     public static isList(something: any): something is List<any> {
         return something instanceof List;
@@ -17,7 +19,7 @@ export abstract class List<T> {
         return new Proxy(array.slice());
     }
 
-    public static toArray<T>(listOrArray: List<T> | Array<T>): Array<T> {
+    public static toArray<T>(listOrArray: Fallback<T>): Array<T> {
         return List.isList(listOrArray) ? listOrArray.toArray() : listOrArray;
     }
 
@@ -76,25 +78,25 @@ export abstract class List<T> {
     }
 
     public static zip<T1, T2, T3, T4>(
-        first: List<T1> | Array<T1>,
-        second: List<T2> | Array<T2>,
-        third: List<T3> | Array<T3>,
-        fourth: List<T4> | Array<T4>
+        first: Fallback<T1>,
+        second: Fallback<T2>,
+        third: Fallback<T3>,
+        fourth: Fallback<T4>
     ): List<[ T1, T2, T3, T4 ]>;
     public static zip<T1, T2, T3>(
-        first: List<T1> | Array<T1>,
-        second: List<T2> | Array<T2>,
-        third: List<T3> | Array<T3>
+        first: Fallback<T1>,
+        second: Fallback<T2>,
+        third: Fallback<T3>
     ): List<[ T1, T2, T3 ]>;
     public static zip<T1, T2, >(
-        first: List<T1> | Array<T1>,
-        second: List<T2> | Array<T2>
+        first: Fallback<T1>,
+        second: Fallback<T2>
     ): List<[ T1, T2 ]>;
     public static zip<T1, T2, T3, T4>(
-        first: List<T1> | Array<T1>,
-        second: List<T2> | Array<T2>,
-        third?: List<T3> | Array<T3>,
-        fourth?: List<T4> | Array<T4>
+        first: Fallback<T1>,
+        second: Fallback<T2>,
+        third?: Fallback<T3>,
+        fourth?: Fallback<T4>
     ): List<[ T1, T2, T3, T4 ]> | List<[ T1, T2, T3 ]> | List<[ T1, T2 ]> {
         const first_: Array<T1> = List.toArray(first);
         const second_: Array<T2> = List.toArray(second);
@@ -147,16 +149,16 @@ export abstract class List<T> {
     }
 
     public static unzip<T1, T2, T3, T4>(
-        listOrArray: List<[ T1, T2, T3, T4 ]> | Array<[ T1, T2, T3, T4 ]>
+        listOrArray: Fallback<[ T1, T2, T3, T4 ]>
     ): [ List<T1>, List<T2>, List<T3>, List<T4> ];
     public static unzip<T1, T2, T3>(
-        listOrArray: List<[ T1, T2, T3 ]> | Array<[ T1, T2, T3 ]>
+        listOrArray: Fallback<[ T1, T2, T3 ]>
     ): [ List<T1>, List<T2>, List<T3> ];
     public static unzip<T1, T2>(
-        listOrArray: List<[ T1, T2 ]> | Array<[ T1, T2 ]>
+        listOrArray: Fallback<[ T1, T2 ]>
     ): [ List<T1>, List<T2> ];
     public static unzip<T1, T2, T3, T4, R extends [ T1, T2, T3, T4 ] | [ T1, T2, T3 ] | [ T1, T2 ]>(
-        listOrArray: List<R> | Array<R>
+        listOrArray: Fallback<R>
     ): [ List<T1>, List<T2>, List<T3>, List<T4> ] | [ List<T1>, List<T2>, List<T3> ] | [ List<T1>, List<T2> ] {
         const array: Array<R> = List.toArray(listOrArray);
 
@@ -217,7 +219,7 @@ export abstract class List<T> {
         ];
     }
 
-    public static sum(listOrArray: List<number> | Array<number>): number {
+    public static sum(listOrArray: Fallback<number>): number {
         const array: Array<number> = List.toArray(listOrArray);
         let result = 0;
 
@@ -228,7 +230,7 @@ export abstract class List<T> {
         return result;
     }
 
-    public static product(listOrArray: List<number> | Array<number>): number {
+    public static product(listOrArray: Fallback<number>): number {
         const array: Array<number> = List.toArray(listOrArray);
         let result = 1;
 
@@ -239,9 +241,9 @@ export abstract class List<T> {
         return result;
     }
 
-    public static minimum(listOrArray: List<string> | Array<string>): Maybe<string>;
-    public static minimum(listOrArray: List<number> | Array<number>): Maybe<number>;
-    public static minimum<T extends Comparable>(listOrArray: List<T> | Array<T>): Maybe<T> {
+    public static minimum(listOrArray: Fallback<string>): Maybe<string>;
+    public static minimum(listOrArray: Fallback<number>): Maybe<number>;
+    public static minimum<T extends Comparable>(listOrArray: Fallback<T>): Maybe<T> {
         const array: Array<T> = List.toArray(listOrArray);
         let result = Nothing<T>();
 
@@ -255,9 +257,9 @@ export abstract class List<T> {
         return result;
     }
 
-    public static maximum(listOrArray: List<string> | Array<string>): Maybe<string>;
-    public static maximum(listOrArray: List<number> | Array<number>): Maybe<number>;
-    public static maximum<T extends Comparable>(listOrArray: List<T> | Array<T>): Maybe<T> {
+    public static maximum(listOrArray: Fallback<string>): Maybe<string>;
+    public static maximum(listOrArray: Fallback<number>): Maybe<number>;
+    public static maximum<T extends Comparable>(listOrArray: Fallback<T>): Maybe<T> {
         const array: Array<T> = List.toArray(listOrArray);
         let result = Nothing<T>();
 
@@ -271,7 +273,7 @@ export abstract class List<T> {
         return result;
     }
 
-    public static props<T>(config: {[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}): List<T> {
+    public static props<T>(config: {[ K in keyof T ]: Fallback<T[ K ]>}): List<T> {
         const config_ = {} as {[ K in keyof T ]: Array<T[ K ]>};
         const result: Array<T> = [];
         let minimumLength: Maybe<number> = Nothing();
@@ -302,7 +304,7 @@ export abstract class List<T> {
         return new Proxy(result);
     }
 
-    public static all<T>(listOfLists: List<List<T> | Array<T>> | Array<List<T> | Array<T>>): List<T> {
+    public static all<T>(listOfLists: Fallback<Fallback<T>>): List<T> {
         const listOfLists_: Array<List<T> | Array<T>> = List.toArray(listOfLists);
         let result: Array<T> = [];
 
@@ -341,8 +343,8 @@ export abstract class List<T> {
     public abstract uncons(): Maybe<[ T, List<T> ]>;
     public abstract push(element: T): List<T>;
     public abstract pop(): Maybe<[ T, List<T> ]>;
-    public abstract append(listOrArray: List<T> | Array<T>): List<T>;
-    public abstract concat(listOrArray: List<T> | Array<T>): List<T>;
+    public abstract append(listOrArray: Fallback<T>): List<T>;
+    public abstract concat(listOrArray: Fallback<T>): List<T>;
     public abstract intersperse(gap: T): List<T>;
     public abstract partition(fn: (element: T) => boolean): [ List<T>, List<T> ];
     public abstract map<R>(fn: (element: T) => R): List<R>;
@@ -673,7 +675,7 @@ class Proxy<T> extends List<T> {
         ]);
     }
 
-    public append(listOrArray: List<T> | Array<T>): List<T> {
+    public append(listOrArray: Fallback<T>): List<T> {
         if (this.array.length === 0) {
             return List.isList(listOrArray) ? listOrArray : new Proxy(listOrArray);
         }
@@ -689,7 +691,7 @@ class Proxy<T> extends List<T> {
         );
     }
 
-    public concat(listOrArray: List<T> | Array<T>): List<T> {
+    public concat(listOrArray: Fallback<T>): List<T> {
         if (this.array.length === 0) {
             return List.isList(listOrArray) ? listOrArray : new Proxy(listOrArray);
         }
