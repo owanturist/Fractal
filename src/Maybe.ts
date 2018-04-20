@@ -56,7 +56,7 @@ export abstract class Maybe<T> {
         return acc.map(Record.of);
     }
 
-    public static all<T>(listOrArray: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
+    public static sequence<T>(listOrArray: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
         const array: Array<Maybe<T>> = List.toArray(listOrArray);
         let acc = Just<Array<T>>([]);
 

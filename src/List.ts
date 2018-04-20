@@ -309,7 +309,7 @@ export abstract class List<T> {
         return new Proxy(result);
     }
 
-    public static all<T>(listOfLists: List<List<T> | Array<T>> | Array<List<T> | Array<T>>): List<T> {
+    public static sequence<T>(listOfLists: List<List<T> | Array<T>> | Array<List<T> | Array<T>>): List<T> {
         const listOfLists_: Array<List<T> | Array<T>> = List.toArray(listOfLists);
         let result: Array<T> = [];
 

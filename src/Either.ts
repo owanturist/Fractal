@@ -56,7 +56,7 @@ export abstract class Either<E, T> implements Either<E, T> {
         return acc.map(Record.of);
     }
 
-    public static all<E, T>(listOrArray: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {
+    public static sequence<E, T>(listOrArray: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {
         const array = List.toArray(listOrArray);
         let acc = Right<E, Array<T>>([]);
 

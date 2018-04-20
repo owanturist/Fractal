@@ -788,14 +788,14 @@ test('List.props()', t => {
     );
 });
 
-test('List.all()', t => {
+test('List.sequence()', t => {
     t.deepEqual(
-        List.all([]),
+        List.sequence([]),
         List.fromArray([])
     );
 
     t.deepEqual(
-        List.all([
+        List.sequence([
             [],
             List.fromArray([]),
             []
@@ -811,7 +811,7 @@ test('List.all()', t => {
     ];
 
     t.deepEqual(
-        List.all(array),
+        List.sequence(array),
         List.fromArray([ 0, 1, 2, 3, 4 ])
     );
     t.deepEqual(
@@ -833,7 +833,7 @@ test('List.all()', t => {
     ]);
 
     t.deepEqual(
-        List.all(list),
+        List.sequence(list),
         List.fromArray([ 'a', 'b', 'c', 'd', 'e' ])
     );
     t.deepEqual(

@@ -167,41 +167,41 @@ test('Maybe.props()', t => {
     );
 });
 
-test('Maybe.all()', t => {
+test('Maybe.sequence()', t => {
     t.deepEqual(
-        Maybe.all([]),
+        Maybe.sequence([]),
         Just(List.empty())
     );
 
     t.deepEqual(
-        Maybe.all([ Nothing() ]),
+        Maybe.sequence([ Nothing() ]),
         Nothing()
     );
 
     t.deepEqual(
-        Maybe.all([ Just(1) ]),
+        Maybe.sequence([ Just(1) ]),
         Just(List.singleton(1))
     );
 
     t.deepEqual(
-        Maybe.all([ Nothing(), Nothing() ]),
+        Maybe.sequence([ Nothing(), Nothing() ]),
         Nothing()
     );
 
     t.deepEqual(
-        Maybe.all([ Nothing(), Just(2) ]),
+        Maybe.sequence([ Nothing(), Just(2) ]),
         Nothing()
     );
 
     t.deepEqual(
-        Maybe.all([ Just(1), Nothing() ]),
+        Maybe.sequence([ Just(1), Nothing() ]),
         Nothing()
     );
 
     const array = [ Just(1), Just(2) ];
 
     t.deepEqual(
-        Maybe.all(array),
+        Maybe.sequence(array),
         Just(List.of(1, 2))
     );
 
@@ -214,7 +214,7 @@ test('Maybe.all()', t => {
     const list = List.of(Just(1), Just(2));
 
     t.deepEqual(
-        Maybe.all(list),
+        Maybe.sequence(list),
         Just(List.of(1, 2))
     );
 

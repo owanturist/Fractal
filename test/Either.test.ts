@@ -156,41 +156,41 @@ test('Either.props()', t => {
     );
 });
 
-test('Either.all()', t => {
+test('Either.sequence()', t => {
     t.deepEqual(
-        Either.all([]),
+        Either.sequence([]),
         Right(List.empty())
     );
 
     t.deepEqual(
-        Either.all([ Left('1') ]),
+        Either.sequence([ Left('1') ]),
         Left('1')
     );
 
     t.deepEqual(
-        Either.all([ Right(1) ]),
+        Either.sequence([ Right(1) ]),
         Right(List.singleton(1))
     );
 
     t.deepEqual(
-        Either.all([ Left('1'), Left('2') ]),
+        Either.sequence([ Left('1'), Left('2') ]),
         Left('1')
     );
 
     t.deepEqual(
-        Either.all([ Left('1'), Right(2) ]),
+        Either.sequence([ Left('1'), Right(2) ]),
         Left('1')
     );
 
     t.deepEqual(
-        Either.all([ Right(1), Left('2') ]),
+        Either.sequence([ Right(1), Left('2') ]),
         Left('2')
     );
 
     const array = [ Right(1), Right(2) ];
 
     t.deepEqual(
-        Either.all(array),
+        Either.sequence(array),
         Right(List.of(1, 2))
     );
 
@@ -203,7 +203,7 @@ test('Either.all()', t => {
     const list = List.of(Right(1), Right(2));
 
     t.deepEqual(
-        Either.all(list),
+        Either.sequence(list),
         Right(List.of(1, 2))
     );
 
