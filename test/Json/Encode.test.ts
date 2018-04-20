@@ -2,6 +2,9 @@ import test from 'ava';
 
 import * as Encode from '../../src/Json/Encode';
 import {
+    Record
+} from '../../src/Record';
+import {
     List
 } from '../../src/List';
 
@@ -149,14 +152,14 @@ test('Json.Encode.object', t => {
         foo: boolean;
     }
 
-    const encoder = (foo: Foo): Encode.Encoder => Encode.object({
+    const encoder1 = (foo: Foo): Encode.Encoder => Encode.object({
         _bar: Encode.string(foo.bar),
         _baz: Encode.number(foo.baz),
         _foo: Encode.boolean(foo.foo)
     });
 
     t.is(
-        encoder({
+        encoder1({
             bar: 'str',
             baz: 0,
             foo: false
@@ -204,7 +207,7 @@ test('Json.Encode.object', t => {
     );
 
     t.is(
-        encoder({
+        encoder1({
             bar: 'str',
             baz: 0,
             foo: false
@@ -214,5 +217,22 @@ test('Json.Encode.object', t => {
         + '    "_baz": 0,\n'
         + '    "_foo": false\n'
         + '}'
+    );
+
+    const encoder2 = (foo: Foo): Encode.Encoder => Encode.object(
+        Record.of({
+            _bar: Encode.string(foo.bar),
+            _baz: Encode.number(foo.baz),
+            _foo: Encode.boolean(foo.foo)
+        })
+    );
+
+    t.is(
+        encoder2({
+            bar: 'str',
+            baz: 0,
+            foo: false
+        }).encode(0),
+        '{"_bar":"str","_baz":0,"_foo":false}'
     );
 });

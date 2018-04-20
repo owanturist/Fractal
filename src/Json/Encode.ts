@@ -1,4 +1,7 @@
 import {
+    Record
+} from '../Record';
+import {
     List as List_
 } from '../List';
 
@@ -78,4 +81,8 @@ export const list = (listOrArray: List_<Encoder> | Array<Encoder>): Encoder => {
         List_.toArray(listOrArray)
     );
 };
-export const object = (object: {[ key: string ]: Encoder }): Encoder => new Encode.Object(object);
+export const object = <T extends {[ key: string ]: Encoder }>(recordOrObject: Record<T> | T): Encoder => {
+    return new Encode.Object(
+        Record.toObject(recordOrObject)
+    );
+};
