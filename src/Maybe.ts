@@ -7,6 +7,9 @@ import {
     Right
 } from './Either';
 import {
+    Record
+} from './Record';
+import {
     List
 } from './List';
 
@@ -29,13 +32,17 @@ export abstract class Maybe<T> {
         }) as Maybe<T>;
     }
 
-    public static props<T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
+    public static props<T extends object>(
+        config: Record<{[ K in keyof T ]: Maybe<T[ K ]>}>
+              | {[ K in keyof T ]: Maybe<T[ K ]>}
+    ): Maybe<Record<T>> {
+        const config_ = Record.toObject(config);
         let acc = Just({} as T);
 
-        for (const key in config) {
-            if (config.hasOwnProperty(key)) {
+        for (const key in config_) {
+            if (config_.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Maybe<T> => config[ key ].map(
+                    (obj: T): Maybe<T> => config_[ key ].map(
                         (value: T[ keyof T ]): T => {
                             obj[ key ] = value;
 
@@ -46,7 +53,7 @@ export abstract class Maybe<T> {
             }
         }
 
-        return acc;
+        return acc.map(Record.of);
     }
 
     public static all<T>(listOrArray: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {

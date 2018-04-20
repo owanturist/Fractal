@@ -10,6 +10,9 @@ import {
     Right
 } from '../src/Either';
 import {
+    Record
+} from '../src/Record';
+import {
     List
 } from '../src/List';
 
@@ -46,7 +49,7 @@ test('Maybe.fromEither()', t => {
 test('Maybe.props()', t => {
     t.deepEqual(
         Maybe.props({}),
-        Just({})
+        Just(Record.of({}))
     );
 
     t.deepEqual(
@@ -60,9 +63,9 @@ test('Maybe.props()', t => {
         Maybe.props({
             foo: Just(1)
         }),
-        Just({
+        Just(Record.of({
             foo: 1
-        })
+        }))
     );
 
     t.deepEqual(
@@ -94,17 +97,17 @@ test('Maybe.props()', t => {
             foo: Just('foo'),
             bar: Just(1)
         }),
-        Just({
+        Just(Record.of({
             foo: 'foo',
             bar: 1
-        })
+        }))
     );
 
     t.deepEqual(
         Maybe.props({
             foo: Just('foo'),
             bar: Just(1)
-        }).map(obj => obj.foo),
+        }).map(obj => obj.get('foo')),
         Just('foo')
     );
 
@@ -112,7 +115,7 @@ test('Maybe.props()', t => {
         Maybe.props({
             foo: Just('foo'),
             bar: Just(1)
-        }).map(obj => obj.bar),
+        }).map(obj => obj.get('bar')),
         Just(1)
     );
 
@@ -135,12 +138,22 @@ test('Maybe.props()', t => {
 
     t.deepEqual(
         Maybe.props(shape),
-        Just({
+        Just(Record.of({
             foo: 'foo',
-            bar: {
+            bar: Record.of({
                 baz: 1
-            }
-        })
+            })
+        }))
+    );
+
+    t.deepEqual(
+        Maybe.props(Record.of(shape)),
+        Just(Record.of({
+            foo: 'foo',
+            bar: Record.of({
+                baz: 1
+            })
+        }))
     );
 
     t.deepEqual(
