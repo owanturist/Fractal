@@ -1,11 +1,9 @@
-type Fallback<T extends object> = Record<T> | T;
-
 export abstract class Record<T extends object> {
     public static isRecord<T extends object>(something: any): something is Record<T> {
         return something instanceof Record;
     }
 
-    public static toObject<T extends object>(recordOrObject: Fallback<T>): T {
+    public static toObject<T extends object>(recordOrObject: Record<T> | T): T {
         return Record.isRecord(recordOrObject) ? recordOrObject.toObject() : recordOrObject;
     }
 
@@ -34,6 +32,10 @@ class Proxy<T extends object> extends Record<T> {
     }
 
     public set<K extends keyof T>(key: K, value: T[ K ]): Record<T> {
+        if (value === this.object[ key ]) {
+            return this;
+        }
+
         return new Proxy({
             ...(this.object as object),
             [ key ]: value
@@ -48,6 +50,10 @@ class Proxy<T extends object> extends Record<T> {
     }
 
     public assign(partial: {[ K in keyof T ]?: T[ K ]}): Record<T> {
+        if (Object.keys(partial).length === 0) {
+            return this;
+        }
+
         return new Proxy({
             ...(this.object as object),
             ...(partial as object)
