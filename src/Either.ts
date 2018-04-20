@@ -32,9 +32,10 @@ export abstract class Either<E, T> implements Either<E, T> {
         }) as Either<E, T>;
     }
 
-    public static props<E, T>(
-        config: Record<{[ K in keyof T ]: Either<E, T[ K ]>}> | {[ K in keyof T ]: Either<E, T[ K ]>}
-    ): Either<E, T> {
+    public static props<E, T extends object>(
+        config: Record<{[ K in keyof T ]: Either<E, T[ K ]>}>
+              | {[ K in keyof T ]: Either<E, T[ K ]>}
+    ): Either<E, Record<T>> {
         const config_ = Record.toObject(config);
         let acc = Right<E, T>({} as T);
 
@@ -52,7 +53,7 @@ export abstract class Either<E, T> implements Either<E, T> {
             }
         }
 
-        return acc;
+        return acc.map(Record.of);
     }
 
     public static all<E, T>(listOrArray: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {

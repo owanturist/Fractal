@@ -7,6 +7,9 @@ import {
     Nothing,
     Just
 } from './Maybe';
+import {
+    Record
+} from './Record';
 
 export abstract class List<T> {
     public static isList(something: any): something is List<any> {
@@ -271,16 +274,20 @@ export abstract class List<T> {
         return result;
     }
 
-    public static props<T>(config: {[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}): List<T> {
-        const config_ = {} as {[ K in keyof T ]: Array<T[ K ]>};
-        const result: Array<T> = [];
+    public static props<T extends object>(
+        config: Record<{[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}>
+              | {[ K in keyof T ]: List<T[ K ]> | Array<T[ K ]>}
+    ): List<Record<T>> {
+        const config_ = Record.toObject(config);
+        const configWithArrays = {} as {[ K in keyof T ]: Array<T[ K ]>};
+        const result: Array<Record<T>> = [];
         let minimumLength: Maybe<number> = Nothing();
 
-        for (const key in config) {
-            if (config.hasOwnProperty(key)) {
-                const array: Array<T[ keyof T ]> = List.toArray(config[ key ]);
+        for (const key in config_) {
+            if (config_.hasOwnProperty(key)) {
+                const array: Array<T[ keyof T ]> = List.toArray(config_[ key ]);
 
-                config_[ key ] = array;
+                configWithArrays[ key ] = array;
                 minimumLength = minimumLength
                     .map((length: number): number => length < array.length ? length : array.length)
                     .orElse((): Maybe<number> => Just(array.length));
@@ -290,13 +297,13 @@ export abstract class List<T> {
         for (let index = 0; index < minimumLength.getOrElse(0); index++) {
             const element = {} as T;
 
-            for (const key in config_) {
-                if (config_.hasOwnProperty(key)) {
-                    element[ key ] = config_[ key ][ index ];
+            for (const key in configWithArrays) {
+                if (configWithArrays.hasOwnProperty(key)) {
+                    element[ key ] = configWithArrays[ key ][ index ];
                 }
             }
 
-            result.push(element);
+            result.push(Record.of(element));
         }
 
         return new Proxy(result);

@@ -11,6 +11,9 @@ import {
     Just
 } from '../src/Maybe';
 import {
+    Record
+} from '../src/Record';
+import {
     List
 } from '../src/List';
 
@@ -639,9 +642,9 @@ test('List.props()', t => {
             foo: [ 0 ]
         }),
         List.fromArray([
-            {
+            Record.of({
                 foo: 0
-            }
+            })
         ])
     );
 
@@ -675,10 +678,10 @@ test('List.props()', t => {
             bar: [ '0' ]
         }),
         List.fromArray([
-            {
+            Record.of({
                 foo: 0,
                 bar: '0'
-            }
+            })
         ])
     );
 
@@ -688,10 +691,10 @@ test('List.props()', t => {
             bar: [ '0' ]
         }),
         List.fromArray([
-            {
+            Record.of({
                 foo: 0,
                 bar: '0'
-            }
+            })
         ])
     );
 
@@ -701,10 +704,10 @@ test('List.props()', t => {
             bar: [ '0', '1' ]
         }),
         List.fromArray([
-            {
+            Record.of({
                 foo: 0,
                 bar: '0'
-            }
+            })
         ])
     );
 
@@ -716,14 +719,14 @@ test('List.props()', t => {
     t.deepEqual(
         List.props(object),
         List.fromArray([
-            {
+            Record.of({
                 foo: 0,
                 bar: '0'
-            },
-            {
+            }),
+            Record.of({
                 foo: 1,
                 bar: '1'
-            }
+            })
         ])
     );
 
@@ -748,26 +751,39 @@ test('List.props()', t => {
             ])
         }),
         List.fromArray([
-            {
+            Record.of({
                 foo: 0,
                 bar: '5',
                 baz: [ false, false ]
-            },
-            {
+            }),
+            Record.of({
                 foo: 1,
                 bar: '4',
                 baz: [ false, true ]
-            },
-            {
+            }),
+            Record.of({
                 foo: 2,
                 bar: '3',
                 baz: [ true, false ]
-            },
-            {
+            }),
+            Record.of({
                 foo: 3,
                 bar: '2',
                 baz: [ true, true ]
-            }
+            })
+        ])
+    );
+
+    t.deepEqual(
+        List.props(Record.of({
+            foo: [ 0 ],
+            bar: [ '0', '1' ]
+        })),
+        List.fromArray([
+            Record.of({
+                foo: 0,
+                bar: '0'
+            })
         ])
     );
 });

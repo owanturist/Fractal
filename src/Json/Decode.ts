@@ -314,12 +314,12 @@ namespace Decode {
         }
     }
 
-    export class Props<T> extends Decoder<T> {
+    export class Props<T extends object> extends Decoder<Record<T>> {
         constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
+        public deserialize(input: Value, origin: Array<string>): Either<string, Record<T>> {
             let acc = Right<string, T>({} as T);
 
             for (const key in this.config) {
@@ -337,7 +337,7 @@ namespace Decode {
                 }
             }
 
-            return acc;
+            return acc.map(Record.of);
         }
     }
 
@@ -408,9 +408,10 @@ export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Decode.
 export const list = <T>(decoder: Decoder<T>): Decoder<List_<T>> => new Decode.List(decoder);
 export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => new Decode.Dict(decoder);
 export const keyValue = <T>(decoder: Decoder<T>): Decoder<List_<[ string, T ]>> => new Decode.KeyValue(decoder);
-export const props = <T>(
-    config: Record<{[ K in keyof T ]: Decoder<T[ K ]>}> | {[ K in keyof T ]: Decoder<T[ K ]>}
-): Decoder<T> => new Decode.Props(Record.toObject(config));
+export const props = <T extends object>(
+    config: Record<{[ K in keyof T ]: Decoder<T[ K ]>}>
+          | {[ K in keyof T ]: Decoder<T[ K ]>}
+): Decoder<Record<T>> => new Decode.Props(Record.toObject(config));
 
 export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Decode.Index(index, decoder);
 export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Decode.Field(key, decoder);

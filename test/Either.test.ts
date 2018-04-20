@@ -45,7 +45,7 @@ test('Either.fromMaybe()', t => {
 test('Either.props()', t => {
     t.deepEqual(
         Either.props({}),
-        Right({})
+        Right(Record.of({}))
     );
 
     t.deepEqual(
@@ -59,9 +59,9 @@ test('Either.props()', t => {
         Either.props({
             foo: Right(1)
         }),
-        Right({
+        Right(Record.of({
             foo: 1
-        })
+        }))
     );
 
     t.deepEqual(
@@ -93,17 +93,17 @@ test('Either.props()', t => {
             foo: Right('foo'),
             bar: Right(1)
         }),
-        Right({
+        Right(Record.of({
             foo: 'foo',
             bar: 1
-        })
+        }))
     );
 
     t.deepEqual(
         Either.props({
             foo: Right('foo'),
             bar: Right(1)
-        }).map(obj => obj.foo),
+        }).map(obj => obj.get('foo')),
         Right('foo')
     );
 
@@ -111,7 +111,7 @@ test('Either.props()', t => {
         Either.props({
             foo: Right('foo'),
             bar: Right(1)
-        }).map(obj => obj.bar),
+        }).map(obj => obj.get('bar')),
         Right(1)
     );
 
@@ -132,12 +132,12 @@ test('Either.props()', t => {
                 baz: Right(1)
             })
         }),
-        Right({
+        Right(Record.of({
             foo: 'foo',
-            bar: {
+            bar: Record.of({
                 baz: 1
-            }
-        })
+            })
+        }))
     );
 
     t.deepEqual(
@@ -147,12 +147,12 @@ test('Either.props()', t => {
                 baz: Right(1)
             })
         })),
-        Right({
+        Right(Record.of({
             foo: 'foo',
-            bar: {
+            bar: Record.of({
                 baz: 1
-            }
-        })
+            })
+        }))
     );
 });
 
