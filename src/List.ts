@@ -735,6 +735,10 @@ class Proxy<T> extends List<T> {
     }
 
     public map<R>(fn: (element: T) => R): List<R> {
+        if (this.array.length === 0) {
+            return this as any as List<R>;
+        }
+
         const result: Array<R> = [];
 
         for (const element of this.array) {
@@ -745,6 +749,10 @@ class Proxy<T> extends List<T> {
     }
 
     public chain<R>(fn: ((element: T) => List<R>) | ((element: T) => Array<R>)): List<R> {
+        if (this.array.length === 0) {
+            return this as any as List<R>;
+        }
+
         let result: Array<R> = [];
 
         for (const element of this.array) {
@@ -759,6 +767,10 @@ class Proxy<T> extends List<T> {
     }
 
     public filterMap<R>(fn: (element: T) => Maybe<R>): List<R> {
+        if (this.array.length === 0) {
+            return this as any as List<R>;
+        }
+
         const result: Array<R> = [];
 
         for (const element of this.array) {
@@ -776,9 +788,13 @@ class Proxy<T> extends List<T> {
     }
 
     public indexedMap<R>(fn: (index: number, element: T) => R): List<R> {
+        if (this.array.length === 0) {
+            return this as any as List<R>;
+        }
+
         const result: Array<R> = [];
 
-        for (let index = 0; index < length; index++) {
+        for (let index = 0; index < this.array.length; index++) {
             result.push(fn(index, this.array[ index ]));
         }
 

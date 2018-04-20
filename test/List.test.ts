@@ -1545,3 +1545,123 @@ test('List.prototype.intersperse()', t => {
         List.fromArray([ 0, 5, 1, 5, 2, 5, 3, 5, 4 ])
     );
 });
+
+test('List.prototype.partition()', t => {
+    const list1: List<number> = List.fromArray([]);
+
+    t.deepEqual(
+        list1.partition(a => a > 0),
+        [
+            List.fromArray([]),
+            List.fromArray([])
+        ]
+    );
+    t.deepEqual(list1, List.fromArray([]));
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+
+    t.deepEqual(
+        list2.partition(a => a > 0),
+        [
+            List.fromArray([ 1, 2, 3, 4 ]),
+            List.fromArray([ 0 ])
+        ]
+    );
+
+    t.deepEqual(
+        list2.partition(a => a < 0),
+        [
+            List.fromArray([]),
+            List.fromArray([ 0, 1, 2, 3, 4  ])
+        ]
+    );
+
+    t.deepEqual(
+        list2.partition(a => a === 0),
+        [
+            List.fromArray([ 0 ]),
+            List.fromArray([ 1, 2, 3, 4 ])
+        ]
+    );
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+});
+
+test('List.prototype.map()', t => {
+    const list1: List<number> = List.fromArray([]);
+    const result1 = list1.map(a => a * a);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.is(result1, list1);
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result2 = list2.map(a => a * a);
+
+    t.deepEqual(result2, List.fromArray([ 0, 1, 4, 9, 16 ]));
+    t.not(result2, list2);
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+});
+
+test('List.prototype.chain()', t => {
+    const list1: List<number> = List.fromArray([]);
+    const result11 = list1.chain(a => [ a, a ]);
+
+    t.deepEqual(result11, List.fromArray([]));
+    t.is(result11, list1);
+
+    const result12 = list1.chain(a => List.fromArray([ a, a ]));
+
+    t.deepEqual(result12, List.fromArray([]));
+    t.is(result12, list1);
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.chain(a => [ a, a ]);
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 0, 0, 1, 1, 2, 2, 3, 3, 4, 4 ]));
+    t.not(result21, list2);
+
+    const result22 = list2.chain(a => List.fromArray([ a, a ]));
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result22, List.fromArray([ 0, 0, 1, 1, 2, 2, 3, 3, 4, 4 ]));
+    t.not(result22, list2);
+});
+
+test('List.prototype.filterMap()', t => {
+    const list1: List<number> = List.fromArray([]);
+    const result11 = list1.filterMap(a => a > 2 ? Just(a * a) : Nothing());
+
+    t.deepEqual(result11, List.fromArray([]));
+    t.is(result11, list1);
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result21 = list2.filterMap(a => a > 2 ? Just(a * a) : Nothing());
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result21, List.fromArray([ 9, 16 ]));
+
+    const result22 = list2.filterMap(a => a < 2 ? Just(a * a) : Nothing());
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result22, List.fromArray([ 0, 1 ]));
+
+    const result23 = list2.filterMap(a => a === 2 ? Just(a * a) : Nothing());
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result23, List.fromArray([ 4 ]));
+});
+
+test('List.prototype.indexedMap()', t => {
+    const list1: List<[ number, number ]> = List.fromArray([]);
+    const result1 = list1.indexedMap((i, a) => [ i, a ]);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.is(result1, list1);
+
+    const list2 = List.fromArray([ 4, 3, 2, 1, 0 ]);
+    const result2 = list2.indexedMap((i, a) => [ i, a ]);
+
+    t.deepEqual(list2, List.fromArray([ 4, 3, 2, 1, 0 ]));
+    t.deepEqual(result2, List.fromArray([[ 0, 4 ], [ 1, 3 ], [ 2, 2 ], [ 3, 1 ], [ 4, 0 ]]));
+});
