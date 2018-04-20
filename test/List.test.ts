@@ -8,6 +8,13 @@ import {
     List
 } from '../src/List';
 
+interface Movie {
+    readonly id: number;
+    readonly title: string;
+}
+
+const movie = (id: number, title: string): Movie => ({ id, title });
+
 test('List.isList()', t => {
     t.false(List.isList(null));
     t.false(List.isList(undefined));
@@ -1185,13 +1192,6 @@ test('List.prototype.unique()', t => {
 });
 
 test('List.prototype.uniqueBy()', t => {
-    interface Movie {
-        readonly id: number;
-        readonly title: string;
-    }
-
-    const movie = (id: number, title: string): Movie => ({ id, title });
-
     const list1 = List.fromArray<Movie>([]);
     const result11 = list1.uniqueBy(movie => movie.id);
     const result12 = list1.uniqueBy(movie => movie.title);
@@ -1664,4 +1664,98 @@ test('List.prototype.indexedMap()', t => {
 
     t.deepEqual(list2, List.fromArray([ 4, 3, 2, 1, 0 ]));
     t.deepEqual(result2, List.fromArray([[ 0, 4 ], [ 1, 3 ], [ 2, 2 ], [ 3, 1 ], [ 4, 0 ]]));
+});
+
+test('List.prototype.foldl()', t => {
+    const list1: List<number> = List.fromArray([]);
+    const result1 = list1.foldl(
+        (a, acc) => acc.concat(a + 1),
+        [] as Array<number>
+    );
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result1, []);
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result2 = list2.foldl(
+        (a, acc) => acc.concat(a + 1),
+        [] as Array<number>
+    );
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result2, [ 1, 2, 3, 4, 5 ]);
+});
+
+test('List.prototype.foldr()', t => {
+    const list1: List<number> = List.fromArray([]);
+    const result1 = list1.foldr(
+        (a, acc) => acc.concat(a + 1),
+        [] as Array<number>
+    );
+
+    t.deepEqual(list1, List.fromArray([]));
+    t.deepEqual(result1, []);
+
+    const list2 = List.fromArray([ 0, 1, 2, 3, 4 ]);
+    const result2 = list2.foldr(
+        (a, acc) => acc.concat(a + 1),
+        [] as Array<number>
+    );
+
+    t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
+    t.deepEqual(result2, [ 5, 4, 3, 2, 1 ]);
+});
+
+test('List.prototype.find()', t => {
+    const list1 = List.fromArray<Movie>([]);
+    const result1 = list1.find(movie => movie.id === 1);
+
+    t.deepEqual(result1, Nothing());
+    t.deepEqual(list1, List.fromArray([]));
+
+    const list2 = List.fromArray([
+        movie(0, 'title_0'),
+        movie(1, 'title_1'),
+        movie(2, 'title_2'),
+        movie(3, 'title_2')
+    ]);
+
+    const result21 = list2.find(movie => movie.id === 1);
+
+    t.deepEqual(
+        list2,
+        List.fromArray([
+            movie(0, 'title_0'),
+            movie(1, 'title_1'),
+            movie(2, 'title_2'),
+            movie(3, 'title_2')
+        ])
+    );
+    t.deepEqual(result21, Just(movie(1, 'title_1')));
+
+    const result22 = list2.find(movie => movie.id === 4);
+
+    t.deepEqual(
+        list2,
+        List.fromArray([
+            movie(0, 'title_0'),
+            movie(1, 'title_1'),
+            movie(2, 'title_2'),
+            movie(3, 'title_2')
+        ])
+    );
+    t.deepEqual(result22, Nothing());
+
+    const result23 = list2.find(movie => movie.title === 'title_2');
+
+    t.deepEqual(
+        list2,
+        List.fromArray([
+            movie(0, 'title_0'),
+            movie(1, 'title_1'),
+            movie(2, 'title_2'),
+            movie(3, 'title_2')
+        ])
+    );
+    t.deepEqual(result23, Just(movie(2, 'title_2')));
 });
