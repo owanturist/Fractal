@@ -44,7 +44,7 @@ test('List.fromArray() & List.prototype.toArray()', t => {
     const array = [ 0, 1, 2 ];
     const list = List.fromArray(array);
 
-    t.deepEqual(list.toArray(), array);
+    t.deepEqual(list.toArray(), [ 0, 1, 2 ]);
     t.not(list.toArray(), array);
     t.deepEqual(
         array,
@@ -111,7 +111,7 @@ test('List.toArray()', t => {
     const array = [ 0, 1, 2 ];
     const list = List.fromArray(array);
 
-    t.deepEqual(List.toArray(array), array);
+    t.deepEqual(List.toArray(array), [ 0, 1, 2 ]);
     t.is(List.toArray(array), array);
     t.deepEqual(
         array,
@@ -119,7 +119,7 @@ test('List.toArray()', t => {
         'Array hasn\'t been mutated'
     );
 
-    t.deepEqual(List.toArray(list), array);
+    t.deepEqual(List.toArray(list), [ 0, 1, 2 ]);
     t.not(List.toArray(list), array);
     t.deepEqual(
         list,
