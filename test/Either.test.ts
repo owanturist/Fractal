@@ -10,6 +10,9 @@ import {
     Right
 } from '../src/Either';
 import {
+    Record
+} from '../src/Record';
+import {
     List
 } from '../src/List';
 
@@ -129,6 +132,21 @@ test('Either.props()', t => {
                 baz: Right(1)
             })
         }),
+        Right({
+            foo: 'foo',
+            bar: {
+                baz: 1
+            }
+        })
+    );
+
+    t.deepEqual(
+        Either.props(Record.of({
+            foo: Right('foo'),
+            bar: Either.props({
+                baz: Right(1)
+            })
+        })),
         Right({
             foo: 'foo',
             bar: {

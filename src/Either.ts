@@ -7,6 +7,9 @@ import {
     Just
 } from './Maybe';
 import {
+    Record
+} from './Record';
+import {
     List
 } from './List';
 
@@ -29,13 +32,16 @@ export abstract class Either<E, T> implements Either<E, T> {
         }) as Either<E, T>;
     }
 
-    public static props<E, T>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
+    public static props<E, T>(
+        config: Record<{[ K in keyof T ]: Either<E, T[ K ]>}> | {[ K in keyof T ]: Either<E, T[ K ]>}
+    ): Either<E, T> {
+        const config_ = Record.toObject(config);
         let acc = Right<E, T>({} as T);
 
-        for (const key in config) {
-            if (config.hasOwnProperty(key)) {
+        for (const key in config_) {
+            if (config_.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Either<E, T> => config[ key ].map(
+                    (obj: T): Either<E, T> => config_[ key ].map(
                         (value: T[ keyof T ]): T => {
                             obj[ key ] = value;
 
