@@ -852,6 +852,10 @@ class Proxy<T> extends List<T> {
     }
 
     public sortBy(fn: (element: T) => Comparable): List<T> {
+        if (this.array.length < 2) {
+            return this;
+        }
+
         return new Proxy(
             this.array.slice().sort(
                 (prev: T, next: T): number => {
@@ -869,6 +873,10 @@ class Proxy<T> extends List<T> {
     }
 
     public sortWith(fn: (prev: T, next: T) => Order): List<T> {
+        if (this.array.length < 2) {
+            return this;
+        }
+
         return new Proxy(
             this.array.slice().sort(
                 (prev: T, next: T): number => fn(prev, next).cata({

@@ -1,6 +1,12 @@
 import test from 'ava';
 
 import {
+    Order,
+    LT,
+    EQ,
+    GT
+} from '../src/Basics';
+import {
     Nothing,
     Just
 } from '../src/Maybe';
@@ -1806,4 +1812,100 @@ test('List.prototype.any()', t => {
 
     t.deepEqual(list2, List.fromArray([ 0, 1, 2, 3, 4 ]));
     t.deepEqual(result23, true);
+});
+
+test('List.prototype.sortBy()', t => {
+    const list1 = List.fromArray<Movie>([]);
+    const result1 = list1.sortBy(movie => movie.id);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.is(result1, list1);
+
+    const list2 = List.fromArray([ movie(0, 'd') ]);
+    const result2 = list2.sortBy(movie => movie.id);
+
+    t.deepEqual(result2, List.fromArray([ movie(0, 'd') ]));
+    t.is(result2, list2);
+
+    const list3 = List.fromArray([
+        movie(2, 'a'),
+        movie(0, 'd'),
+        movie(3, 'c'),
+        movie(1, 'b')
+    ]);
+
+    const result31 = list3.sortBy(movie => movie.id);
+
+    t.deepEqual(
+        list3,
+        List.fromArray([
+            movie(2, 'a'),
+            movie(0, 'd'),
+            movie(3, 'c'),
+            movie(1, 'b')
+        ])
+    );
+    t.deepEqual(
+        result31,
+        List.fromArray([
+            movie(0, 'd'),
+            movie(1, 'b'),
+            movie(2, 'a'),
+            movie(3, 'c')
+        ])
+    );
+
+    const result32 = list3.sortBy(movie => movie.title);
+
+    t.deepEqual(
+        list3,
+        List.fromArray([
+            movie(2, 'a'),
+            movie(0, 'd'),
+            movie(3, 'c'),
+            movie(1, 'b')
+        ])
+    );
+    t.deepEqual(
+        result32,
+        List.fromArray([
+            movie(2, 'a'),
+            movie(1, 'b'),
+            movie(3, 'c'),
+            movie(0, 'd')
+        ])
+    );
+});
+
+test('List.prototype.sortWith()', t => {
+    const fn = (prev: number, next: number): Order => {
+        if (prev < next) {
+            return GT;
+        }
+
+        if (prev > next) {
+            return LT;
+        }
+
+        return EQ;
+    };
+
+    const list1 = List.fromArray<number>([]);
+    const result1 = list1.sortWith(fn);
+
+    t.deepEqual(result1, List.fromArray([]));
+    t.is(result1, list1);
+
+    const list2 = List.fromArray([ 0 ]);
+    const result2 = list2.sortWith(fn);
+
+    t.deepEqual(result2, List.fromArray([ 0 ]));
+    t.is(result2, list2);
+
+    const list3 = List.fromArray([ 2, 0, 1, 4, 3 ]);
+
+    const result3 = list3.sortWith(fn);
+
+    t.deepEqual(list3, List.fromArray([ 2, 0, 1, 4, 3 ]));
+    t.deepEqual(result3, List.fromArray([ 4, 3, 2, 1, 0 ]));
 });
