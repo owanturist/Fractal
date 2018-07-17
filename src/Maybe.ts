@@ -43,7 +43,7 @@ export abstract class Maybe<T> {
             if (config_.hasOwnProperty(key)) {
                 acc = acc.chain(
                     (obj: T): Maybe<T> => config_[ key ].map(
-                        (value: T[ keyof T ]): T => {
+                        (value: T[Extract<keyof T, string>]): T => {
                             obj[ key ] = value;
 
                             return obj;

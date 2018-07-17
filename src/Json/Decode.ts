@@ -327,7 +327,7 @@ namespace Decode {
                     acc = acc.chain(
                         (obj: T): Either<string, T> =>
                             Decoder.run(this.config[ key ], input, origin).map(
-                                (value: T[ keyof T ]): T => {
+                                (value: T[Extract<keyof T, string>]): T => {
                                     obj[ key ] = value;
 
                                     return obj;

@@ -285,7 +285,7 @@ export abstract class List<T> {
 
         for (const key in config_) {
             if (config_.hasOwnProperty(key)) {
-                const array: Array<T[ keyof T ]> = List.toArray(config_[ key ]);
+                const array: Array<T[Extract<keyof T, string>]> = List.toArray(config_[ key ]);
 
                 configWithArrays[ key ] = array;
                 minimumLength = minimumLength
