@@ -12,12 +12,6 @@ import {
     Left,
     Right
 } from '../../src/Either';
-import {
-    Record
-} from '../../src/Record';
-import {
-    List
-} from '../../src/List';
 import * as Decode from '../../src/Json/Decode';
 
 test('Json.Decode.fromEither()', t => {
@@ -208,15 +202,7 @@ test('Json.Decode.oneOf()', t => {
             Decode.number,
             Decode.nill(0)
         ])).decode([ 1, 2, null, 1 ]),
-        Right(List.of(1, 2, 0, 1))
-    );
-
-    t.deepEqual(
-        Decode.list(Decode.oneOf(List.of(
-            Decode.number,
-            Decode.nill(0)
-        ))).decode([ 1, 2, null, 1 ]),
-        Right(List.of(1, 2, 0, 1))
+        Right([ 1, 2, 0, 1 ])
     );
 });
 
@@ -320,7 +306,7 @@ test('Json.Decode.list()', t => {
 
     t.deepEqual(
         decoder.decode([ 'str1', 'str2' ]),
-        Right(List.of('str1', 'str2'))
+        Right([ 'str1', 'str2' ])
     );
 });
 
@@ -396,17 +382,17 @@ test('Json.Decode.keyValue()', t => {
 
     t.deepEqual(
         decoder.decode({ s1: 'str1', s2: 'str2' }),
-        Right(List.of(
+        Right([
             [ 's1', 'str1' ],
             [ 's2', 'str2' ]
-        ))
+        ])
     );
 });
 
 test('Json.Decode.props()', t => {
     t.deepEqual(
         Decode.props({}).decode(null),
-        Right(Record.of({}))
+        Right({})
     );
 
     t.deepEqual(
@@ -420,9 +406,9 @@ test('Json.Decode.props()', t => {
         Decode.props({
             foo: Decode.string
         }).decode('bar'),
-        Right(Record.of({
+        Right({
             foo: 'bar'
-        }))
+        })
     );
 
     t.deepEqual(
@@ -444,17 +430,17 @@ test('Json.Decode.props()', t => {
             soo: 1,
             sar: false
         }),
-        Right(Record.of({
+        Right({
             foo: 1,
             bar: false
-        }))
+        })
     );
 
     t.deepEqual(
         Decode.props({
             foo: Decode.field('soo', Decode.number),
             bar: Decode.field('sar', Decode.boolean)
-        }).map(obj => obj.get('foo')).decode({
+        }).map(obj => obj.foo).decode({
             soo: 1,
             sar: false
         }),
@@ -486,32 +472,32 @@ test('Json.Decode.props()', t => {
                 saz: '1'
             }
         }),
-        Right(Record.of({
+        Right({
             foo: 1,
-            bar: Record.of({
+            bar: {
                 baz: '1'
-            })
-        }))
+            }
+        })
     );
 
     t.deepEqual(
-        Decode.props(Record.of({
+        Decode.props({
             foo: Decode.field('soo', Decode.number),
             bar: Decode.field('sar', Decode.props({
                 baz: Decode.field('saz', Decode.string)
             }))
-        })).decode({
+        }).decode({
             soo: 1,
             sar: {
                 saz: '1'
             }
         }),
-        Right(Record.of({
+        Right({
             foo: 1,
-            bar: Record.of({
+            bar: {
                 baz: '1'
-            })
-        }))
+            }
+        })
     );
 });
 
@@ -617,20 +603,13 @@ test('Json.Decode.at()', t => {
         }),
         Right('str')
     );
-
-    t.deepEqual(
-        Decode.at(List.of('foo', 'bar'), Decode.string).decode({
-             foo: { bar: 'str' }
-        }),
-        Right('str')
-    );
 });
 
 test('Json.Decode.lazy()', t => {
-    interface Comment extends Record<{
+    interface Comment {
         message: string;
-        responses: List<Comment>;
-    }> {}
+        responses: Array<Comment>;
+    }
 
     const decoder: Decode.Decoder<Comment> = Decode.props({
         message: Decode.field('message', Decode.string),
@@ -664,22 +643,22 @@ test('Json.Decode.lazy()', t => {
                 }]
             }]
         }),
-        Right(Record.of({
+        Right({
             message: 'msg',
-            responses: List.of(Record.of({
+            responses: [{
                 message: 'msg-1',
-                responses: List.empty()
-            }), Record.of({
+                responses: []
+            }, {
                 message: 'msg-2',
-                responses: List.of(Record.of({
+                responses: [{
                     message: 'msg-2-1',
-                    responses: List.empty()
-                }), Record.of({
+                    responses: []
+                }, {
                     message: 'msg-2-2',
-                    responses: List.empty()
-                }))
-            }))
-        }))
+                    responses: []
+                }]
+            }]
+        })
     );
 });
 
@@ -735,11 +714,11 @@ test('Json.Decode.Decoder.prototype.chain()', t => {
 });
 
 test('Json.Decode.Decoder.prototype.decode', t => {
-    interface User extends Record<{
+    interface User {
         id: number;
         username: string;
-        comments: List<Comment>;
-    }> {}
+        comments: Array<Comment>;
+    }
 
     const userDecoder: Decode.Decoder<User> = Decode.props({
         id: Decode.field('id', Decode.number),
@@ -747,11 +726,11 @@ test('Json.Decode.Decoder.prototype.decode', t => {
         comments: Decode.field('comments', Decode.list(Decode.lazy(() => commentDecoder)))
     });
 
-    interface Comment extends Record<{
+    interface Comment {
         id: number;
         text: string;
-        responses: List<Response>;
-    }> {}
+        responses: Array<Response>;
+    }
 
     const commentDecoder: Decode.Decoder<Comment> = Decode.props({
         id: Decode.field('id', Decode.number),
@@ -759,11 +738,11 @@ test('Json.Decode.Decoder.prototype.decode', t => {
         responses: Decode.field('responses', Decode.list(Decode.lazy(() => responseDecoder)))
     });
 
-    interface Response extends Record<{
+    interface Response {
         id: number;
         text: string;
         user: User;
-    }> {}
+    }
 
     const responseDecoder: Decode.Decoder<Response> = Decode.props({
         id: Decode.field('id', Decode.number),
@@ -842,23 +821,23 @@ test('Json.Decode.Decoder.prototype.decode', t => {
                 }
             ]
         }),
-        Right(Record.of({
+        Right({
             id: 0,
             username: 'u-zero',
-            comments: List.singleton(Record.of({
+            comments: [{
                 id: 0,
                 text: 'c-zero',
-                responses: List.singleton(Record.of({
+                responses: [{
                     id: 0,
                     text: 'r-zero',
-                    user: Record.of({
+                    user: {
                         id: 1,
                         username: 'u-one',
-                        comments: List.empty()
-                    })
-                }))
-            }))
-        }))
+                        comments: []
+                    }
+                }]
+            }]
+        })
     );
 });
 
@@ -880,9 +859,9 @@ test('Json.Decode.Decoder.prototype.decodeJSON()', t => {
 
     t.deepEqual(
         decoder.decodeJSON('{"s1":"str1","s2":"str2"}'),
-        Right(Record.of({
+        Right({
             t1: 'str1',
             t2: 'str2'
-        }))
+        })
     );
 });

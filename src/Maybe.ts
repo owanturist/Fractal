@@ -6,12 +6,6 @@ import {
     Left,
     Right
 } from './Either';
-import {
-    Record
-} from './Record';
-import {
-    List
-} from './List';
 
 export type Pattern<T, R> = Readonly<{
     Nothing(): R;
@@ -32,17 +26,13 @@ export abstract class Maybe<T> {
         }) as Maybe<T>;
     }
 
-    public static props<T extends object>(
-        config: Record<{[ K in keyof T ]: Maybe<T[ K ]>}>
-              | {[ K in keyof T ]: Maybe<T[ K ]>}
-    ): Maybe<Record<T>> {
-        const config_ = Record.toObject(config);
+    public static props<T extends object>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
         let acc = Just({} as T);
 
-        for (const key in config_) {
-            if (config_.hasOwnProperty(key)) {
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Maybe<T> => config_[ key ].map(
+                    (obj: T): Maybe<T> => config[ key ].map(
                         (value: T[Extract<keyof T, string>]): T => {
                             obj[ key ] = value;
 
@@ -53,11 +43,10 @@ export abstract class Maybe<T> {
             }
         }
 
-        return acc.map(Record.of);
+        return acc;
     }
 
-    public static sequence<T>(listOrArray: List<Maybe<T>> | Array<Maybe<T>>): Maybe<List<T>> {
-        const array: Array<Maybe<T>> = List.toArray(listOrArray);
+    public static sequence<T>(array: Array<Maybe<T>>): Maybe<Array<T>> {
         let acc = Just<Array<T>>([]);
 
         for (const item of array) {
@@ -72,7 +61,7 @@ export abstract class Maybe<T> {
             );
         }
 
-        return acc.map(List.fromArray);
+        return acc;
     }
 
     public abstract isNothing(): boolean;

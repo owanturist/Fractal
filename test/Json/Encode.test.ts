@@ -1,12 +1,6 @@
 import test from 'ava';
 
 import * as Encode from '../../src/Json/Encode';
-import {
-    Record
-} from '../../src/Record';
-import {
-    List
-} from '../../src/List';
 
 test('Json.Encode.nill', t => {
     t.is(
@@ -85,27 +79,6 @@ test('Json.Encode.list', t => {
             Encode.number(1)
         ],
         'checking of Array immutability'
-    );
-
-    const list = List.of(
-        Encode.number(1),
-        Encode.number(2),
-        Encode.number(1)
-    );
-
-    t.deepEqual(
-        Encode.list(list).serialize(),
-        [ 1, 2, 1 ]
-    );
-
-    t.deepEqual(
-        list,
-            List.of(
-            Encode.number(1),
-            Encode.number(2),
-            Encode.number(1)
-        ),
-        'checking of List immutability'
     );
 
     t.is(
@@ -217,22 +190,5 @@ test('Json.Encode.object', t => {
         + '    "_baz": 0,\n'
         + '    "_foo": false\n'
         + '}'
-    );
-
-    const encoder2 = (foo: Foo): Encode.Encoder => Encode.object(
-        Record.of({
-            _bar: Encode.string(foo.bar),
-            _baz: Encode.number(foo.baz),
-            _foo: Encode.boolean(foo.foo)
-        })
-    );
-
-    t.is(
-        encoder2({
-            bar: 'str',
-            baz: 0,
-            foo: false
-        }).encode(0),
-        '{"_bar":"str","_baz":0,"_foo":false}'
     );
 });

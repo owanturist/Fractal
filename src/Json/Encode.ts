@@ -1,10 +1,3 @@
-import {
-    Record
-} from '../Record';
-import {
-    List as List_
-} from '../List';
-
 interface ValueArray extends Array<Value> {}
 
 export type Value
@@ -76,13 +69,5 @@ export const string = (string: string): Encoder => new Encode.Primitive(string);
 export const number = (number: number): Encoder => new Encode.Primitive(number);
 export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
 
-export const list = (listOrArray: List_<Encoder> | Array<Encoder>): Encoder => {
-    return new Encode.List(
-        List_.toArray(listOrArray)
-    );
-};
-export const object = <T extends {[ key: string ]: Encoder }>(recordOrObject: Record<T> | T): Encoder => {
-    return new Encode.Object(
-        Record.toObject(recordOrObject)
-    );
-};
+export const list = (array: Array<Encoder>): Encoder => new Encode.List(array);
+export const object = <T extends {[ key: string ]: Encoder }>(object: T): Encoder => new Encode.Object(object);
