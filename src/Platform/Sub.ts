@@ -1,63 +1,56 @@
 import {
-    Either
-} from '../Either';
+    Value
+} from '../Json/Encode';
 import {
-    Task
-} from '../Task';
+    Maybe,
+    Nothing,
+    Just
+} from '../Maybe';
 
-export abstract class Sub<T> {
-    public static of<E, T, M>(
-        task: Task<E, T>,
-        tagger: (either: Either<E, T>) => M
-    ): Sub<M> {
-        return new Single(task, tagger);
-    }
-
-    public static batch<T>(cmds: Array<Sub<T>>): Sub<T> {
-        return new Batch(cmds);
-    }
-
-    public static none<T>(): Sub<T> {
+export abstract class Sub<M> {
+    public static none<M>(): Sub<M> {
         return new None();
     }
 
-    public abstract map<R>(fn: (value: T) => R): Sub<R>;
+    public static port<M>(name: string, tagger: (value: Value) => M) {
+        return new Port(name, tagger);
+    }
+
+    public abstract map<R>(fn: (value: M) => R): Sub<R>;
+
+    public abstract executePort(name: string, value: Value): Maybe<M>;
 }
 
-class Single<E, T, M> extends Sub<M> {
+class None<M> extends Sub<M> {
+    public map<R>(): Sub<R> {
+        return this as any as Sub<R>;
+    }
+
+    public executePort(): Maybe<M> {
+        return Nothing();
+    }
+}
+
+class Port<M> extends Sub<M> {
     constructor(
-        private readonly task: Task<E, T>,
-        private readonly tagger: (either: Either<E, T>) => M
+        private readonly name: string,
+        private readonly tagger: (value: Value) => M
     ) {
         super();
     }
 
     public map<R>(fn: (value: M) => R): Sub<R> {
-        return new Single(
-            this.task,
-            (either: Either<E, T>): R => fn(this.tagger(either))
+        return new Port(
+            this.name,
+            (value: Value): R => fn(this.tagger(value))
         );
     }
-}
 
-class Batch<T> extends Sub<T> {
-    constructor(private readonly cmds: Array<Sub<T>>) {
-        super();
-    }
-
-    public map<R>(fn: (value: T) => R): Sub<R> {
-        const nextCmds: Array<Sub<R>> = [];
-
-        for (const cmd of this.cmds) {
-            nextCmds.push(cmd.map(fn));
+    public executePort(name: string, value: Value): Maybe<M> {
+        if (name === this.name) {
+            return Just(this.tagger(value));
         }
 
-        return new Batch(nextCmds);
-    }
-}
-
-class None<T> extends Sub<T> {
-    public map<R>(): Sub<R> {
-        return this as any as Sub<R>;
+        return Nothing();
     }
 }

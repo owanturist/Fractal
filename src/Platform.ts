@@ -42,10 +42,6 @@ class Fractal<S, M> extends Component<FractalProps<S, M>, S> {
         this.setState(nextState);
     }
 
-    public shouldComponentUpdate(_: FractalProps<S, M>, nextState: S): boolean {
-        return this.state !== nextState;
-    }
-
     public render() {
         return createElement(
             this.props.view,
@@ -61,12 +57,8 @@ export class Runtime {
     private readonly listeners: {[ key: string ]: Array<(value: Value) => void>} = {};
 
     constructor(
-        private readonly dispatch: (port: string, value: Value) => void
+        public readonly send: (port: string, value: Value) => void
     ) {
-    }
-
-    public send(port: string, value: Value): void {
-        this.dispatch(port, value);
     }
 
     public subscribe(port: string, listener: (value: Value) => void): () => void {
@@ -119,8 +111,11 @@ export abstract class Program<S, M> extends Platform {
         );
 
         return new Runtime(
-            (): void => {
-                this.subscriptions(this.state);
+            (port: string, value: Value): void => {
+                this.subscriptions(this.state).executePort(port, value).cata({
+                    Nothing: noop,
+                    Just: this.dispatch
+                });
             }
         );
     }

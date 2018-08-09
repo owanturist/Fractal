@@ -22,6 +22,7 @@ const initial: [ State, Cmd<Msg> ] = [
 type Msg
     = { type: 'Increment' }
     | { type: 'Decrement' }
+    | { type: 'Reset' }
     ;
 
 const update = (msg: Msg, state: State): [ State, Cmd<Msg> ] => {
@@ -36,6 +37,13 @@ const update = (msg: Msg, state: State): [ State, Cmd<Msg> ] => {
         case 'Decrement': {
             return [
                 { ...state, count: state.count - 1 },
+                Cmd.none()
+            ];
+        }
+
+        case 'Reset': {
+            return [
+                { ...state, count: 0 },
                 Cmd.none()
             ];
         }
@@ -54,9 +62,21 @@ const view = ({ state, dispatch }: { state: State; dispatch(msg: Msg): void }): 
     </div>
 );
 
-export const p = Platform.program({
-    initial,
-    update,
-    subscriptions: () => Sub.none(),
-    view
-}).mount(document.getElementById('root'));
+const subscriptions = (): Sub<Msg> =>
+    Sub.port<Msg>(
+        'test-port',
+        () => ({ type: 'Reset' })
+    );
+
+const rootNode = document.getElementById('root');
+const btnNode = document.getElementById('btn-reset');
+
+if (rootNode !== null && btnNode !== null) {
+    const app = Platform
+        .program({ initial, update, subscriptions, view })
+        .mount(document.getElementById('root'));
+
+    btnNode.addEventListener('click', () => {
+        app.send('test-port', null);
+    });
+}
