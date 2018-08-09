@@ -1,4 +1,12 @@
 import {
+    StatelessComponent,
+    Component,
+    createElement
+} from 'react';
+import {
+    render
+} from 'react-dom';
+import {
     Value
 } from './Json/Encode';
 import {
@@ -11,7 +19,41 @@ import {
 export abstract class Platform {
 }
 
-export class Runtime<S, M> {
+interface FractalProps<S, M> {
+    readonly view: StatelessComponent<{ state: S; dispatch(msg: M): void }>;
+    getState(): S;
+    dispatch(msg: M): void;
+    subscribe(listener: (state: S) => void): void;
+}
+
+class Fractal<S, M> extends Component<FractalProps<S, M>, S> {
+    constructor(props: FractalProps<S, M>) {
+        super(props);
+
+        props.subscribe(this.onStateChange);
+        this.state = props.getState();
+    }
+
+    public onStateChange = (nextState: S) => {
+        this.setState(nextState);
+    }
+
+    public shouldComponentUpdate(_: FractalProps<S, M>, nextState: S) {
+        return this.state !== nextState;
+    }
+
+    public render() {
+        return createElement(
+            this.props.view,
+            {
+                state: this.state,
+                dispatch: this.props.dispatch
+            }
+        );
+    }
+}
+
+export class Runtime {
     private readonly listeners: {[ key: string ]: Array<(value: Value) => void>} = {};
 
     constructor(
@@ -41,24 +83,53 @@ export class Runtime<S, M> {
 }
 
 export abstract class Program<S, M> extends Platform {
+    private state: S;
+
+    private onChange: (state: S) => void;
+
     constructor(
-        private readonly initial: [ S, Cmd<M> ],
+        [ initialState ]: [ S, Cmd<M> ],
         private readonly update: (msg: M, state: S) => [ S, Cmd<M> ],
-        private readonly subscriptions: (state: S) => Sub<M>
+        private readonly subscriptions: (state: S) => Sub<M>,
+        private readonly view: StatelessComponent<{ state: S; dispatch(msg: M): void }>
     ) {
         super();
+
+        this.state = initialState;
+        this.onChange = function noop() {
+            // no operation
+        };
     }
 
-    public worker(): Runtime<S, M> {
-        let [ state ] = this.initial;
-
-        state = state;
+    public mount(node: HTMLElement | null): Runtime {
+        render(
+            createElement<FractalProps<S, M>>(
+                Fractal,
+                {
+                    view: this.view,
+                    getState: () => this.state,
+                    dispatch: (msg: M): void => this.dispatch(msg),
+                    subscribe: (listener: (state: S) => void) => {
+                        this.onChange = listener;
+                    }
+                }
+            ),
+            node
+        );
 
         return new Runtime(
-            (port: string, value: Value): void => {
-                const subscription = this.subscriptions(state);
+            (): void => {
+                this.subscriptions(this.state);
             }
         );
+    }
+
+    private dispatch(msg: M): void {
+        const [ nextState ] = this.update(msg, this.state);
+
+        this.state = nextState;
+
+        this.onChange(nextState);
     }
 }
 
@@ -66,19 +137,22 @@ class ProgramWithoutFlags<S, M> extends Program<S, M> {
     constructor(
         initial: [ S, Cmd<M> ],
         update: (msg: M, state: S) => [ S, Cmd<M> ],
-        subscriptions: (state: S) => Sub<M>
+        subscriptions: (state: S) => Sub<M>,
+        view: StatelessComponent<{ state: S; dispatch(msg: M): void }>
     ) {
-        super(initial, update, subscriptions);
+        super(initial, update, subscriptions, view);
     }
 }
 
 export const program = <S, M>(configuration: {
     initial: [ S, Cmd<M> ];
+    view: StatelessComponent<{ state: S; dispatch(msg: M): void }>;
     update(msg: M, state: S): [ S, Cmd<M> ];
     subscriptions(state: S): Sub<M>;
 }): Program<S, M> => new ProgramWithoutFlags(
     configuration.initial,
     configuration.update,
-    configuration.subscriptions
+    configuration.subscriptions,
+    configuration.view
 );
 

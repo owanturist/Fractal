@@ -48,7 +48,7 @@ module.exports = {
         }),
 
         new HtmlWebpackPlugin({
-            title: 'Fractal Demo'
+            template: path.resolve('./app/index.html')
         })
     ],
 
