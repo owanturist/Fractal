@@ -12,11 +12,25 @@
     "build": "tsc -p tsconfig.dev.json",
     "build:watch": "npm run build -- -w",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
-    "lint": "tslint --project tsconfig.json --config tslint.json"
+    "lint": "tslint --project tsconfig.json --config tslint.json",
+    "demo": "webpack-dev-server"
   },
   "devDependencies": {
+    "@types/react": "^16.4.8",
+    "@types/react-dom": "^16.0.7",
     "ava": "^0.25.0",
+    "awesome-typescript-loader": "^5.2.0",
+    "html-webpack-plugin": "^3.2.0",
     "tslint": "^5.11.0",
-    "typescript": "^2.9.2"
+    "typescript": "^2.9.2",
+    "webpack": "^4.16.5",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.5"
+  },
+  "dependencies": {
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2",
+    "redux": "^4.0.0",
+    "ts-promise": "^2.0.0"
   }
 }
