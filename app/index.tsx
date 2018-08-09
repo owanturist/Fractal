@@ -54,11 +54,9 @@ const view = ({ state, dispatch }: { state: State; dispatch(msg: Msg): void }): 
     </div>
 );
 
-export const p: Platform.Program<State, Msg> = Platform.program({
+export const p = Platform.program({
     initial,
     update,
     subscriptions: () => Sub.none(),
     view
-});
-
-p.mount(document.getElementById('root'));
+}).mount(document.getElementById('root'));

@@ -16,29 +16,33 @@ import {
     Sub
 } from './Platform/Sub';
 
+function noop() {
+    // no operation
+}
+
 export abstract class Platform {
 }
 
 interface FractalProps<S, M> {
+    readonly initialState: S;
     readonly view: StatelessComponent<{ state: S; dispatch(msg: M): void }>;
-    getState(): S;
     dispatch(msg: M): void;
     subscribe(listener: (state: S) => void): void;
 }
 
 class Fractal<S, M> extends Component<FractalProps<S, M>, S> {
-    constructor(props: FractalProps<S, M>) {
-        super(props);
+    constructor(props: FractalProps<S, M>, context: any) {
+        super(props, context);
 
         props.subscribe(this.onStateChange);
-        this.state = props.getState();
+        this.state = props.initialState;
     }
 
-    public onStateChange = (nextState: S) => {
+    public onStateChange = (nextState: S): void => {
         this.setState(nextState);
     }
 
-    public shouldComponentUpdate(_: FractalProps<S, M>, nextState: S) {
+    public shouldComponentUpdate(_: FractalProps<S, M>, nextState: S): boolean {
         return this.state !== nextState;
     }
 
@@ -85,7 +89,7 @@ export class Runtime {
 export abstract class Program<S, M> extends Platform {
     private state: S;
 
-    private onChange: (state: S) => void;
+    private onChange: (state: S) => void = noop;
 
     constructor(
         [ initialState ]: [ S, Cmd<M> ],
@@ -96,9 +100,6 @@ export abstract class Program<S, M> extends Platform {
         super();
 
         this.state = initialState;
-        this.onChange = function noop() {
-            // no operation
-        };
     }
 
     public mount(node: HTMLElement | null): Runtime {
@@ -106,9 +107,9 @@ export abstract class Program<S, M> extends Platform {
             createElement<FractalProps<S, M>>(
                 Fractal,
                 {
+                    initialState: this.state,
                     view: this.view,
-                    getState: () => this.state,
-                    dispatch: (msg: M): void => this.dispatch(msg),
+                    dispatch: this.dispatch,
                     subscribe: (listener: (state: S) => void) => {
                         this.onChange = listener;
                     }
@@ -124,7 +125,7 @@ export abstract class Program<S, M> extends Platform {
         );
     }
 
-    private dispatch(msg: M): void {
+    private dispatch = (msg: M): void => {
         const [ nextState ] = this.update(msg, this.state);
 
         this.state = nextState;
