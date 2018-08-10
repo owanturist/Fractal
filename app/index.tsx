@@ -9,32 +9,38 @@ import {
 import * as Counter from './Counter';
 
 interface State {
-    counter: Counter.State;
+    firstCounter: Counter.State;
+    secondConuter: Counter.State;
 }
 
 const initial: [ State, Cmd<Msg> ] = [
     {
-        counter: Counter.initial
+        firstCounter: Counter.initial,
+        secondConuter: Counter.initial
     },
     Cmd.none()
 ];
 
 type Msg
-    = { type: 'NoOp' }
-    | { type: 'CounterMsg'; _0: Counter.Msg }
+    = { type: 'FirstCounterMsg'; _0: Counter.Msg }
+    | { type: 'SecondCounterMsg'; _0: Counter.Msg }
     ;
 
-const CounterMsg = (msg: Counter.Msg): Msg => ({ type: 'CounterMsg', _0: msg });
+const FirstCounterMsg = (msg: Counter.Msg): Msg => ({ type: 'FirstCounterMsg', _0: msg });
+const SecondCounterMsg = (msg: Counter.Msg): Msg => ({ type: 'SecondCounterMsg', _0: msg });
 
 const update = (msg: Msg, state: State): [ State, Cmd<Msg> ] => {
     switch (msg.type) {
-        case 'NoOp': {
-            return [ state, Cmd.none() ];
+        case 'FirstCounterMsg': {
+            return [
+                { ...state, firstCounter: Counter.update(msg._0, state.firstCounter)},
+                Cmd.none()
+            ];
         }
 
-        case 'CounterMsg': {
+        case 'SecondCounterMsg': {
             return [
-                { ...state, counter: Counter.update(msg._0, state.counter) },
+                { ...state, secondConuter: Counter.update(msg._0, state.secondConuter)},
                 Cmd.none()
             ];
         }
@@ -46,14 +52,22 @@ const View = ({ state, dispatch }: { state: State; dispatch(msg: Msg): void }): 
         <h1>Hello World!</h1>
 
         <Counter.View
-            state={state.counter}
-            dispatch={(msg: Counter.Msg) => dispatch(CounterMsg(msg))}
+            state={state.firstCounter}
+            dispatch={(msg: Counter.Msg) => dispatch(FirstCounterMsg(msg))}
+        />
+
+        <Counter.View
+            state={state.secondConuter}
+            dispatch={(msg: Counter.Msg) => dispatch(SecondCounterMsg(msg))}
         />
     </div>
 );
 
 const subscriptions = (state: State): Sub<Msg> => {
-    return Counter.subscriptions(state.counter).map(CounterMsg);
+    return Sub.batch([
+        Counter.subscriptions(state.firstCounter).map(FirstCounterMsg),
+        Counter.subscriptions(state.secondConuter).map(SecondCounterMsg)
+    ]);
 };
 
 const rootNode = document.getElementById('root');

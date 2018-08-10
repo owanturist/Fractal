@@ -15,9 +15,6 @@ import {
 import {
     Sub
 } from './Platform/Sub';
-import {
-    Maybe
-} from './Maybe';
 
 
 function noop() {
@@ -80,7 +77,7 @@ export class Runtime {
 }
 
 abstract class ProgramSub<M> extends Sub<M> {
-    public static executeSubscriptionPort<M>(name: string, value: Value, sub: Sub<M>): Maybe<M> {
+    public static executePort<M>(name: string, value: Value, sub: Sub<M>): Array<M> {
         return Sub.executePort(name, value, sub);
     }
 }
@@ -117,14 +114,15 @@ export abstract class Program<S, M> {
 
         return new Runtime(
             (name: string, value: Value): void => {
-                ProgramSub.executeSubscriptionPort(
+                const msgs = ProgramSub.executePort(
                     name,
                     value,
                     this.subscriptions(this.state)
-                ).cata({
-                    Nothing: noop,
-                    Just: this.dispatch
-                });
+                );
+
+                for (const msg of msgs) {
+                    this.dispatch(msg);
+                }
             }
         );
     }

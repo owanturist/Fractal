@@ -1,11 +1,7 @@
 import {
     Value
 } from '../Json/Encode';
-import {
-    Maybe,
-    Nothing,
-    Just
-} from '../Maybe';
+
 
 export abstract class Sub<M> {
     public static none<M>(): Sub<M> {
@@ -20,13 +16,13 @@ export abstract class Sub<M> {
         return new Port(name, tagger);
     }
 
-    protected static executePort<M>(name: string, value: Value, sub: Sub<M>): Maybe<M> {
+    protected static executePort<M>(name: string, value: Value, sub: Sub<M>): Array<M> {
         return sub.executePort(name, value);
     }
 
     public abstract map<R>(fn: (msg: M) => R): Sub<R>;
 
-    protected abstract executePort(name: string, value: Value): Maybe<M>;
+    protected abstract executePort(name: string, value: Value): Array<M>;
 }
 
 class None<M> extends Sub<M> {
@@ -34,8 +30,8 @@ class None<M> extends Sub<M> {
         return this as any as Sub<R>;
     }
 
-    protected executePort(): Maybe<M> {
-        return Nothing();
+    protected executePort(): Array<M> {
+        return [];
     }
 }
 
@@ -54,16 +50,14 @@ class Batch<M> extends Sub<M> {
         return new Batch(nextSubs);
     }
 
-    protected executePort(name: string, value: Value): Maybe<M> {
-        for (const sub of this.subs) {
-            const maybe = Sub.executePort(name, value, sub);
+    protected executePort(name: string, value: Value): Array<M> {
+        const msgs: Array<M> = [];
 
-            if (maybe.isJust) {
-                return maybe;
-            }
+        for (const sub of this.subs) {
+            msgs.push(...Sub.executePort(name, value, sub));
         }
 
-        return Nothing();
+        return msgs;
     }
 }
 
@@ -82,11 +76,13 @@ class Port<M> extends Sub<M> {
         );
     }
 
-    protected executePort(name: string, value: Value): Maybe<M> {
+    protected executePort(name: string, value: Value): Array<M> {
         if (name === this.name) {
-            return Just(this.tagger(value));
+            return [
+                this.tagger(value)
+            ];
         }
 
-        return Nothing();
+        return [];
     }
 }
