@@ -15,12 +15,13 @@ import {
 import {
     Sub
 } from './Platform/Sub';
+import {
+    Maybe
+} from './Maybe';
+
 
 function noop() {
     // no operation
-}
-
-export abstract class Platform {
 }
 
 interface FractalProps<S, M> {
@@ -57,20 +58,20 @@ export class Runtime {
     private readonly listeners: {[ key: string ]: Array<(value: Value) => void>} = {};
 
     constructor(
-        public readonly send: (port: string, value: Value) => void
+        public readonly send: (name: string, value: Value) => void
     ) {
     }
 
-    public subscribe(port: string, listener: (value: Value) => void): () => void {
-        if (this.listeners[ port ] === undefined) {
-            this.listeners[ port ] = [ listener ];
-        } else if (this.listeners[ port ].indexOf(listener) === -1) {
-            this.listeners[ port ].push(listener);
+    public subscribe(name: string, listener: (value: Value) => void): () => void {
+        if (this.listeners[ name ] === undefined) {
+            this.listeners[ name ] = [ listener ];
+        } else if (this.listeners[ name ].indexOf(listener) === -1) {
+            this.listeners[ name ].push(listener);
         }
 
         return () => {
-            if (this.listeners[ port ] !== undefined) {
-                this.listeners[ port ].filter(
+            if (this.listeners[ name ] !== undefined) {
+                this.listeners[ name ].filter(
                     (fn: (value: Value) => void): boolean => fn !== listener
                 );
             }
@@ -78,7 +79,13 @@ export class Runtime {
     }
 }
 
-export abstract class Program<S, M> extends Platform {
+abstract class ProgramSub<M> extends Sub<M> {
+    public static executeSubscriptionPort<M>(name: string, value: Value, sub: Sub<M>): Maybe<M> {
+        return Sub.executeSubscriptionPort(name, value, sub);
+    }
+}
+
+export abstract class Program<S, M> {
     private state: S;
 
     private onChange: (state: S) => void = noop;
@@ -89,8 +96,6 @@ export abstract class Program<S, M> extends Platform {
         private readonly subscriptions: (state: S) => Sub<M>,
         private readonly view: StatelessComponent<{ state: S; dispatch(msg: M): void }>
     ) {
-        super();
-
         this.state = initialState;
     }
 
@@ -111,8 +116,12 @@ export abstract class Program<S, M> extends Platform {
         );
 
         return new Runtime(
-            (port: string, value: Value): void => {
-                this.subscriptions(this.state).executePort(port, value).cata({
+            (name: string, value: Value): void => {
+                ProgramSub.executeSubscriptionPort(
+                    name,
+                    value,
+                    this.subscriptions(this.state)
+                ).cata({
                     Nothing: noop,
                     Just: this.dispatch
                 });

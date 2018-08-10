@@ -16,9 +16,13 @@ export abstract class Sub<M> {
         return new Port(name, tagger);
     }
 
+    protected static executeSubscriptionPort<M>(name: string, value: Value, sub: Sub<M>): Maybe<M> {
+        return sub.executePort(name, value);
+    }
+
     public abstract map<R>(fn: (value: M) => R): Sub<R>;
 
-    public abstract executePort(name: string, value: Value): Maybe<M>;
+    protected abstract executePort(name: string, value: Value): Maybe<M>;
 }
 
 class None<M> extends Sub<M> {
@@ -26,7 +30,7 @@ class None<M> extends Sub<M> {
         return this as any as Sub<R>;
     }
 
-    public executePort(): Maybe<M> {
+    protected executePort(): Maybe<M> {
         return Nothing();
     }
 }
@@ -46,7 +50,7 @@ class Port<M> extends Sub<M> {
         );
     }
 
-    public executePort(name: string, value: Value): Maybe<M> {
+    protected executePort(name: string, value: Value): Maybe<M> {
         if (name === this.name) {
             return Just(this.tagger(value));
         }
