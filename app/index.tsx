@@ -6,76 +6,54 @@ import {
 import {
     Sub
 } from '../src/Platform/Sub';
-
+import * as Counter from './Counter';
 
 interface State {
-    count: number;
+    counter: Counter.State;
 }
 
 const initial: [ State, Cmd<Msg> ] = [
     {
-        count: 0
+        counter: Counter.initial
     },
     Cmd.none()
 ];
 
 type Msg
-    = { type: 'Increment' }
-    | { type: 'Decrement' }
-    | { type: 'Reset' }
+    = { type: 'NoOp' }
+    | { type: 'CounterMsg'; _0: Counter.Msg }
     ;
 
-const Increment: Msg = { type: 'Increment' };
-const Decrement: Msg = { type: 'Decrement' };
-const Reset: Msg = { type: 'Reset' };
+const CounterMsg = (msg: Counter.Msg): Msg => ({ type: 'CounterMsg', _0: msg });
 
 const update = (msg: Msg, state: State): [ State, Cmd<Msg> ] => {
     switch (msg.type) {
-        case 'Increment': {
-            return [
-                { ...state, count: state.count + 1 },
-                Cmd.none()
-            ];
+        case 'NoOp': {
+            return [ state, Cmd.none() ];
         }
 
-        case 'Decrement': {
+        case 'CounterMsg': {
             return [
-                { ...state, count: state.count - 1 },
-                Cmd.none()
-            ];
-        }
-
-        case 'Reset': {
-            return [
-                { ...state, count: 0 },
+                { ...state, counter: Counter.update(msg._0, state.counter) },
                 Cmd.none()
             ];
         }
     }
 };
 
-const view = ({ state, dispatch }: { state: State; dispatch(msg: Msg): void }): React.ReactElement<State> => (
+const View = ({ state, dispatch }: { state: State; dispatch(msg: Msg): void }): React.ReactElement<State> => (
     <div>
-        <button
-            onClick={() => dispatch(Decrement)}
-        >-</button>
-        {state.count.toString()}
-        <button
-            onClick={() => dispatch(Increment)}
-        >+</button>
+        <h1>Hello World!</h1>
+
+        <Counter.View
+            state={state.counter}
+            dispatch={(msg: Counter.Msg) => dispatch(CounterMsg(msg))}
+        />
     </div>
 );
 
 const subscriptions = (state: State): Sub<Msg> => {
-    if (state.count === 1) {
-        return Sub.none();
-    }
-
-    return Sub.batch([
-        Sub.batch([
-            Sub.port('test-port', () => Reset)
-        ])
-    ]);
+    return Counter.subscriptions(state.counter).map(CounterMsg);
 };
 
 const rootNode = document.getElementById('root');
@@ -83,7 +61,7 @@ const btnNode = document.getElementById('btn-reset');
 
 if (rootNode !== null && btnNode !== null) {
     const app = Platform
-        .program({ initial, update, subscriptions, view })
+        .program({ initial, update, subscriptions, view: View })
         .mount(document.getElementById('root'));
 
     btnNode.addEventListener('click', () => {
