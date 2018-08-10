@@ -81,7 +81,7 @@ export class Runtime {
 
 abstract class ProgramSub<M> extends Sub<M> {
     public static executeSubscriptionPort<M>(name: string, value: Value, sub: Sub<M>): Maybe<M> {
-        return Sub.executeSubscriptionPort(name, value, sub);
+        return Sub.executePort(name, value, sub);
     }
 }
 

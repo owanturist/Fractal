@@ -71,7 +71,11 @@ const subscriptions = (state: State): Sub<Msg> => {
         return Sub.none();
     }
 
-    return Sub.port('test-port', () => Reset);
+    return Sub.batch([
+        Sub.batch([
+            Sub.port('test-port', () => Reset)
+        ])
+    ]);
 };
 
 const rootNode = document.getElementById('root');
