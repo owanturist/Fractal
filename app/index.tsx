@@ -25,6 +25,10 @@ type Msg
     | { type: 'Reset' }
     ;
 
+const Increment: Msg = { type: 'Increment' };
+const Decrement: Msg = { type: 'Decrement' };
+const Reset: Msg = { type: 'Reset' };
+
 const update = (msg: Msg, state: State): [ State, Cmd<Msg> ] => {
     switch (msg.type) {
         case 'Increment': {
@@ -53,20 +57,22 @@ const update = (msg: Msg, state: State): [ State, Cmd<Msg> ] => {
 const view = ({ state, dispatch }: { state: State; dispatch(msg: Msg): void }): React.ReactElement<State> => (
     <div>
         <button
-            onClick={() => dispatch({ type: 'Decrement' })}
+            onClick={() => dispatch(Decrement)}
         >-</button>
         {state.count.toString()}
         <button
-            onClick={() => dispatch({ type: 'Increment' })}
+            onClick={() => dispatch(Increment)}
         >+</button>
     </div>
 );
 
-const subscriptions = (): Sub<Msg> =>
-    Sub.port<Msg>(
-        'test-port',
-        () => ({ type: 'Reset' })
-    );
+const subscriptions = (state: State): Sub<Msg> => {
+    if (state.count === 1) {
+        return Sub.none();
+    }
+
+    return Sub.port('test-port', () => Reset);
+};
 
 const rootNode = document.getElementById('root');
 const btnNode = document.getElementById('btn-reset');
