@@ -16,7 +16,6 @@ import {
     Sub
 } from './Platform/Sub';
 
-
 function noop() {
     // no operation
 }
@@ -80,6 +79,10 @@ abstract class ProgramSub<M> extends Sub<M> {
     public static executePort<M>(name: string, value: Value, sub: Sub<M>): Array<M> {
         return Sub.executePort(name, value, sub);
     }
+
+    public static executeEvery<M>(dispatch: (msg: M) => void, sub: Sub<M>): Array<() => () => void> {
+        return Sub.executeEvery(dispatch, sub);
+    }
 }
 
 export abstract class Program<S, M> {
@@ -130,9 +133,11 @@ export abstract class Program<S, M> {
     private dispatch = (msg: M): void => {
         const [ nextState ] = this.update(msg, this.state);
 
-        this.state = nextState;
+        if (this.state !== nextState) {
+            this.onChange(nextState);
+        }
 
-        this.onChange(nextState);
+        this.state = nextState;
     }
 }
 

@@ -16,11 +16,17 @@ export abstract class Sub<M> {
         return new Port(name, tagger);
     }
 
+    protected static executeEvery<M>(dispatch: (msg: M) => void, sub: Sub<M>): Array<() => () => void> {
+        return sub.executeEvery(dispatch);
+    }
+
     protected static executePort<M>(name: string, value: Value, sub: Sub<M>): Array<M> {
         return sub.executePort(name, value);
     }
 
     public abstract map<R>(fn: (msg: M) => R): Sub<R>;
+
+    protected abstract executeEvery(dispatch: (msg: M) => void): Array<() => () => void>;
 
     protected abstract executePort(name: string, value: Value): Array<M>;
 }
@@ -28,6 +34,10 @@ export abstract class Sub<M> {
 class None<M> extends Sub<M> {
     public map<R>(): Sub<R> {
         return this as any as Sub<R>;
+    }
+
+    protected executeEvery(): Array<() => () => void> {
+        return [];
     }
 
     protected executePort(): Array<M> {
@@ -50,11 +60,30 @@ class Batch<M> extends Sub<M> {
         return new Batch(nextSubs);
     }
 
+    protected executeEvery(dispatch: (msg: M) => void): Array<() => () => void> {
+        const msgs: Array<() => () => void> = [];
+
+        for (const sub of this.subs) {
+            const butchOfMsgs = Sub.executeEvery(dispatch, sub);
+
+            if (butchOfMsgs.length !== 0) {
+                msgs.push(...butchOfMsgs);
+            }
+
+        }
+
+        return msgs;
+    }
+
     protected executePort(name: string, value: Value): Array<M> {
         const msgs: Array<M> = [];
 
         for (const sub of this.subs) {
-            msgs.push(...Sub.executePort(name, value, sub));
+            const butchOfMsgs = Sub.executePort(name, value, sub)
+
+            if (butchOfMsgs.length !== 0) {
+                msgs.push(...butchOfMsgs);
+            }
         }
 
         return msgs;
@@ -74,6 +103,10 @@ class Port<M> extends Sub<M> {
             this.name,
             (value: Value): R => fn(this.tagger(value))
         );
+    }
+
+    protected executeEvery(): Array<() => () => void> {
+        return [];
     }
 
     protected executePort(name: string, value: Value): Array<M> {

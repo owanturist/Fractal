@@ -79,6 +79,6 @@ if (rootNode !== null && btnNode !== null) {
         .mount(document.getElementById('root'));
 
     btnNode.addEventListener('click', () => {
-        app.send('test-port', null);
+        app.send('counter__reset', null);
     });
 }
