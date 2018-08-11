@@ -2,6 +2,12 @@ export type Readonly<T> = {
     readonly [ K in keyof T ]: T[ K ];
 };
 
+export type Partial<T> = {
+    [ K in keyof T ]?: T[ K ];
+};
+
+export type PartialPattern<T, R> = Partial<T> & Readonly<{ _(): R }>;
+
 export type Comparable = string | number;
 
 export abstract class Order {

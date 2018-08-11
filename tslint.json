@@ -66,7 +66,7 @@
     "no-boolean-literal-compare": true,
     "no-consecutive-blank-lines": [ true, 2 ],
     "no-irregular-whitespace": true,
-    "no-unnecessary-callback-wrapper": true,
+    "no-unnecessary-callback-wrapper": false,
     "number-literal-format": true,
     "ordered-imports": false,
     "prefer-method-signature": true,
