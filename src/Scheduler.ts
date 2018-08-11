@@ -35,11 +35,11 @@ export const Scheduler = new (class <E, T> {
     private working = false;
     private readonly queue: Array<Process<E, T>> = [];
 
-    public upid(): number {
+    public upid = (): number => {
         return this.pid++;
     }
 
-    private enqueue(process: Process<E, T>): void {
+    private enqueue = (process: Process<E, T>): void => {
         this.queue.push(process);
 
         if (!this.working) {
@@ -48,9 +48,31 @@ export const Scheduler = new (class <E, T> {
         }
     }
 
-    private work() {}
+    private shift = (): Maybe<Process<E, T>> => {
+        return Maybe.fromNullable(this.queue.shift());
+    }
 
-    private step(initialCount: number, process: Process<E, T>): number {
+    private work = (): void => {
+        let count = 0;
+        let process: Maybe<Process<E, T>> = this.shift();
+
+        while (count < this.MAX_STEPS && process.isJust()) {
+            count = process.map(
+                (process: Process<E, T>) => this.step(count, process)
+            ).getOrElse(count);
+
+            process = this.shift();
+        }
+
+        if (process.isNothing()) {
+            this.working = false;
+            return;
+        }
+
+        setTimeout(this.work, 0);
+    }
+
+    private step = (initialCount: number, process: Process<E, T>): number => {
         return process.getRoot().map((root: Task<E, T>): number => {
             let count = initialCount;
 
@@ -110,7 +132,7 @@ export const Scheduler = new (class <E, T> {
                         return true;
                     },
 
-                    Receive: (callback: (msg: T) => Task<E, T>): boolean => process.shift(callback),
+                    Receive: (callback: (msg: T) => Task<E, T>): boolean => process.shift(callback)
                 });
 
                 if (!keepItGoing) {
@@ -144,7 +166,7 @@ class Succeed<E, T> extends Task<E, T> {
         super();
     }
 
-    public cata<R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R {
+    public cata = <R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R => {
         if (typeof pattern.Succeed === 'function') {
             return pattern.Succeed(this.value);
         }
@@ -152,11 +174,11 @@ class Succeed<E, T> extends Task<E, T> {
         return (pattern as PartialPattern<Pattern<E, T, R>, R>)._();
     }
 
-    public liftChain(): Maybe<Task<E, T>> {
+    public liftChain = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 
-    public liftOnError(): Maybe<Task<E, T>> {
+    public liftOnError = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 }
@@ -166,7 +188,7 @@ class Fail<E, T> extends Task<E, T> {
         super();
     }
 
-    public cata<R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R {
+    public cata = <R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R => {
         if (typeof pattern.Fail === 'function') {
             return pattern.Fail(this.error);
         }
@@ -174,11 +196,11 @@ class Fail<E, T> extends Task<E, T> {
         return (pattern as PartialPattern<Pattern<E, T, R>, R>)._();
     }
 
-    public liftChain(): Maybe<Task<E, T>> {
+    public liftChain = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 
-    public liftOnError(): Maybe<Task<E, T>> {
+    public liftOnError = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 }
@@ -191,7 +213,7 @@ class Binding<E, T> extends Task<E, T> {
         super();
     }
 
-    public cata<R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R {
+    public cata = <R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R => {
         if (typeof pattern.Binding === 'function') {
             return pattern.Binding(this.callback, this.cancel);
         }
@@ -199,11 +221,11 @@ class Binding<E, T> extends Task<E, T> {
         return (pattern as PartialPattern<Pattern<E, T, R>, R>)._();
     }
 
-    public liftChain(): Maybe<Task<E, T>> {
+    public liftChain = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 
-    public liftOnError(): Maybe<Task<E, T>> {
+    public liftOnError = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 }
@@ -217,7 +239,7 @@ class Chain<E, T> extends Task<E, T> {
         super();
     }
 
-    public cata<R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R {
+    public cata = <R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R => {
         if (typeof pattern.Chain === 'function') {
             return pattern.Chain(this.callback, this.task, this.rest);
         }
@@ -225,7 +247,7 @@ class Chain<E, T> extends Task<E, T> {
         return (pattern as PartialPattern<Pattern<E, T, R>, R>)._();
     }
 
-    public liftChain(): Maybe<Task<E, T>> {
+    public liftChain = (): Maybe<Task<E, T>> => {
         return this.rest.chain(
             (rest: Task<E, T>) =>
                 rest
@@ -234,7 +256,7 @@ class Chain<E, T> extends Task<E, T> {
         );
     }
 
-    public liftOnError(): Maybe<Task<E, T>> {
+    public liftOnError = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 }
@@ -248,7 +270,7 @@ class OnError<E, T> extends Task<E, T> {
         super();
     }
 
-    public cata<R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R {
+    public cata = <R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R => {
         if (typeof pattern.OnError === 'function') {
             return pattern.OnError(this.callback, this.task, this.rest);
         }
@@ -256,11 +278,11 @@ class OnError<E, T> extends Task<E, T> {
         return (pattern as PartialPattern<Pattern<E, T, R>, R>)._();
     }
 
-    public liftChain(): Maybe<Task<E, T>> {
+    public liftChain = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 
-    public liftOnError(): Maybe<Task<E, T>> {
+    public liftOnError = (): Maybe<Task<E, T>> => {
         return this.rest.chain(
             (rest: Task<E, T>) =>
                 rest
@@ -275,7 +297,7 @@ class Receive<E, T> extends Task<E, T> {
         super();
     }
 
-    public cata<R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R {
+    public cata = <R>(pattern: PartialPattern<Pattern<E, T, R>, R> | Pattern<E, T, R>): R => {
         if (typeof pattern.Receive === 'function') {
             return pattern.Receive(this.callback);
         }
@@ -283,17 +305,17 @@ class Receive<E, T> extends Task<E, T> {
         return (pattern as PartialPattern<Pattern<E, T, R>, R>)._();
     }
 
-    public liftChain(): Maybe<Task<E, T>> {
+    public liftChain = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 
-    public liftOnError(): Maybe<Task<E, T>> {
+    public liftOnError = (): Maybe<Task<E, T>> => {
         return Nothing();
     }
 }
 
 class Process<E, T> {
-    public static of<E, T>(task: Task<E, T>) {
+    public static of = <E, T>(task: Task<E, T>) => {
         return new Process(Scheduler.upid(), Just(task), Nothing());
     }
 
