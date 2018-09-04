@@ -12,6 +12,146 @@ import * as Encode from './Encode';
 
 export type Value = Encode.Value;
 
+export abstract class Error {
+    protected static isValidPropertyName(name: string): boolean {
+        return /^[a-z_][0-9a-z_]*$/i.test(name);
+    }
+
+    protected static indent(source: string): string {
+        const lines = source.split('\n');
+
+        if (lines.length < 2) {
+            return source;
+        }
+
+        return lines.join('\n    ');
+    }
+
+    public abstract cata<R>(pattern: Error.Pattern<R>): R;
+
+    public stringify(): string {
+        return this.stringifyWithContext([]);
+    }
+
+    public abstract stringifyWithContext(context: Array<string>): string;
+}
+
+export namespace Error {
+    export type Pattern<R> = Readonly<{
+        Field(field: string, error: Error): R;
+        Index(index: number, error: Error): R;
+        OneOf(errors: Array<Error>): R;
+        Failure(message: string, source: Value): R;
+    }>;
+}
+
+namespace Variations {
+    export class Field extends Error {
+        constructor(
+            private readonly field: string,
+            private readonly error: Error
+        ) {
+            super();
+        }
+
+        public cata<R>(pattern: Error.Pattern<R>): R {
+            return pattern.Field(this.field, this.error);
+        }
+
+        public stringifyWithContext(context: Array<string>): string {
+            return this.error.stringifyWithContext([
+                ...context,
+                Error.isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
+            ]);
+        }
+    }
+
+    export class Index extends Error {
+        constructor(
+            private readonly index: number,
+            private readonly error: Error
+        ) {
+            super();
+        }
+
+        public cata<R>(pattern: Error.Pattern<R>): R {
+            return pattern.Index(this.index, this.error);
+        }
+
+        public stringifyWithContext(context: Array<string>): string {
+            return this.error.stringifyWithContext([ ...context, `[${this.index}]` ]);
+        }
+    }
+
+    export class OneOf extends Error {
+        constructor(private readonly errors: Array<Error>) {
+            super();
+        }
+
+        public cata<R>(pattern: Error.Pattern<R>): R {
+            return pattern.OneOf(this.errors);
+        }
+
+        public stringifyWithContext(context: Array<string>): string {
+            switch (this.errors.length) {
+                case 0: {
+                    return 'Ran into a Json.Decode.oneOf with no possibilities'
+                        + (context.length === 0 ? '!' : ' at json' + context.join(''));
+                }
+
+                case 1: {
+                    return this.errors[ 0 ].stringifyWithContext(context);
+                }
+
+                default: {
+                    const starter = context.length === 0
+                        ? 'Json.Decode.oneOf'
+                        : 'The Json.Decode.oneOf at json' + context.join('');
+                    const lines = [
+                        `${starter} failed in the following ${this.errors.length} ways`
+                    ];
+
+                    for (let i = 0; i < this.errors.length; ++i) {
+                        lines.push(
+                            `\n\n(${i + 1})` + Error.indent(this.errors[ i ].stringifyWithContext(context))
+                        );
+                    }
+
+                    return lines.join('\n\n');
+                }
+            }
+        }
+    }
+
+    export class Failure extends Error {
+        constructor(
+            private readonly message: string,
+            private readonly source: Value
+        ) {
+            super();
+        }
+
+        public cata<R>(pattern: Error.Pattern<R>): R {
+            return pattern.Failure(this.message, this.source);
+        }
+
+        public stringifyWithContext(context: Array<string>): string {
+            const introduction = context.length === 0
+                ? 'Problem with the given value:\n\n'
+                : 'Problem with the value at json' + context.join('') + ':\n\n    ';
+
+            return introduction
+                + Error.indent(JSON.stringify(this.source, null, 4))
+                + `\n\n${this.message}`;
+        }
+    }
+}
+
+export const Field = (field: string, error: Error): Error => new Variations.Field(field, error);
+export const Index = (index: number, error: Error): Error => new Variations.Index(index, error);
+export const OneOf = (errors: Array<Error>): Error => new Variations.OneOf(errors);
+export const Failure = (message: string, source: Value): Error => new Variations.Failure(message, source);
+
 const isString = (value: Value): value is string => typeof value === 'string';
 const isNumber = (value: Value): value is number => typeof value === 'number';
 const isBoolean = (value: Value): value is boolean => typeof value === 'boolean';
