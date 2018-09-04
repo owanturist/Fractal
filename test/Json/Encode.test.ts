@@ -1,5 +1,9 @@
 import test from 'ava';
 
+import {
+    Nothing,
+    Just
+} from '../../src/Maybe';
 import * as Encode from '../../src/Json/Encode';
 
 test('Json.Encode.nill', t => {
@@ -47,6 +51,28 @@ test('Json.Encode.boolean', t => {
     t.is(
         Encode.boolean(false).serialize(),
         false
+    );
+});
+
+test('Json.Encode.maybe', t => {
+    t.is(
+        Encode.maybe(Encode.string, Nothing()).encode(0),
+        'null'
+    );
+
+    t.is(
+        Encode.maybe(Encode.string, Nothing()).serialize(),
+        null
+    );
+
+    t.is(
+        Encode.maybe(Encode.string, Just('msg')).encode(0),
+        '"msg"'
+    );
+
+    t.is(
+        Encode.maybe(Encode.string, Just('msg')).serialize(),
+        'msg'
     );
 });
 

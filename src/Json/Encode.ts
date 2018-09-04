@@ -1,3 +1,7 @@
+import {
+    Maybe
+} from '../Maybe';
+
 interface ValueArray extends Array<Value> {}
 
 export type Value
@@ -68,6 +72,11 @@ export const nill: Encoder = new Encode.Primitive(null);
 export const string = (string: string): Encoder => new Encode.Primitive(string);
 export const number = (number: number): Encoder => new Encode.Primitive(number);
 export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
+
+export const maybe = <T>(
+    encoder: (value: T) => Encoder,
+    maybe: Maybe<T>
+): Encoder => maybe.map(encoder).getOrElse(nill);
 
 export const list = (array: Array<Encoder>): Encoder => new Encode.List(array);
 export const object = <T extends {[ key: string ]: Encoder }>(object: T): Encoder => new Encode.Object(object);
