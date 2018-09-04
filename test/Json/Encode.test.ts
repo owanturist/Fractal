@@ -54,24 +54,24 @@ test('Json.Encode.boolean', t => {
     );
 });
 
-test('Json.Encode.maybe', t => {
+test('Json.Encode.nullable', t => {
     t.is(
-        Encode.maybe(Encode.string, Nothing()).encode(0),
+        Encode.nullable(Encode.string, Nothing()).encode(0),
         'null'
     );
 
     t.is(
-        Encode.maybe(Encode.string, Nothing()).serialize(),
+        Encode.nullable(Encode.string, Nothing()).serialize(),
         null
     );
 
     t.is(
-        Encode.maybe(Encode.string, Just('msg')).encode(0),
+        Encode.nullable(Encode.string, Just('msg')).encode(0),
         '"msg"'
     );
 
     t.is(
-        Encode.maybe(Encode.string, Just('msg')).serialize(),
+        Encode.nullable(Encode.string, Just('msg')).serialize(),
         'msg'
     );
 });

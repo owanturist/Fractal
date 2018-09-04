@@ -73,7 +73,7 @@ export const string = (string: string): Encoder => new Encode.Primitive(string);
 export const number = (number: number): Encoder => new Encode.Primitive(number);
 export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
 
-export const maybe = <T>(
+export const nullable = <T>(
     encoder: (value: T) => Encoder,
     maybe: Maybe<T>
 ): Encoder => maybe.map(encoder).getOrElse(nill);
