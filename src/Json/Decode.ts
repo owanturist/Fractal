@@ -19,6 +19,12 @@ const isObject = (input: Value): input is {[ key: string ]: Value } => {
     return typeof input === 'object' && input !== null && !isArray(input);
 };
 
+const makePath = (origin: Array<string>): string => {
+    return origin.length === 0
+        ? ' '
+        : ' at _' + origin.join('') + ' ';
+};
+
 const indent = (source: string): string => {
     const lines = source.split('\n');
 
@@ -162,12 +168,6 @@ export abstract class Decoder<T> {
         return decoder.deserialize(input, origin);
     }
 
-    protected static makePath(origin: Array<string>): string {
-        return origin.length === 0
-            ? ' '
-            : ' at _' + origin.join('') + ' ';
-    }
-
     public map<R>(fn: (value: T) => R): Decoder<R> {
         return new Decode.Map(fn, this);
     }
@@ -232,7 +232,7 @@ namespace Decode {
             return this.check(input)
                 ? Right(input)
                 : Left(
-                    `Expecting ${this.title}${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`
+                    `Expecting ${this.title}${makePath(origin)}but instead got: ${JSON.stringify(input)}`
                 );
         }
     }
@@ -248,7 +248,7 @@ namespace Decode {
                 : Decoder.run(this.decoder, input, origin).bimap(
                     (error: string): string => [
                         'I ran into the following problems:\n',
-                        `Expecting null${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`,
+                        `Expecting null${makePath(origin)}but instead got: ${JSON.stringify(input)}`,
                         error
                     ].join('\n'),
                     Just
@@ -263,7 +263,7 @@ namespace Decode {
 
         public deserialize(input: Value, origin: Array<string>): Either<string, Array<T>> {
             if (!isArray(input)) {
-                return Left(`Expecting a List${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return Left(`Expecting a List${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
             }
 
             let acc: Either<string, Array<T>> = Right([]);
@@ -294,7 +294,7 @@ namespace Decode {
 
         public deserialize(input: Value, origin: Array<string>): Either<string, O> {
             if (!isObject(input)) {
-                return Left(`Expecting an object${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return Left(`Expecting an object${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
             }
 
             let acc: Either<string, O> = Right({} as O);
@@ -327,7 +327,7 @@ namespace Decode {
 
         public deserialize(input: Value, origin: Array<string>): Either<string, Array<[ string, T ]>> {
             if (!isObject(input)) {
-                return Left(`Expecting an object${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return Left(`Expecting an object${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
             }
 
             let acc: Either<string, Array<[ string, T ]>> = Right([]);
@@ -367,7 +367,7 @@ namespace Decode {
             }
 
             return Left(
-                `Expecting an object with a field named \`${this.key}\`${Decoder.makePath(origin)}but instead got: ` +
+                `Expecting an object with a field named \`${this.key}\`${makePath(origin)}but instead got: ` +
                 JSON.stringify(input)
             );
         }
@@ -383,7 +383,7 @@ namespace Decode {
 
         public deserialize(input: Value, origin: Array<string>): Either<string, T> {
             if (!isArray(input)) {
-                return Left(`Expecting a List${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return Left(`Expecting a List${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
             }
 
             if (this.index >= input.length) {
@@ -417,7 +417,7 @@ namespace Decode {
 
         public deserialize(input: Value, origin: Array<string>): Either<string, T> {
             if (this.decoders.length === 0) {
-                return Left(`Expecting at least one Decoder for oneOf${Decoder.makePath(origin)}but instead got 0`);
+                return Left(`Expecting at least one Decoder for oneOf${makePath(origin)}but instead got 0`);
             }
 
             let acc = Left<string, T>('I ran into the following problems:\n');
@@ -480,7 +480,7 @@ namespace Decode {
         public deserialize(input: Value, origin: Array<string>): Either<string, T> {
             return input === null
                 ? Right(this.defaults)
-                : Left(`Expecting null${Decoder.makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                : Left(`Expecting null${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
         }
     }
 
