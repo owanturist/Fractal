@@ -10,23 +10,28 @@ import {
 } from '../Either';
 import * as Encode from './Encode';
 
+const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);
+const isString = (value: Value): value is string => typeof value === 'string';
+const isNumber = (value: Value): value is number => typeof value === 'number';
+const isBoolean = (value: Value): value is boolean => typeof value === 'boolean';
+const isArray = (input: Value): input is Array<Value> => input instanceof Array;
+const isObject = (input: Value): input is {[ key: string ]: Value } => {
+    return typeof input === 'object' && input !== null && !isArray(input);
+};
+
+const indent = (source: string): string => {
+    const lines = source.split('\n');
+
+    if (lines.length < 2) {
+        return source;
+    }
+
+    return lines.join('\n    ');
+};
+
 export type Value = Encode.Value;
 
 export abstract class Error {
-    protected static isValidPropertyName(name: string): boolean {
-        return /^[a-z_][0-9a-z_]*$/i.test(name);
-    }
-
-    protected static indent(source: string): string {
-        const lines = source.split('\n');
-
-        if (lines.length < 2) {
-            return source;
-        }
-
-        return lines.join('\n    ');
-    }
-
     public abstract cata<R>(pattern: Error.Pattern<R>): R;
 
     public stringify(): string {
@@ -61,7 +66,7 @@ namespace Variations {
         public stringifyWithContext(context: Array<string>): string {
             return this.error.stringifyWithContext([
                 ...context,
-                Error.isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
+                isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
             ]);
         }
     }
@@ -113,7 +118,7 @@ namespace Variations {
 
                     for (let i = 0; i < this.errors.length; ++i) {
                         lines.push(
-                            `\n\n(${i + 1})` + Error.indent(this.errors[ i ].stringifyWithContext(context))
+                            `\n\n(${i + 1})` + indent(this.errors[ i ].stringifyWithContext(context))
                         );
                     }
 
@@ -141,7 +146,7 @@ namespace Variations {
                 : 'Problem with the value at json' + context.join('') + ':\n\n    ';
 
             return introduction
-                + Error.indent(JSON.stringify(this.source, null, 4))
+                + indent(JSON.stringify(this.source, null, 4))
                 + `\n\n${this.message}`;
         }
     }
@@ -151,14 +156,6 @@ export const Field = (field: string, error: Error): Error => new Variations.Fiel
 export const Index = (index: number, error: Error): Error => new Variations.Index(index, error);
 export const OneOf = (errors: Array<Error>): Error => new Variations.OneOf(errors);
 export const Failure = (message: string, source: Value): Error => new Variations.Failure(message, source);
-
-const isString = (value: Value): value is string => typeof value === 'string';
-const isNumber = (value: Value): value is number => typeof value === 'number';
-const isBoolean = (value: Value): value is boolean => typeof value === 'boolean';
-const isArray = (input: Value): input is Array<Value> => input instanceof Array;
-const isObject = (input: Value): input is {[ key: string ]: Value } => {
-    return typeof input === 'object' && input !== null && !isArray(input);
-};
 
 export abstract class Decoder<T> {
     protected static run<T>(decoder: Decoder<T>, input: Value, origin: Array<string>): Either<string, T> {
