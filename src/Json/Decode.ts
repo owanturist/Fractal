@@ -1,5 +1,5 @@
 import {
-    Maybe as Maybe_,
+    Maybe,
     Nothing,
     Just
 } from '../Maybe';
@@ -19,32 +19,40 @@ const isObject = (input: Value): input is {[ key: string ]: Value } => {
     return typeof input === 'object' && input !== null && !isArray(input);
 };
 
-const makePath = (origin: Array<string>): string => {
-    return origin.length === 0
-        ? ' '
-        : ' at _' + origin.join('') + ' ';
-};
-
-const indent = (source: string): string => {
-    const lines = source.split('\n');
+const indent = (text: string): string => {
+    const lines = text.split('\n');
 
     if (lines.length < 2) {
-        return source;
+        return text;
     }
 
     return lines.join('\n    ');
 };
 
+const expecting = <T>(type: string, source: Value): Either<Error, T> => {
+    return Left(
+        Failure(`Expecting ${type}`, source)
+    );
+};
+
 export type Value = Encode.Value;
 
 export abstract class Error {
+    public static stringify(error: Error): string {
+        return error.stringify();
+    }
+
+    protected static stringifyWithContext(error: Error, context: Array<string>): string {
+        return error.stringifyWithContext(context);
+    }
+
     public abstract cata<R>(pattern: Error.Pattern<R>): R;
 
     public stringify(): string {
         return this.stringifyWithContext([]);
     }
 
-    public abstract stringifyWithContext(context: Array<string>): string;
+    protected abstract stringifyWithContext(context: Array<string>): string;
 }
 
 export namespace Error {
@@ -70,7 +78,7 @@ namespace Variations {
         }
 
         public stringifyWithContext(context: Array<string>): string {
-            return this.error.stringifyWithContext([
+            return Error.stringifyWithContext(this.error, [
                 ...context,
                 isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
             ]);
@@ -90,7 +98,7 @@ namespace Variations {
         }
 
         public stringifyWithContext(context: Array<string>): string {
-            return this.error.stringifyWithContext([ ...context, `[${this.index}]` ]);
+            return Error.stringifyWithContext(this.error, [ ...context, `[${this.index}]` ]);
         }
     }
 
@@ -111,7 +119,7 @@ namespace Variations {
                 }
 
                 case 1: {
-                    return this.errors[ 0 ].stringifyWithContext(context);
+                    return Error.stringifyWithContext(this.errors[ 0 ], context);
                 }
 
                 default: {
@@ -122,9 +130,9 @@ namespace Variations {
                         `${starter} failed in the following ${this.errors.length} ways`
                     ];
 
-                    for (let i = 0; i < this.errors.length; ++i) {
+                    for (let index = 0; index < this.errors.length; ++index) {
                         lines.push(
-                            `\n\n(${i + 1})` + indent(this.errors[ i ].stringifyWithContext(context))
+                            `\n\n(${index + 1})` + indent(Error.stringifyWithContext(this.errors[ index ], context))
                         );
                     }
 
@@ -164,8 +172,118 @@ export const OneOf = (errors: Array<Error>): Error => new Variations.OneOf(error
 export const Failure = (message: string, source: Value): Error => new Variations.Failure(message, source);
 
 export abstract class Decoder<T> {
-    protected static run<T>(decoder: Decoder<T>, input: Value, origin: Array<string>): Either<string, T> {
-        return decoder.deserialize(input, origin);
+    public static fromEither<T>(either: Either<string, T>): Decoder<T> {
+        return either.cata({
+            Left(msg: string): Decoder<T> {
+                return Decoder.fail(msg);
+            },
+            Right(value: T): Decoder<T> {
+                return Decoder.succeed(value);
+            }
+        });
+    }
+
+    public static fromMaybe<T>(msg: string, maybe: Maybe<T>): Decoder<T> {
+        return maybe.cata({
+            Nothing(): Decoder<T> {
+                return Decoder.fail(msg);
+            },
+            Just(value: T): Decoder<T> {
+                return Decoder.succeed(value);
+            }
+        });
+    }
+
+    public static get string(): Decoder<string> {
+        return new Decode.Primitive('a STRING', isString);
+    }
+
+    public static get number(): Decoder<number> {
+        return new Decode.Primitive('a NUMBER', isNumber);
+    }
+
+    public static get boolean(): Decoder<boolean> {
+        return new Decode.Primitive('a BOOLEAN', isBoolean);
+    }
+
+    public static get value(): Decoder<Value> {
+        return new Decode.Identity();
+    }
+
+    public static nill<T>(defaults: T): Decoder<T> {
+        return new Decode.Nill(defaults);
+    }
+
+    public static fail<T>(msg: string): Decoder<T> {
+        return new Decode.Fail(msg);
+    }
+
+    public static succeed<T>(value: T): Decoder<T> {
+        return new Decode.Succeed(value);
+    }
+
+    public static oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
+        return new Decode.OneOf(decoders);
+    }
+
+    public static nullable<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return Decoder.oneOf([
+            Decoder.nill(Nothing()),
+            decoder.map(Just)
+        ]);
+    }
+
+    public static maybe<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return Decoder.oneOf([
+            decoder.map(Just),
+            Decoder.succeed(Nothing())
+        ]);
+    }
+
+    public static list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
+        return new Decode.List(decoder);
+    }
+
+    public static keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> {
+        return new Decode.KeyValue(decoder);
+    }
+
+    public static dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
+        return Decoder.keyValue(decoder).map((keyValue: Array<[ string, T ]>): {[ key: string ]: T} => {
+            const acc: {[ key: string ]: T} = {};
+
+            for (const [ key, value ] of keyValue) {
+                acc[ key ] = value;
+            }
+
+            return acc;
+        });
+    }
+
+    public static props<T extends object>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> {
+        return new Decode.Props(config);
+    }
+
+    public static index<T>(index: number, decoder: Decoder<T>): Decoder<T> {
+        return new Decode.Index(index, decoder);
+    }
+
+    public static field<T>(key: string, decoder: Decoder<T>): Decoder<T> {
+        return new Decode.Field(key, decoder);
+    }
+
+    public static at<T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> {
+        let result = decoder;
+
+        for (let index = keys.length - 1; index >= 0; index--) {
+            result = Decoder.field(keys[ index ], result);
+        }
+
+        return result;
+    }
+
+    public static lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
+        return Decoder.succeed(null).chain(callDecoder);
     }
 
     public map<R>(fn: (value: T) => R): Decoder<R> {
@@ -176,19 +294,17 @@ export abstract class Decoder<T> {
         return new Decode.Chain(fn, this);
     }
 
-    public decodeJSON(input: string): Either<string, T> {
+    public decodeJSON(input: string): Either<Error, T> {
         try {
             return this.decode(JSON.parse(input) as Value);
         } catch (err) {
-            return Left((err as SyntaxError).message);
+            return Left(
+                Failure(`This is not valid JSON! ${err.message}`, input)
+            );
         }
     }
 
-    public decode(input: Value): Either<string, T> {
-        return this.deserialize(input, []);
-    }
-
-    protected abstract deserialize(input: Value, origin: Array<string>): Either<string, T>;
+    public abstract decode(input: Value): Either<Error, T>;
 }
 
 namespace Decode {
@@ -200,8 +316,8 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, R> {
-            return Decoder.run(this.decoder, input, origin).map(this.fn);
+        public decode(input: Value): Either<Error, R> {
+            return this.decoder.decode(input).map(this.fn);
         }
     }
 
@@ -213,46 +329,29 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, R> {
-            return Decoder.run(this.decoder, input, origin).chain(
-                (value: T): Either<string, R> => this.fn(value).decode(input)
+        public decode(input: Value): Either<Error, R> {
+            return this.decoder.decode(input).chain(
+                (value: T): Either<Error, R> => this.fn(value).decode(input)
             );
         }
     }
 
     export class Primitive<T> extends Decoder<T> {
         constructor(
-            private readonly title: string,
+            private readonly type: string,
             private readonly check: (input: any) => input is T
         ) {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
-            return this.check(input)
-                ? Right(input)
-                : Left(
-                    `Expecting ${this.title}${makePath(origin)}but instead got: ${JSON.stringify(input)}`
-                );
+        public decode(input: Value): Either<Error, T> {
+            return this.check(input) ? Right(input) : expecting(this.type, input);
         }
     }
 
-    export class Nullable<T> extends Decoder<Maybe_<T>> {
-        constructor(private readonly decoder: Decoder<T>) {
-            super();
-        }
-
-        public deserialize(input: Value, origin: Array<string>): Either<string, Maybe_<T>> {
-            return input === null
-                ? Right(Nothing())
-                : Decoder.run(this.decoder, input, origin).bimap(
-                    (error: string): string => [
-                        'I ran into the following problems:\n',
-                        `Expecting null${makePath(origin)}but instead got: ${JSON.stringify(input)}`,
-                        error
-                    ].join('\n'),
-                    Just
-                );
+    export class Identity extends Decoder<Value> {
+        public decode(input: Value): Either<Error, Value> {
+            return Right(input);
         }
     }
 
@@ -261,62 +360,29 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, Array<T>> {
+        public decode(input: Value): Either<Error, Array<T>> {
             if (!isArray(input)) {
-                return Left(`Expecting a List${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return expecting('a LIST', input);
             }
 
-            let acc: Either<string, Array<T>> = Right([]);
+            let result: Either<Error, Array<T>> = Right([]);
 
             for (let index = 0; index < input.length; index++) {
-                acc = acc.chain(
-                    (accResult: Array<T>): Either<string, Array<T>> =>
-                        Decoder
-                            .run(this.decoder, input[ index ], origin.concat(`[${index}]`))
-                            .map(
-                                (itemResult: T): Array<T> => {
-                                    accResult.push(itemResult);
+                result = result.chain(
+                    (acc: Array<T>): Either<Error, Array<T>> => {
+                        return this.decoder.decode(input[ index ]).bimap(
+                            (error: Error): Error => new Variations.Index(index, error),
+                            (value: T): Array<T> => {
+                                acc.push(value);
 
-                                    return accResult;
-                                }
-                            )
+                                return acc;
+                            }
+                        );
+                    }
                 );
             }
 
-            return acc;
-        }
-    }
-
-    export class Dict<T, O extends {[ key: string ]: T }> extends Decoder<O> {
-        constructor(private readonly decoder: Decoder<T>) {
-            super();
-        }
-
-        public deserialize(input: Value, origin: Array<string>): Either<string, O> {
-            if (!isObject(input)) {
-                return Left(`Expecting an object${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
-            }
-
-            let acc: Either<string, O> = Right({} as O);
-
-            for (const key in input) {
-                if (input.hasOwnProperty(key)) {
-                    acc = acc.chain(
-                        (accResult: O): Either<string, O> =>
-                            Decoder
-                                .run(this.decoder, input[ key ] as Value, origin.concat(`.${key}`))
-                                .map(
-                                    (itemResult: T): O => {
-                                        accResult[ key ] = itemResult;
-
-                                        return accResult;
-                                    }
-                                )
-                    );
-                }
-            }
-
-            return acc;
+            return result;
         }
     }
 
@@ -325,31 +391,31 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, Array<[ string, T ]>> {
+        public decode(input: Value): Either<Error, Array<[ string, T ]>> {
             if (!isObject(input)) {
-                return Left(`Expecting an object${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return expecting('an OBJECT', input);
             }
 
-            let acc: Either<string, Array<[ string, T ]>> = Right([]);
+            let result: Either<Error, Array<[ string, T ]>> = Right([]);
 
             for (const key in input) {
                 if (input.hasOwnProperty(key)) {
-                    acc = acc.chain(
-                        (accResult: Array<[ string, T ]>): Either<string, Array<[ string, T ]>> =>
-                            Decoder
-                                .run(this.decoder, input[ key ], origin.concat(`.${key}`))
-                                .map(
-                                    (itemResult: T): Array<[ string, T ]> => {
-                                        accResult.push([ key, itemResult ]);
+                    result = result.chain(
+                        (acc: Array<[ string, T ]>): Either<Error, Array<[ string, T ]>> => {
+                            return this.decoder.decode(input[ key ]).bimap(
+                                (error: Error): Error => new Variations.Field(key, error),
+                                (value: T): Array<[ string, T ]> => {
+                                    acc.push([ key, value ]);
 
-                                        return accResult;
-                                    }
-                                )
+                                    return acc;
+                                }
+                            );
+                        }
                     );
                 }
             }
 
-            return acc;
+            return result;
         }
     }
 
@@ -361,15 +427,14 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
+        public decode(input: Value): Either<Error, T> {
             if (isObject(input) && this.key in input) {
-                return Decoder.run(this.decoder, input[ this.key ], origin.concat(`.${this.key}`));
+                return this.decoder
+                    .decode(input[ this.key ])
+                    .leftMap((error: Error): Error => new Variations.Field(this.key, error));
             }
 
-            return Left(
-                `Expecting an object with a field named \`${this.key}\`${makePath(origin)}but instead got: ` +
-                JSON.stringify(input)
-            );
+            return expecting(`an OBJECT with a field named '${this.key}'`, input);
         }
     }
 
@@ -381,32 +446,21 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
+        public decode(input: Value): Either<Error, T> {
             if (!isArray(input)) {
-                return Left(`Expecting a List${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+                return expecting('an ARRAY', input);
             }
 
             if (this.index >= input.length) {
-                return Left(
-                    'Expecting a longer List. ' +
-                    `Need index ${this.index} but there are only ${input.length} entries but instead got: ` +
-                    JSON.stringify(input)
+                return expecting(
+                    `a LONGER array. Need index ${this.index}' but only see ${input.length} entries`,
+                    input
                 );
             }
 
-            return Decoder.run(this.decoder, input[ this.index ], origin.concat(`[${this.index}]`));
-        }
-    }
-
-    export class Maybe<T> extends Decoder<Maybe_<T>> {
-        constructor(private readonly decoder: Decoder<T>) {
-            super();
-        }
-
-        public deserialize(input: Value, origin: Array<string>): Either<string, Maybe_<T>> {
-            return Right(
-                Decoder.run(this.decoder, input, origin).toMaybe()
-            );
+            return this.decoder
+                .decode(input[ this.index ])
+                .leftMap((error: Error): Error => new Variations.Index(this.index, error));
         }
     }
 
@@ -415,33 +469,22 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
-            if (this.decoders.length === 0) {
-                return Left(`Expecting at least one Decoder for oneOf${makePath(origin)}but instead got 0`);
-            }
-
-            let acc = Left<string, T>('I ran into the following problems:\n');
+        public decode(input: Value): Either<Error, T> {
+            let result = Left<Array<Error>, T>([]);
 
             for (const decoder of this.decoders) {
-                acc = acc.orElse(
-                    (accErr: string): Either<string, T> =>
-                        Decoder
-                            .run(decoder, input, origin)
-                            .leftMap((err: string): string => accErr + '\n' + err)
+                result = result.orElse(
+                    (acc: Array<Error>): Either<Array<Error>, T> => {
+                        return decoder.decode(input).leftMap((error: Error): Array<Error> => {
+                            acc.push(error);
+
+                            return acc;
+                        });
+                    }
                 );
             }
 
-            return acc;
-        }
-    }
-
-    export class Lazy<T> extends Decoder<T> {
-        constructor(private readonly callDecoder: () => Decoder<T>) {
-            super();
-        }
-
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
-            return Decoder.run(this.callDecoder(), input, origin);
+            return result.leftMap((errors: Array<Error>): Error => new Variations.OneOf(errors));
         }
     }
 
@@ -450,20 +493,21 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
-            let acc = Right<string, T>({} as T);
+        public decode(input: Value): Either<Error, T> {
+            let acc = Right<Error, T>({} as T);
 
             for (const key in this.config) {
                 if (this.config.hasOwnProperty(key)) {
                     acc = acc.chain(
-                        (obj: T): Either<string, T> =>
-                            Decoder.run(this.config[ key ], input, origin).map(
+                        (obj: T): Either<Error, T> => {
+                            return this.config[ key ].decode(input).map(
                                 (value: T[Extract<keyof T, string>]): T => {
                                     obj[ key ] = value;
 
                                     return obj;
                                 }
-                            )
+                            );
+                        }
                     );
                 }
             }
@@ -477,10 +521,8 @@ namespace Decode {
             super();
         }
 
-        public deserialize(input: Value, origin: Array<string>): Either<string, T> {
-            return input === null
-                ? Right(this.defaults)
-                : Left(`Expecting null${makePath(origin)}but instead got: ${JSON.stringify(input)}`);
+        public decode(input: Value): Either<Error, T> {
+            return input === null ? Right(this.defaults) : expecting('null', input);
         }
     }
 
@@ -489,8 +531,10 @@ namespace Decode {
             super();
         }
 
-        public deserialize(): Either<string, T> {
-            return Left(this.msg);
+        public decode(input: Value): Either<Error, T> {
+            return Left(
+                new Variations.Failure(this.msg, input)
+            );
         }
     }
 
@@ -499,56 +543,8 @@ namespace Decode {
             super();
         }
 
-        public deserialize(): Either<string, T> {
+        public decode(): Either<Error, T> {
             return Right(this.value);
         }
     }
 }
-
-export const fromEither = <T>(either: Either<string, T>): Decoder<T> => either.cata<Decoder<T>>({
-    Left: fail,
-    Right: succeed
-});
-export const fromMaybe = <T>(error: string, maybe: Maybe_<T>): Decoder<T> => maybe.cata({
-    Nothing: (): Decoder<T> => fail(error),
-    Just: succeed
-});
-
-export const string: Decoder<string> = new Decode.Primitive('a String', isString);
-export const number: Decoder<number> = new Decode.Primitive('a Number', isNumber);
-export const boolean: Decoder<boolean> = new Decode.Primitive('a Boolean', isBoolean);
-export const value: Decoder<Value> = new (
-    class extends Decoder<Value> {
-        public deserialize(input: Value): Either<string, Value> {
-            return Right(input);
-        }
-    }
-)();
-
-export const nill = <T>(defaults: T): Decoder<T> => new Decode.Nill(defaults);
-export const fail = <T>(msg: string): Decoder<T> => new Decode.Fail(msg);
-export const succeed = <T>(value: T): Decoder<T> => new Decode.Succeed(value);
-export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new Decode.OneOf(decoders);
-
-export const nullable = <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Decode.Nullable(decoder);
-export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe_<T>> => new Decode.Maybe(decoder);
-export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new Decode.List(decoder);
-export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => new Decode.Dict(decoder);
-export const keyValue = <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new Decode.KeyValue(decoder);
-export const props = <T extends object>(
-    config: {[ K in keyof T ]: Decoder<T[ K ]>}
-): Decoder<T> => new Decode.Props(config);
-
-export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Decode.Index(index, decoder);
-export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Decode.Field(key, decoder);
-export const at = <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
-    let acc = decoder;
-
-    for (let i = keys.length - 1; i >= 0; i--) {
-        acc = field(keys[ i ], acc);
-    }
-
-    return acc;
-};
-
-export const lazy = <T>(callDecoder: () => Decoder<T>): Decoder<T> => new Decode.Lazy(callDecoder);
