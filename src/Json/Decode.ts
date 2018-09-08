@@ -31,7 +31,7 @@ const indent = (text: string): string => {
 
 const expecting = <T>(type: string, source: Value): Either<Error, T> => {
     return Left(
-        Failure(`Expecting ${type}`, source)
+        Error.Failure(`Expecting ${type}`, source)
     );
 };
 
@@ -62,6 +62,14 @@ export namespace Error {
         OneOf(errors: Array<Error>): R;
         Failure(message: string, source: Value): R;
     }>;
+
+    export const Field = (field: string, error: Error): Error => new Variations.Field(field, error);
+
+    export const Index = (index: number, error: Error): Error => new Variations.Index(index, error);
+
+    export const OneOf = (errors: Array<Error>): Error => new Variations.OneOf(errors);
+
+    export const Failure = (message: string, source: Value): Error => new Variations.Failure(message, source);
 }
 
 namespace Variations {
@@ -166,126 +174,7 @@ namespace Variations {
     }
 }
 
-export const Field = (field: string, error: Error): Error => new Variations.Field(field, error);
-export const Index = (index: number, error: Error): Error => new Variations.Index(index, error);
-export const OneOf = (errors: Array<Error>): Error => new Variations.OneOf(errors);
-export const Failure = (message: string, source: Value): Error => new Variations.Failure(message, source);
-
 export abstract class Decoder<T> {
-    public static fromEither<T>(either: Either<string, T>): Decoder<T> {
-        return either.cata({
-            Left(msg: string): Decoder<T> {
-                return Decoder.fail(msg);
-            },
-            Right(value: T): Decoder<T> {
-                return Decoder.succeed(value);
-            }
-        });
-    }
-
-    public static fromMaybe<T>(msg: string, maybe: Maybe<T>): Decoder<T> {
-        return maybe.cata({
-            Nothing(): Decoder<T> {
-                return Decoder.fail(msg);
-            },
-            Just(value: T): Decoder<T> {
-                return Decoder.succeed(value);
-            }
-        });
-    }
-
-    public static get string(): Decoder<string> {
-        return new Decode.Primitive('a STRING', isString);
-    }
-
-    public static get number(): Decoder<number> {
-        return new Decode.Primitive('a NUMBER', isNumber);
-    }
-
-    public static get boolean(): Decoder<boolean> {
-        return new Decode.Primitive('a BOOLEAN', isBoolean);
-    }
-
-    public static get value(): Decoder<Value> {
-        return new Decode.Identity();
-    }
-
-    public static nill<T>(defaults: T): Decoder<T> {
-        return new Decode.Nill(defaults);
-    }
-
-    public static fail<T>(msg: string): Decoder<T> {
-        return new Decode.Fail(msg);
-    }
-
-    public static succeed<T>(value: T): Decoder<T> {
-        return new Decode.Succeed(value);
-    }
-
-    public static oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
-        return new Decode.OneOf(decoders);
-    }
-
-    public static nullable<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
-        return Decoder.oneOf([
-            Decoder.nill(Nothing()),
-            decoder.map(Just)
-        ]);
-    }
-
-    public static maybe<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
-        return Decoder.oneOf([
-            decoder.map(Just),
-            Decoder.succeed(Nothing())
-        ]);
-    }
-
-    public static list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
-        return new Decode.List(decoder);
-    }
-
-    public static keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> {
-        return new Decode.KeyValue(decoder);
-    }
-
-    public static dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
-        return Decoder.keyValue(decoder).map((keyValue: Array<[ string, T ]>): {[ key: string ]: T} => {
-            const acc: {[ key: string ]: T} = {};
-
-            for (const [ key, value ] of keyValue) {
-                acc[ key ] = value;
-            }
-
-            return acc;
-        });
-    }
-
-    public static props<T extends object>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> {
-        return new Decode.Props(config);
-    }
-
-    public static index<T>(index: number, decoder: Decoder<T>): Decoder<T> {
-        return new Decode.Index(index, decoder);
-    }
-
-    public static field<T>(key: string, decoder: Decoder<T>): Decoder<T> {
-        return new Decode.Field(key, decoder);
-    }
-
-    public static at<T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> {
-        let result = decoder;
-
-        for (let index = keys.length - 1; index >= 0; index--) {
-            result = Decoder.field(keys[ index ], result);
-        }
-
-        return result;
-    }
-
-    public static lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
-        return Decoder.succeed(null).chain(callDecoder);
-    }
-
     public map<R>(fn: (value: T) => R): Decoder<R> {
         return new Decode.Map(fn, this);
     }
@@ -299,7 +188,7 @@ export abstract class Decoder<T> {
             return this.decode(JSON.parse(input) as Value);
         } catch (err) {
             return Left(
-                Failure(`This is not valid JSON! ${err.message}`, input)
+                Error.Failure(`This is not valid JSON! ${err.message}`, input)
             );
         }
     }
@@ -371,7 +260,7 @@ namespace Decode {
                 result = result.chain(
                     (acc: Array<T>): Either<Error, Array<T>> => {
                         return this.decoder.decode(input[ index ]).bimap(
-                            (error: Error): Error => new Variations.Index(index, error),
+                            (error: Error): Error => Error.Index(index, error),
                             (value: T): Array<T> => {
                                 acc.push(value);
 
@@ -403,7 +292,7 @@ namespace Decode {
                     result = result.chain(
                         (acc: Array<[ string, T ]>): Either<Error, Array<[ string, T ]>> => {
                             return this.decoder.decode(input[ key ]).bimap(
-                                (error: Error): Error => new Variations.Field(key, error),
+                                (error: Error): Error => Error.Field(key, error),
                                 (value: T): Array<[ string, T ]> => {
                                     acc.push([ key, value ]);
 
@@ -431,7 +320,7 @@ namespace Decode {
             if (isObject(input) && this.key in input) {
                 return this.decoder
                     .decode(input[ this.key ])
-                    .leftMap((error: Error): Error => new Variations.Field(this.key, error));
+                    .leftMap((error: Error): Error => Error.Field(this.key, error));
             }
 
             return expecting(`an OBJECT with a field named '${this.key}'`, input);
@@ -460,7 +349,7 @@ namespace Decode {
 
             return this.decoder
                 .decode(input[ this.index ])
-                .leftMap((error: Error): Error => new Variations.Index(this.index, error));
+                .leftMap((error: Error): Error => Error.Index(this.index, error));
         }
     }
 
@@ -484,7 +373,7 @@ namespace Decode {
                 );
             }
 
-            return result.leftMap((errors: Array<Error>): Error => new Variations.OneOf(errors));
+            return result.leftMap((errors: Array<Error>): Error => Error.OneOf(errors));
         }
     }
 
@@ -533,7 +422,7 @@ namespace Decode {
 
         public decode(input: Value): Either<Error, T> {
             return Left(
-                new Variations.Failure(this.msg, input)
+                Error.Failure(this.msg, input)
             );
         }
     }
@@ -548,3 +437,79 @@ namespace Decode {
         }
     }
 }
+
+export const fromEither = <T>(either: Either<string, T>): Decoder<T> => {
+    return either.cata({
+        Left(msg: string): Decoder<T> {
+            return fail(msg);
+        },
+        Right(value: T): Decoder<T> {
+            return succeed(value);
+        }
+    });
+};
+
+export const fromMaybe = <T>(msg: string, maybe: Maybe<T>): Decoder<T> => {
+    return maybe.cata({
+        Nothing(): Decoder<T> {
+            return fail(msg);
+        },
+        Just(value: T): Decoder<T> {
+            return succeed(value);
+        }
+    });
+};
+
+export const string: Decoder<string> = new Decode.Primitive('a STRING', isString);
+export const number: Decoder<number> = new Decode.Primitive('a NUMBER', isNumber);
+export const boolean: Decoder<boolean> = new Decode.Primitive('a BOOLEAN', isBoolean);
+export const value: Decoder<Value> = new Decode.Identity();
+
+export const nill = <T>(defaults: T): Decoder<T> => new Decode.Nill(defaults);
+export const fail = <T>(msg: string): Decoder<T> => new Decode.Fail(msg);
+export const succeed = <T>(value: T): Decoder<T> => new Decode.Succeed(value);
+export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new Decode.OneOf(decoders);
+
+export const nullable = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
+    nill(Nothing()),
+    decoder.map(Just)
+]);
+
+export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
+    decoder.map(Just),
+    succeed(Nothing())
+]);
+
+export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new Decode.List(decoder);
+export const keyValue = <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new Decode.KeyValue(decoder);
+
+export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => {
+    return keyValue(decoder).map((keyValue: Array<[ string, T ]>): {[ key: string ]: T} => {
+        const acc: {[ key: string ]: T} = {};
+
+        for (const [ key, value ] of keyValue) {
+            acc[ key ] = value;
+        }
+
+        return acc;
+    });
+};
+
+export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Decode.Index(index, decoder);
+export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Decode.Field(key, decoder);
+
+export const at = <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
+    let result = decoder;
+
+    for (let index = keys.length - 1; index >= 0; index--) {
+        result = field(keys[ index ], result);
+    }
+
+    return result;
+};
+
+export const props = <T extends object>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => {
+    return new Decode.Props(config);
+};
+
+export const lazy = <T>(callDecoder: () => Decoder<T>): Decoder<T> => succeed(null).chain(callDecoder);
