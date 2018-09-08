@@ -342,7 +342,7 @@ namespace Decode {
 
             if (this.index >= input.length) {
                 return expecting(
-                    `a LONGER array. Need index ${this.index}' but only see ${input.length} entries`,
+                    `a LONGER array. Need index ${this.index} but only see ${input.length} entries`,
                     input
                 );
             }
