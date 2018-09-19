@@ -117,7 +117,7 @@ namespace Variations {
             switch (this.errors.length) {
                 case 0: {
                     return 'Ran into a Json.Decode.oneOf with no possibilities'
-                        + (context.length === 0 ? '!' : ' at json' + context.join(''));
+                        + (context.length === 0 ? '!' : ' at _' + context.join(''));
                 }
 
                 case 1: {
@@ -127,14 +127,14 @@ namespace Variations {
                 default: {
                     const starter = context.length === 0
                         ? 'Json.Decode.oneOf'
-                        : 'The Json.Decode.oneOf at json' + context.join('');
+                        : 'The Json.Decode.oneOf at _' + context.join('');
                     const lines = [
                         `${starter} failed in the following ${this.errors.length} ways`
                     ];
 
                     for (let index = 0; index < this.errors.length; ++index) {
                         lines.push(
-                            `\n(${index + 1}) ` + Error.stringifyWithContext(this.errors[ index ], context)
+                            `\n(${index + 1}) ` + this.errors[ index ].stringify()
                         );
                     }
 
@@ -159,7 +159,7 @@ namespace Variations {
         public stringifyWithContext(context: Array<string>): string {
             const introduction = context.length === 0
                 ? 'Problem with the given value:\n\n'
-                : 'Problem with the value at json' + context.join('') + ':\n\n    ';
+                : 'Problem with the value at _' + context.join('') + ':\n\n';
 
             return introduction
                 + indent(JSON.stringify(this.source, null, 4))

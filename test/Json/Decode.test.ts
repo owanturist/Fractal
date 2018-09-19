@@ -905,3 +905,121 @@ First message
 Second message`
     );
 });
+
+test('Json.Decode.Error.Index.stringify()', t => {
+    t.is(
+        Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _[0]:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Index(
+            0,
+            Decode.Error.OneOf([])
+        ).stringify(),
+        'Ran into a Json.Decode.oneOf with no possibilities at _[0]'
+    );
+
+    t.is(
+        Decode.Error.Index(
+            0,
+            Decode.Error.OneOf([
+                Decode.Error.Failure('First message', null),
+                Decode.Error.Failure('Second message', null)
+            ])
+        ).stringify(),
+`The Json.Decode.oneOf at _[0] failed in the following 2 ways
+
+
+(1) Problem with the given value:
+
+    null
+
+First message
+
+
+(2) Problem with the given value:
+
+    null
+
+Second message`
+    );
+
+    t.is(
+        Decode.Error.Index(
+            0,
+            Decode.Error.OneOf([
+                Decode.Error.Field(
+                    'foo',
+                    Decode.Error.Failure('First message', null)
+                ),
+                Decode.Error.Index(
+                    1,
+                    Decode.Error.Failure('Second message', null)
+                )
+            ])
+        ).stringify(),
+`The Json.Decode.oneOf at _[0] failed in the following 2 ways
+
+
+(1) Problem with the value at _.foo:
+
+    null
+
+First message
+
+
+(2) Problem with the value at _[1]:
+
+    null
+
+Second message`
+    );
+
+    t.is(
+        Decode.Error.Index(
+            0,
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Message', [ 0, 2, 3 ])
+            )
+        ).stringify(),
+`Problem with the value at _[0][1]:
+
+    [
+        0,
+        2,
+        3
+    ]
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                'foo',
+                Decode.Error.Failure('Message', {
+                    bar: 'foo',
+                    foo: 'bar'
+                })
+            )
+        ).stringify(),
+`Problem with the value at _[0].foo:
+
+    {
+        "bar": "foo",
+        "foo": "bar"
+    }
+
+Message`
+    );
+});
