@@ -590,7 +590,7 @@ test('Json.Decode.lazy()', t => {
     );
 });
 
-test('Json.Decode.Decoder.prototype.map()', t => {
+test('Json.Decode.Decoder.map()', t => {
     const decoder = Decode.string.map(t1 => ({ t1 }));
 
     t.deepEqual(
@@ -616,7 +616,7 @@ test('Json.Decode.Decoder.prototype.map()', t => {
     );
 });
 
-test('Json.Decode.Decoder.prototype.chain()', t => {
+test('Json.Decode.Decoder.chain()', t => {
     const decoder = Decode.number.chain(
         t1 => t1 % 2 === 0 ? Decode.succeed(t1 - 1) : Decode.fail('msg')
     );
@@ -647,7 +647,7 @@ test('Json.Decode.Decoder.prototype.chain()', t => {
     );
 });
 
-test('Json.Decode.Decoder.prototype.decode', t => {
+test('Json.Decode.Decoder.decode', t => {
     interface User {
         id: number;
         username: string;
@@ -790,7 +790,7 @@ test('Json.Decode.Decoder.prototype.decode', t => {
     );
 });
 
-test('Json.Decode.Decoder.prototype.decodeJSON()', t => {
+test('Json.Decode.Decoder.decodeJSON()', t => {
     const decoder = Decode.props({
         t1: Decode.field('s1', Decode.string),
         t2: Decode.field('s2', Decode.string)
@@ -815,5 +815,53 @@ test('Json.Decode.Decoder.prototype.decodeJSON()', t => {
             t1: 'str1',
             t2: 'str2'
         })
+    );
+});
+
+test('Json.Decode.Error.Failure.stringify()', t => {
+    t.is(
+        Decode.Error.Failure('Message', null).stringify(),
+`Problem with the given value:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', 'string').stringify(),
+`Problem with the given value:
+
+    "string"
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', {
+            foo: 'bar',
+            bar: 'foo'
+        }).stringify(),
+`Problem with the given value:
+
+    {
+        "foo": "bar",
+        "bar": "foo"
+    }
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', [ 'foo', 'bar', 'baz' ]).stringify(),
+`Problem with the given value:
+
+    [
+        "foo",
+        "bar",
+        "baz"
+    ]
+
+Message`
     );
 });
