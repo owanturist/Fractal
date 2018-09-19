@@ -18,7 +18,7 @@ test('Json.Encode.nill', t => {
     );
 });
 
-test('Json.Encode.string', t => {
+test('Json.Encode.string()', t => {
     t.is(
         Encode.string('msg').encode(0),
         '"msg"'
@@ -30,7 +30,7 @@ test('Json.Encode.string', t => {
     );
 });
 
-test('Json.Encode.number', t => {
+test('Json.Encode.number()', t => {
     t.is(
         Encode.number(1).encode(0),
         '1'
@@ -42,7 +42,7 @@ test('Json.Encode.number', t => {
     );
 });
 
-test('Json.Encode.boolean', t => {
+test('Json.Encode.boolean()', t => {
     t.is(
         Encode.boolean(false).encode(0),
         'false'
@@ -54,7 +54,7 @@ test('Json.Encode.boolean', t => {
     );
 });
 
-test('Json.Encode.nullable', t => {
+test('Json.Encode.nullable()', t => {
     t.is(
         Encode.nullable(Nothing()).encode(0),
         'null'
@@ -76,7 +76,7 @@ test('Json.Encode.nullable', t => {
     );
 });
 
-test('Json.Encode.nullableOf', t => {
+test('Json.Encode.nullableOf()', t => {
     t.is(
         Encode.nullableOf(Encode.string, Nothing()).encode(0),
         'null'
@@ -98,7 +98,7 @@ test('Json.Encode.nullableOf', t => {
     );
 });
 
-test('Json.Encode.list', t => {
+test('Json.Encode.list()', t => {
     t.is(
         Encode.list([
             Encode.number(1),
@@ -167,7 +167,7 @@ test('Json.Encode.list', t => {
 });
 
 
-test('Json.Encode.listOf', t => {
+test('Json.Encode.listOf()', t => {
     t.is(
         Encode.listOf(Encode.number, [ 1, 2, 1 ]).encode(0),
         '[1,2,1]'
@@ -179,7 +179,7 @@ test('Json.Encode.listOf', t => {
     );
 });
 
-test('Json.Encode.object', t => {
+test('Json.Encode.object()', t => {
     interface Foo {
         bar: string;
         baz: number;
