@@ -56,22 +56,44 @@ test('Json.Encode.boolean', t => {
 
 test('Json.Encode.nullable', t => {
     t.is(
-        Encode.nullable(Encode.string, Nothing()).encode(0),
+        Encode.nullable(Nothing()).encode(0),
         'null'
     );
 
     t.is(
-        Encode.nullable(Encode.string, Nothing()).serialize(),
+        Encode.nullable(Nothing()).serialize(),
         null
     );
 
     t.is(
-        Encode.nullable(Encode.string, Just('msg')).encode(0),
+        Encode.nullable(Just(Encode.string('msg'))).encode(0),
         '"msg"'
     );
 
     t.is(
-        Encode.nullable(Encode.string, Just('msg')).serialize(),
+        Encode.nullable(Just(Encode.string('msg'))).serialize(),
+        'msg'
+    );
+});
+
+test('Json.Encode.nullableOf', t => {
+    t.is(
+        Encode.nullableOf(Encode.string, Nothing()).encode(0),
+        'null'
+    );
+
+    t.is(
+        Encode.nullableOf(Encode.string, Nothing()).serialize(),
+        null
+    );
+
+    t.is(
+        Encode.nullableOf(Encode.string, Just('msg')).encode(0),
+        '"msg"'
+    );
+
+    t.is(
+        Encode.nullableOf(Encode.string, Just('msg')).serialize(),
         'msg'
     );
 });
@@ -141,6 +163,19 @@ test('Json.Encode.list', t => {
             })
         ]).encode(0),
         '[0,{"bar":"1"}]'
+    );
+});
+
+
+test('Json.Encode.listOf', t => {
+    t.is(
+        Encode.listOf(Encode.number, [ 1, 2, 1 ]).encode(0),
+        '[1,2,1]'
+    );
+
+    t.deepEqual(
+        Encode.listOf(Encode.number, [ 1, 2, 1 ]).serialize(),
+        [ 1, 2, 1 ]
     );
 });
 

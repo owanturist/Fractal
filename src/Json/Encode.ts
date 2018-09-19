@@ -73,10 +73,24 @@ export const string = (string: string): Encoder => new Encode.Primitive(string);
 export const number = (number: number): Encoder => new Encode.Primitive(number);
 export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
 
-export const nullable = <T>(
-    encoder: (value: T) => Encoder,
-    maybe: Maybe<T>
-): Encoder => maybe.map(encoder).getOrElse(nill);
+export const nullable = (maybeEncoder: Maybe<Encoder>): Encoder => maybeEncoder.getOrElse(nill);
+
+export const nullableOf = <T>(encoder: (value: T) => Encoder, maybe: Maybe<T>): Encoder => {
+    return nullable(maybe.map(encoder));
+};
 
 export const list = (array: Array<Encoder>): Encoder => new Encode.List(array);
-export const object = <T extends {[ key: string ]: Encoder }>(object: T): Encoder => new Encode.Object(object);
+
+export const listOf = <T>(encoder: (value: T) => Encoder, array: Array<T>): Encoder => {
+    const result: Array<Encoder> = [];
+
+    for (const value of array) {
+        result.push(encoder(value));
+    }
+
+    return list(result);
+};
+
+export const object = <T extends {[ key: string ]: Encoder }>(object: T): Encoder => {
+    return new Encode.Object(object);
+};
