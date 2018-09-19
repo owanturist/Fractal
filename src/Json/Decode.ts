@@ -20,7 +20,7 @@ const isObject = (input: Value): input is {[ key: string ]: Value } => {
 };
 
 const indent = (text: string): string => {
-    return '    ' + text.split('\n').join('\n    ');
+    return '    ' + text.replace(/\n/g, '\n    ');
 };
 
 const expecting = <T>(type: string, source: Value): Either<Error, T> => {

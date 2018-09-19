@@ -1023,3 +1023,181 @@ Message`
 Message`
     );
 });
+
+test('Json.Decode.Error.Field.stringify()', t => {
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _.foo:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            '_0',
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _._0:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo_0',
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _.foo_0:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            '0foo',
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _['0foo']:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo-bar',
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _['foo-bar']:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo bar',
+            Decode.Error.Failure('Message', null)
+        ).stringify(),
+`Problem with the value at _['foo bar']:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.OneOf([])
+        ).stringify(),
+        'Ran into a Json.Decode.oneOf with no possibilities at _.foo'
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.OneOf([
+                Decode.Error.Failure('First message', null),
+                Decode.Error.Failure('Second message', null)
+            ])
+        ).stringify(),
+`The Json.Decode.oneOf at _.foo failed in the following 2 ways
+
+
+(1) Problem with the given value:
+
+    null
+
+First message
+
+
+(2) Problem with the given value:
+
+    null
+
+Second message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.OneOf([
+                Decode.Error.Field(
+                    'bar',
+                    Decode.Error.Failure('First message', null)
+                ),
+                Decode.Error.Index(
+                    1,
+                    Decode.Error.Failure('Second message', null)
+                )
+            ])
+        ).stringify(),
+`The Json.Decode.oneOf at _.foo failed in the following 2 ways
+
+
+(1) Problem with the value at _.bar:
+
+    null
+
+First message
+
+
+(2) Problem with the value at _[1]:
+
+    null
+
+Second message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Message', [ 0, 2, 3 ])
+            )
+        ).stringify(),
+`Problem with the value at _.foo[1]:
+
+    [
+        0,
+        2,
+        3
+    ]
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Field(
+                'bar',
+                Decode.Error.Failure('Message', {
+                    bar: 'foo',
+                    foo: 'bar'
+                })
+            )
+        ).stringify(),
+`Problem with the value at _.foo.bar:
+
+    {
+        "bar": "foo",
+        "foo": "bar"
+    }
+
+Message`
+    );
+});
