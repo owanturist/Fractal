@@ -951,6 +951,124 @@ First message
 
 Second message`
     );
+
+    t.is(
+        Decode.Error.Failure('Message', null).cata({
+            Failure: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', null).cata({
+            OneOf: () => true,
+            Index: () => true,
+            Field: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', null).cata({
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.OneOf([]).cata({
+            OneOf: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.OneOf([]).cata({
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.OneOf([]).cata({
+            Failure: () => true,
+            Index: () => true,
+            Field: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Index: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Failure: () => true,
+            OneOf: () => true,
+            Field: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Field: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Failure: () => true,
+            OneOf: () => true,
+            Index: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            _: () => false
+        }),
+        false
+    );
 });
 
 test('Json.Decode.Error.Index.stringify()', t => {

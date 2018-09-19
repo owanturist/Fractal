@@ -55,6 +55,12 @@ export namespace Error {
         Index(index: number, error: Error): R;
         OneOf(errors: Array<Error>): R;
         Failure(message: string, source: Value): R;
+    } | {
+        Field?(field: string, error: Error): R;
+        Index?(index: number, error: Error): R;
+        OneOf?(errors: Array<Error>): R;
+        Failure?(message: string, source: Value): R;
+        _(): R;
     }>;
 
     export const Field = (field: string, error: Error): Error => new Variations.Field(field, error);
@@ -76,6 +82,10 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
+            if (typeof pattern.Field === 'undefined') {
+                return (pattern as any)._();
+            }
+
             return pattern.Field(this.field, this.error);
         }
 
@@ -96,6 +106,10 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
+            if (typeof pattern.Index === 'undefined') {
+                return (pattern as any)._();
+            }
+
             return pattern.Index(this.index, this.error);
         }
 
@@ -110,6 +124,10 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
+            if (typeof pattern.OneOf === 'undefined') {
+                return (pattern as any)._();
+            }
+
             return pattern.OneOf(this.errors);
         }
 
@@ -153,6 +171,10 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
+            if (typeof pattern.Failure === 'undefined') {
+                return (pattern as any)._();
+            }
+
             return pattern.Failure(this.message, this.source);
         }
 
