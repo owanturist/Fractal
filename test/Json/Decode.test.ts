@@ -863,11 +863,129 @@ test('Json.Decode.Error.prototype.cata()', t => {
         ).cata(pattern),
         '"foo" "Message" > null'
     );
+
+    t.is(
+        Decode.Error.Failure('Message', null).cata({
+            Failure: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', null).cata({
+            OneOf: () => true,
+            Index: () => true,
+            Field: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Failure('Message', null).cata({
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.OneOf([]).cata({
+            OneOf: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.OneOf([]).cata({
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.OneOf([]).cata({
+            Failure: () => true,
+            Index: () => true,
+            Field: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Index: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Failure: () => true,
+            OneOf: () => true,
+            Field: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Field: () => true,
+            _: () => false
+        }),
+        true
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            Failure: () => true,
+            OneOf: () => true,
+            Index: () => true,
+            _: () => false
+        }),
+        false
+    );
+
+    t.is(
+        Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Message', null)
+        ).cata({
+            _: () => false
+        }),
+        false
+    );
 });
 
 test('Json.Decode.Error.Failure.stringify()', t => {
     t.is(
-        Decode.Error.Failure('Message', null).stringify(),
+        Decode.Error.Failure('Message', null).stringify(0),
 `Problem with the given value:
 
     null
@@ -876,7 +994,7 @@ Message`
     );
 
     t.is(
-        Decode.Error.Failure('Message', 'string').stringify(),
+        Decode.Error.Failure('Message', 'string').stringify(4),
 `Problem with the given value:
 
     "string"
@@ -888,7 +1006,7 @@ Message`
         Decode.Error.Failure('Message', {
             foo: 'bar',
             bar: 'foo'
-        }).stringify(),
+        }).stringify(4),
 `Problem with the given value:
 
     {
@@ -900,14 +1018,10 @@ Message`
     );
 
     t.is(
-        Decode.Error.Failure('Message', [ 'foo', 'bar', 'baz' ]).stringify(),
+        Decode.Error.Failure('Message', [ 'foo', 'bar', 'baz' ]).stringify(0),
 `Problem with the given value:
 
-    [
-        "foo",
-        "bar",
-        "baz"
-    ]
+    ["foo","bar","baz"]
 
 Message`
     );
@@ -915,14 +1029,14 @@ Message`
 
 test('Json.Decode.Error.OneOf.stringify()', t => {
     t.is(
-        Decode.Error.OneOf([]).stringify(),
+        Decode.Error.OneOf([]).stringify(0),
         'Ran into a Json.Decode.oneOf with no possibilities!'
     );
 
     t.is(
         Decode.Error.OneOf([
             Decode.Error.Failure('Message', null)
-        ]).stringify(),
+        ]).stringify(0),
 `Problem with the given value:
 
     null
@@ -934,7 +1048,7 @@ Message`
         Decode.Error.OneOf([
             Decode.Error.Failure('First message', null),
             Decode.Error.Failure('Second message', null)
-        ]).stringify(),
+        ]).stringify(0),
 `Json.Decode.oneOf failed in the following 2 ways
 
 
@@ -951,135 +1065,21 @@ First message
 
 Second message`
     );
-
-    t.is(
-        Decode.Error.Failure('Message', null).cata({
-            Failure: () => true,
-            _: () => false
-        }),
-        true
-    );
-
-    t.is(
-        Decode.Error.Failure('Message', null).cata({
-            OneOf: () => true,
-            Index: () => true,
-            Field: () => true,
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.Failure('Message', null).cata({
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.OneOf([]).cata({
-            OneOf: () => true,
-            _: () => false
-        }),
-        true
-    );
-
-    t.is(
-        Decode.Error.OneOf([]).cata({
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.OneOf([]).cata({
-            Failure: () => true,
-            Index: () => true,
-            Field: () => true,
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.Index(
-            1,
-            Decode.Error.Failure('Message', null)
-        ).cata({
-            Index: () => true,
-            _: () => false
-        }),
-        true
-    );
-
-    t.is(
-        Decode.Error.Index(
-            1,
-            Decode.Error.Failure('Message', null)
-        ).cata({
-            Failure: () => true,
-            OneOf: () => true,
-            Field: () => true,
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.Index(
-            1,
-            Decode.Error.Failure('Message', null)
-        ).cata({
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.Field(
-            'foo',
-            Decode.Error.Failure('Message', null)
-        ).cata({
-            Field: () => true,
-            _: () => false
-        }),
-        true
-    );
-
-    t.is(
-        Decode.Error.Field(
-            'foo',
-            Decode.Error.Failure('Message', null)
-        ).cata({
-            Failure: () => true,
-            OneOf: () => true,
-            Index: () => true,
-            _: () => false
-        }),
-        false
-    );
-
-    t.is(
-        Decode.Error.Field(
-            'foo',
-            Decode.Error.Failure('Message', null)
-        ).cata({
-            _: () => false
-        }),
-        false
-    );
 });
 
 test('Json.Decode.Error.Index.stringify()', t => {
     t.is(
         Decode.Error.Index(
             0,
-            Decode.Error.Failure('Message', null)
-        ).stringify(),
+            Decode.Error.Failure('Message', [ 1, 2, 3 ])
+        ).stringify(4),
 `Problem with the value at _[0]:
 
-    null
+    [
+        1,
+        2,
+        3
+    ]
 
 Message`
     );
@@ -1088,7 +1088,7 @@ Message`
         Decode.Error.Index(
             0,
             Decode.Error.OneOf([])
-        ).stringify(),
+        ).stringify(0),
         'Ran into a Json.Decode.oneOf with no possibilities at _[0]'
     );
 
@@ -1099,7 +1099,7 @@ Message`
                 Decode.Error.Failure('First message', null),
                 Decode.Error.Failure('Second message', null)
             ])
-        ).stringify(),
+        ).stringify(0),
 `The Json.Decode.oneOf at _[0] failed in the following 2 ways
 
 
@@ -1130,7 +1130,7 @@ Second message`
                     Decode.Error.Failure('Second message', null)
                 )
             ])
-        ).stringify(),
+        ).stringify(0),
 `The Json.Decode.oneOf at _[0] failed in the following 2 ways
 
 
@@ -1155,14 +1155,10 @@ Second message`
                 1,
                 Decode.Error.Failure('Message', [ 0, 2, 3 ])
             )
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _[0][1]:
 
-    [
-        0,
-        2,
-        3
-    ]
+    [0,2,3]
 
 Message`
     );
@@ -1177,13 +1173,10 @@ Message`
                     foo: 'bar'
                 })
             )
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _[0].foo:
 
-    {
-        "bar": "foo",
-        "foo": "bar"
-    }
+    {"bar":"foo","foo":"bar"}
 
 Message`
     );
@@ -1194,7 +1187,7 @@ test('Json.Decode.Error.Field.stringify()', t => {
         Decode.Error.Field(
             'foo',
             Decode.Error.Failure('Message', null)
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _.foo:
 
     null
@@ -1206,7 +1199,7 @@ Message`
         Decode.Error.Field(
             '_0',
             Decode.Error.Failure('Message', null)
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _._0:
 
     null
@@ -1218,7 +1211,7 @@ Message`
         Decode.Error.Field(
             'foo_0',
             Decode.Error.Failure('Message', null)
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _.foo_0:
 
     null
@@ -1230,7 +1223,7 @@ Message`
         Decode.Error.Field(
             '0foo',
             Decode.Error.Failure('Message', null)
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _['0foo']:
 
     null
@@ -1242,7 +1235,7 @@ Message`
         Decode.Error.Field(
             'foo-bar',
             Decode.Error.Failure('Message', null)
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _['foo-bar']:
 
     null
@@ -1254,7 +1247,7 @@ Message`
         Decode.Error.Field(
             'foo bar',
             Decode.Error.Failure('Message', null)
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _['foo bar']:
 
     null
@@ -1266,7 +1259,7 @@ Message`
         Decode.Error.Field(
             'foo',
             Decode.Error.OneOf([])
-        ).stringify(),
+        ).stringify(0),
         'Ran into a Json.Decode.oneOf with no possibilities at _.foo'
     );
 
@@ -1277,7 +1270,7 @@ Message`
                 Decode.Error.Failure('First message', null),
                 Decode.Error.Failure('Second message', null)
             ])
-        ).stringify(),
+        ).stringify(0),
 `The Json.Decode.oneOf at _.foo failed in the following 2 ways
 
 
@@ -1308,7 +1301,7 @@ Second message`
                     Decode.Error.Failure('Second message', null)
                 )
             ])
-        ).stringify(),
+        ).stringify(0),
 `The Json.Decode.oneOf at _.foo failed in the following 2 ways
 
 
@@ -1333,14 +1326,10 @@ Second message`
                 1,
                 Decode.Error.Failure('Message', [ 0, 2, 3 ])
             )
-        ).stringify(),
+        ).stringify(0),
 `Problem with the value at _.foo[1]:
 
-    [
-        0,
-        2,
-        3
-    ]
+    [0,2,3]
 
 Message`
     );
@@ -1355,7 +1344,7 @@ Message`
                     foo: 'bar'
                 })
             )
-        ).stringify(),
+        ).stringify(4),
 `Problem with the value at _.foo.bar:
 
     {

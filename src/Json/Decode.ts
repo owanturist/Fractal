@@ -19,10 +19,6 @@ const isObject = (input: Value): input is {[ key: string ]: Value } => {
     return typeof input === 'object' && input !== null && !isArray(input);
 };
 
-const indent = (text: string): string => {
-    return '    ' + text.replace(/\n/g, '\n    ');
-};
-
 const expecting = <T>(type: string, source: Value): Either<Error, T> => {
     return Left(
         Error.Failure(`Expecting ${type}`, source)
@@ -32,21 +28,17 @@ const expecting = <T>(type: string, source: Value): Either<Error, T> => {
 export type Value = Encode.Value;
 
 export abstract class Error {
-    public static stringify(error: Error): string {
-        return error.stringify();
-    }
-
-    protected static stringifyWithContext(error: Error, context: Array<string>): string {
-        return error.stringifyWithContext(context);
+    protected static stringifyWithContext(error: Error, indent: number, context: Array<string>): string {
+        return error.stringifyWithContext(indent, context);
     }
 
     public abstract cata<R>(pattern: Error.Pattern<R>): R;
 
-    public stringify(): string {
-        return this.stringifyWithContext([]);
+    public stringify(indent: number): string {
+        return this.stringifyWithContext(indent, []);
     }
 
-    protected abstract stringifyWithContext(context: Array<string>): string;
+    protected abstract stringifyWithContext(indent: number, context: Array<string>): string;
 }
 
 export namespace Error {
@@ -89,8 +81,8 @@ namespace Variations {
             return pattern.Field(this.field, this.error);
         }
 
-        public stringifyWithContext(context: Array<string>): string {
-            return Error.stringifyWithContext(this.error, [
+        public stringifyWithContext(indent: number, context: Array<string>): string {
+            return Error.stringifyWithContext(this.error, indent, [
                 ...context,
                 isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
             ]);
@@ -113,8 +105,8 @@ namespace Variations {
             return pattern.Index(this.index, this.error);
         }
 
-        public stringifyWithContext(context: Array<string>): string {
-            return Error.stringifyWithContext(this.error, [ ...context, `[${this.index}]` ]);
+        public stringifyWithContext(indent: number, context: Array<string>): string {
+            return Error.stringifyWithContext(this.error, indent, [ ...context, `[${this.index}]` ]);
         }
     }
 
@@ -131,7 +123,7 @@ namespace Variations {
             return pattern.OneOf(this.errors);
         }
 
-        public stringifyWithContext(context: Array<string>): string {
+        public stringifyWithContext(indent: number, context: Array<string>): string {
             switch (this.errors.length) {
                 case 0: {
                     return 'Ran into a Json.Decode.oneOf with no possibilities'
@@ -139,7 +131,7 @@ namespace Variations {
                 }
 
                 case 1: {
-                    return Error.stringifyWithContext(this.errors[ 0 ], context);
+                    return Error.stringifyWithContext(this.errors[ 0 ], indent, context);
                 }
 
                 default: {
@@ -152,7 +144,7 @@ namespace Variations {
 
                     for (let index = 0; index < this.errors.length; ++index) {
                         lines.push(
-                            `\n(${index + 1}) ` + this.errors[ index ].stringify()
+                            `\n(${index + 1}) ` + this.errors[ index ].stringify(indent)
                         );
                     }
 
@@ -178,13 +170,13 @@ namespace Variations {
             return pattern.Failure(this.message, this.source);
         }
 
-        public stringifyWithContext(context: Array<string>): string {
+        public stringifyWithContext(indent: number, context: Array<string>): string {
             const introduction = context.length === 0
                 ? 'Problem with the given value:\n\n'
                 : 'Problem with the value at _' + context.join('') + ':\n\n';
 
             return introduction
-                + indent(JSON.stringify(this.source, null, 4))
+                + '    ' + JSON.stringify(this.source, null, indent).replace(/\n/g, '\n    ')
                 + `\n\n${this.message}`;
         }
     }
