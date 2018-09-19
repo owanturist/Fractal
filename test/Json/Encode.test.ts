@@ -56,44 +56,22 @@ test('Json.Encode.boolean()', t => {
 
 test('Json.Encode.nullable()', t => {
     t.is(
-        Encode.nullable(Nothing()).encode(0),
+        Encode.nullable(Encode.string, Nothing()).encode(0),
         'null'
     );
 
     t.is(
-        Encode.nullable(Nothing()).serialize(),
+        Encode.nullable(Encode.string, Nothing()).serialize(),
         null
     );
 
     t.is(
-        Encode.nullable(Just(Encode.string('msg'))).encode(0),
+        Encode.nullable(Encode.string, Just('msg')).encode(0),
         '"msg"'
     );
 
     t.is(
-        Encode.nullable(Just(Encode.string('msg'))).serialize(),
-        'msg'
-    );
-});
-
-test('Json.Encode.nullableOf()', t => {
-    t.is(
-        Encode.nullableOf(Encode.string, Nothing()).encode(0),
-        'null'
-    );
-
-    t.is(
-        Encode.nullableOf(Encode.string, Nothing()).serialize(),
-        null
-    );
-
-    t.is(
-        Encode.nullableOf(Encode.string, Just('msg')).encode(0),
-        '"msg"'
-    );
-
-    t.is(
-        Encode.nullableOf(Encode.string, Just('msg')).serialize(),
+        Encode.nullable(Encode.string, Just('msg')).serialize(),
         'msg'
     );
 });
