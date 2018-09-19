@@ -134,7 +134,7 @@ namespace Variations {
 
                     for (let index = 0; index < this.errors.length; ++index) {
                         lines.push(
-                            `\n\n(${index + 1})` + indent(Error.stringifyWithContext(this.errors[ index ], context))
+                            `\n(${index + 1}) ` + Error.stringifyWithContext(this.errors[ index ], context)
                         );
                     }
 

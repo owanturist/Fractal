@@ -865,3 +865,43 @@ Message`
 Message`
     );
 });
+
+test('Json.Decode.Error.OneOf.stringify()', t => {
+    t.is(
+        Decode.Error.OneOf([]).stringify(),
+        'Ran into a Json.Decode.oneOf with no possibilities!'
+    );
+
+    t.is(
+        Decode.Error.OneOf([
+            Decode.Error.Failure('Message', null)
+        ]).stringify(),
+`Problem with the given value:
+
+    null
+
+Message`
+    );
+
+    t.is(
+        Decode.Error.OneOf([
+            Decode.Error.Failure('First message', null),
+            Decode.Error.Failure('Second message', null)
+        ]).stringify(),
+`Json.Decode.oneOf failed in the following 2 ways
+
+
+(1) Problem with the given value:
+
+    null
+
+First message
+
+
+(2) Problem with the given value:
+
+    null
+
+Second message`
+    );
+});
