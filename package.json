@@ -3,23 +3,22 @@
   "version": "0.0.1",
   "description": "Maybe monad",
   "main": "index.js",
-  "repository": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/owanturist/Maybe.git"
+  },
   "author": "Anton Ovechkin <owanturist@gmail.com>",
   "license": "MIT",
   "scripts": {
     "clean": "rm -rf ./dist",
     "prebuild": "npm run clean",
-    "build": "tsc -p tsconfig.dev.json",
+    "build": "node_modules/typescript/bin/tsc -p tsconfig.dev.json",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
     "lint": "tslint --project tsconfig.json --config tslint.json"
   },
   "devDependencies": {
     "ava": "^0.25.0",
-    "awesome-typescript-loader": "^5.2.0",
     "tslint": "^5.11.0",
-    "typescript": "^2.9.2",
-    "webpack": "^4.16.5",
-    "webpack-cli": "^3.1.0"
-  },
-  "dependencies": {}
+    "typescript": "^2.9.2"
+  }
 }
