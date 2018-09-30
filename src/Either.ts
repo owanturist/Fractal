@@ -1,13 +1,17 @@
 import {
+    DefaultCase,
+    WithDefaultCase
+} from './Basics';
+import {
     Maybe,
     Nothing,
     Just
 } from './Maybe';
 
-export type Pattern<E, T, R> = Readonly<{
+export type Pattern<E, T, R> = WithDefaultCase<{
     Left(error: E): R;
     Right(value: T): R;
-}>;
+}, R>;
 
 export abstract class Either<E, T> {
     public static fromNullable<E, T>(error: E, value: null | undefined): Either<E, T>;
@@ -145,7 +149,11 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Pattern<E, T, R>): R {
-            return pattern.Left(this.error);
+            if (typeof pattern.Left === 'function') {
+                return pattern.Left(this.error);
+            }
+
+            return (pattern as DefaultCase<R>)._();
         }
 
         public toMaybe(): Maybe<T> {
@@ -217,7 +225,11 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Pattern<E, T, R>): R {
-            return pattern.Right(this.value);
+            if (typeof pattern.Right === 'function') {
+                return pattern.Right(this.value);
+            }
+
+            return (pattern as DefaultCase<R>)._();
         }
 
         public toMaybe(): Maybe<T> {
