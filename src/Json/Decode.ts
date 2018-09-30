@@ -1,4 +1,8 @@
 import {
+    DefaultCase,
+    WithDefaultCase
+} from '../Basics';
+import {
     Maybe,
     Nothing,
     Just
@@ -42,18 +46,12 @@ export abstract class Error {
 }
 
 export namespace Error {
-    export type Pattern<R> = Readonly<{
+    export type Pattern<R> = WithDefaultCase<{
         Field(field: string, error: Error): R;
         Index(index: number, error: Error): R;
         OneOf(errors: Array<Error>): R;
         Failure(message: string, source: Value): R;
-    } | {
-        Field?(field: string, error: Error): R;
-        Index?(index: number, error: Error): R;
-        OneOf?(errors: Array<Error>): R;
-        Failure?(message: string, source: Value): R;
-        _(): R;
-    }>;
+    }, R>;
 
     export const Field = (field: string, error: Error): Error => new Variations.Field(field, error);
 
@@ -74,11 +72,11 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
-            if (typeof pattern.Field === 'undefined') {
-                return (pattern as any)._();
+            if (typeof pattern.Field === 'function') {
+                return pattern.Field(this.field, this.error);
             }
 
-            return pattern.Field(this.field, this.error);
+            return (pattern as DefaultCase<R>)._();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -98,11 +96,11 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
-            if (typeof pattern.Index === 'undefined') {
-                return (pattern as any)._();
+            if (typeof pattern.Index === 'function') {
+                return pattern.Index(this.index, this.error);
             }
 
-            return pattern.Index(this.index, this.error);
+            return (pattern as DefaultCase<R>)._();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -116,11 +114,11 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
-            if (typeof pattern.OneOf === 'undefined') {
-                return (pattern as any)._();
+            if (typeof pattern.OneOf === 'function') {
+                return pattern.OneOf(this.errors);
             }
 
-            return pattern.OneOf(this.errors);
+            return (pattern as DefaultCase<R>)._();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -163,11 +161,11 @@ namespace Variations {
         }
 
         public cata<R>(pattern: Error.Pattern<R>): R {
-            if (typeof pattern.Failure === 'undefined') {
-                return (pattern as any)._();
+            if (typeof pattern.Failure === 'function') {
+                return pattern.Failure(this.message, this.source);
             }
 
-            return pattern.Failure(this.message, this.source);
+            return (pattern as DefaultCase<R>)._();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -196,7 +194,7 @@ export abstract class Decoder<T> {
             return this.decode(JSON.parse(input) as Value);
         } catch (err) {
             return Left(
-                Error.Failure(`This is not valid JSON! ${err.message}`, input)
+                Error.Failure(`This is not valid JSON! ${(err as SyntaxError).message}`, input)
             );
         }
     }
