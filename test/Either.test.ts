@@ -9,12 +9,6 @@ import {
     Left,
     Right
 } from '../src/Either';
-import {
-    Record
-} from '../src/Record';
-import {
-    List
-} from '../src/List';
 
 test('Either.fromNullable()', t => {
     const e1: Either<string, number> = Either.fromNullable('err', undefined);
@@ -45,7 +39,7 @@ test('Either.fromMaybe()', t => {
 test('Either.props()', t => {
     t.deepEqual(
         Either.props({}),
-        Right(Record.of({}))
+        Right({})
     );
 
     t.deepEqual(
@@ -59,9 +53,9 @@ test('Either.props()', t => {
         Either.props({
             foo: Right(1)
         }),
-        Right(Record.of({
+        Right({
             foo: 1
-        }))
+        })
     );
 
     t.deepEqual(
@@ -93,17 +87,17 @@ test('Either.props()', t => {
             foo: Right('foo'),
             bar: Right(1)
         }),
-        Right(Record.of({
+        Right({
             foo: 'foo',
             bar: 1
-        }))
+        })
     );
 
     t.deepEqual(
         Either.props({
             foo: Right('foo'),
             bar: Right(1)
-        }).map(obj => obj.get('foo')),
+        }).map(obj => obj.foo),
         Right('foo')
     );
 
@@ -111,7 +105,7 @@ test('Either.props()', t => {
         Either.props({
             foo: Right('foo'),
             bar: Right(1)
-        }).map(obj => obj.get('bar')),
+        }).map(obj => obj.bar),
         Right(1)
     );
 
@@ -132,34 +126,34 @@ test('Either.props()', t => {
                 baz: Right(1)
             })
         }),
-        Right(Record.of({
+        Right({
             foo: 'foo',
-            bar: Record.of({
+            bar: {
                 baz: 1
-            })
-        }))
+            }
+        })
     );
 
     t.deepEqual(
-        Either.props(Record.of({
+        Either.props({
             foo: Right('foo'),
             bar: Either.props({
                 baz: Right(1)
             })
-        })),
-        Right(Record.of({
+        }),
+        Right({
             foo: 'foo',
-            bar: Record.of({
+            bar: {
                 baz: 1
-            })
-        }))
+            }
+        })
     );
 });
 
 test('Either.sequence()', t => {
     t.deepEqual(
         Either.sequence([]),
-        Right(List.empty())
+        Right([])
     );
 
     t.deepEqual(
@@ -169,7 +163,7 @@ test('Either.sequence()', t => {
 
     t.deepEqual(
         Either.sequence([ Right(1) ]),
-        Right(List.singleton(1))
+        Right([ 1 ])
     );
 
     t.deepEqual(
@@ -191,26 +185,13 @@ test('Either.sequence()', t => {
 
     t.deepEqual(
         Either.sequence(array),
-        Right(List.of(1, 2))
+        Right([ 1, 2 ])
     );
 
     t.deepEqual(
         array,
         [ Right(1), Right(2) ],
         'checking of Array immutability'
-    );
-
-    const list = List.of(Right(1), Right(2));
-
-    t.deepEqual(
-        Either.sequence(list),
-        Right(List.of(1, 2))
-    );
-
-    t.deepEqual(
-        list,
-        List.of(Right(1), Right(2)),
-        'checking of List immutability'
     );
 });
 
@@ -295,19 +276,6 @@ test('Either.prototype.map()', t => {
     t.deepEqual(
         Right(1).map(a => a * 2),
         Right(2)
-    );
-
-    interface Foo {
-        bar: Either<string, number>;
-    }
-
-    const foo: Foo = {
-        bar: Left('err')
-    };
-
-    t.deepEqual(
-        foo.bar.map(a => a * 2),
-        Left('err')
     );
 });
 

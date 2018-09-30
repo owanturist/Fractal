@@ -1,24 +1,15 @@
 import {
-    Readonly
-} from './Basics';
-import {
     Maybe,
     Nothing,
     Just
 } from './Maybe';
-import {
-    Record
-} from './Record';
-import {
-    List
-} from './List';
 
 export type Pattern<E, T, R> = Readonly<{
     Left(error: E): R;
     Right(value: T): R;
 }>;
 
-export abstract class Either<E, T> implements Either<E, T> {
+export abstract class Either<E, T> {
     public static fromNullable<E, T>(error: E, value: null | undefined): Either<E, T>;
     public static fromNullable<E, T>(error: E, value: T): Either<E, T>; // tslint:disable-line
     public static fromNullable<E, T>(error: E, value: T | null | undefined): Either<E, T> {
@@ -32,17 +23,13 @@ export abstract class Either<E, T> implements Either<E, T> {
         }) as Either<E, T>;
     }
 
-    public static props<E, T extends object>(
-        config: Record<{[ K in keyof T ]: Either<E, T[ K ]>}>
-              | {[ K in keyof T ]: Either<E, T[ K ]>}
-    ): Either<E, Record<T>> {
-        const config_ = Record.toObject(config);
+    public static props<E, T extends object>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
         let acc = Right<E, T>({} as T);
 
-        for (const key in config_) {
-            if (config_.hasOwnProperty(key)) {
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
-                    (obj: T): Either<E, T> => config_[ key ].map(
+                    (obj: T): Either<E, T> => config[ key ].map(
                         (value: T[Extract<keyof T, string>]): T => {
                             obj[ key ] = value;
 
@@ -53,11 +40,10 @@ export abstract class Either<E, T> implements Either<E, T> {
             }
         }
 
-        return acc.map(Record.of);
+        return acc;
     }
 
-    public static sequence<E, T>(listOrArray: List<Either<E, T>> | Array<Either<E, T>>): Either<E, List<T>> {
-        const array = List.toArray(listOrArray);
+    public static sequence<E, T>(array: Array<Either<E, T>>): Either<E, Array<T>> {
         let acc = Right<E, Array<T>>([]);
 
         for (const item of array) {
@@ -72,7 +58,7 @@ export abstract class Either<E, T> implements Either<E, T> {
             );
         }
 
-        return acc.map(List.fromArray);
+        return acc;
     }
 
     public abstract isLeft(): boolean;

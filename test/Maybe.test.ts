@@ -9,12 +9,6 @@ import {
     Left,
     Right
 } from '../src/Either';
-import {
-    Record
-} from '../src/Record';
-import {
-    List
-} from '../src/List';
 
 test('Maybe.fromNullable()', t => {
     const m1: Maybe<{}> = Maybe.fromNullable(undefined);
@@ -49,7 +43,7 @@ test('Maybe.fromEither()', t => {
 test('Maybe.props()', t => {
     t.deepEqual(
         Maybe.props({}),
-        Just(Record.of({}))
+        Just({})
     );
 
     t.deepEqual(
@@ -63,9 +57,9 @@ test('Maybe.props()', t => {
         Maybe.props({
             foo: Just(1)
         }),
-        Just(Record.of({
+        Just({
             foo: 1
-        }))
+        })
     );
 
     t.deepEqual(
@@ -97,17 +91,17 @@ test('Maybe.props()', t => {
             foo: Just('foo'),
             bar: Just(1)
         }),
-        Just(Record.of({
+        Just({
             foo: 'foo',
             bar: 1
-        }))
+        })
     );
 
     t.deepEqual(
         Maybe.props({
             foo: Just('foo'),
             bar: Just(1)
-        }).map(obj => obj.get('foo')),
+        }).map(obj => obj.foo),
         Just('foo')
     );
 
@@ -115,7 +109,7 @@ test('Maybe.props()', t => {
         Maybe.props({
             foo: Just('foo'),
             bar: Just(1)
-        }).map(obj => obj.get('bar')),
+        }).map(obj => obj.bar),
         Just(1)
     );
 
@@ -138,22 +132,12 @@ test('Maybe.props()', t => {
 
     t.deepEqual(
         Maybe.props(shape),
-        Just(Record.of({
+        Just({
             foo: 'foo',
-            bar: Record.of({
+            bar: {
                 baz: 1
-            })
-        }))
-    );
-
-    t.deepEqual(
-        Maybe.props(Record.of(shape)),
-        Just(Record.of({
-            foo: 'foo',
-            bar: Record.of({
-                baz: 1
-            })
-        }))
+            }
+        })
     );
 
     t.deepEqual(
@@ -170,7 +154,7 @@ test('Maybe.props()', t => {
 test('Maybe.sequence()', t => {
     t.deepEqual(
         Maybe.sequence([]),
-        Just(List.empty())
+        Just([])
     );
 
     t.deepEqual(
@@ -180,7 +164,7 @@ test('Maybe.sequence()', t => {
 
     t.deepEqual(
         Maybe.sequence([ Just(1) ]),
-        Just(List.singleton(1))
+        Just([ 1 ])
     );
 
     t.deepEqual(
@@ -202,26 +186,13 @@ test('Maybe.sequence()', t => {
 
     t.deepEqual(
         Maybe.sequence(array),
-        Just(List.of(1, 2))
+        Just([ 1, 2 ])
     );
 
     t.deepEqual(
         array,
         [ Just(1), Just(2) ],
         'checking of Array immutability'
-    );
-
-    const list = List.of(Just(1), Just(2));
-
-    t.deepEqual(
-        Maybe.sequence(list),
-        Just(List.of(1, 2))
-    );
-
-    t.deepEqual(
-        list,
-        List.of(Just(1), Just(2)),
-        'checking of List immutability'
     );
 });
 

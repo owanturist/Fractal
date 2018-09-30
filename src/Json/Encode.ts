@@ -1,9 +1,6 @@
 import {
-    Record
-} from '../Record';
-import {
-    List as List_
-} from '../List';
+    Maybe
+} from '../Maybe';
 
 interface ValueArray extends Array<Value> {}
 
@@ -76,13 +73,22 @@ export const string = (string: string): Encoder => new Encode.Primitive(string);
 export const number = (number: number): Encoder => new Encode.Primitive(number);
 export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
 
-export const list = (listOrArray: List_<Encoder> | Array<Encoder>): Encoder => {
-    return new Encode.List(
-        List_.toArray(listOrArray)
-    );
+export const nullable = <T>(encoder: (value: T) => Encoder, maybe: Maybe<T>): Encoder => {
+    return maybe.map(encoder).getOrElse(nill);
 };
-export const object = <T extends {[ key: string ]: Encoder }>(recordOrObject: Record<T> | T): Encoder => {
-    return new Encode.Object(
-        Record.toObject(recordOrObject)
-    );
+
+export const list = (array: Array<Encoder>): Encoder => new Encode.List(array);
+
+export const listOf = <T>(encoder: (value: T) => Encoder, array: Array<T>): Encoder => {
+    const result: Array<Encoder> = [];
+
+    for (const value of array) {
+        result.push(encoder(value));
+    }
+
+    return list(result);
+};
+
+export const object = <T extends {[ key: string ]: Encoder }>(object: T): Encoder => {
+    return new Encode.Object(object);
 };

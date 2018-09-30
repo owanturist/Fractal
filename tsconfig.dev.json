@@ -7,14 +7,17 @@
     "sourceMap": false,
     "inlineSourceMap": false,
     "inlineSources": false,
+    "noImplicitThis": true,
     "noImplicitReturns": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "strict": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "jsx": "react"
   },
   "include": [
-    "./src/**/*.ts"
+    "./src/**/*.ts",
+    "./app/**/*.ts"
   ],
   "exclude": [
     "node_modules",
