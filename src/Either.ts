@@ -24,11 +24,11 @@ export abstract class Either<E, T> {
         return maybe.cata({
             Nothing: (): Either<E, T> => Left(error),
             Just: Right
-        }) as Either<E, T>;
+        });
     }
 
     public static props<E, T extends object>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
-        let acc = Right<E, T>({} as T);
+        let acc: Either<E, T> = Right({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
@@ -48,7 +48,7 @@ export abstract class Either<E, T> {
     }
 
     public static sequence<E, T>(array: Array<Either<E, T>>): Either<E, Array<T>> {
-        let acc = Right<E, Array<T>>([]);
+        let acc: Either<E, Array<T>> = Right([]);
 
         for (const item of array) {
             acc = acc.chain(
@@ -86,7 +86,7 @@ export abstract class Either<E, T> {
     public abstract toMaybe(): Maybe<T>;
 }
 
-namespace Variations {
+namespace Internal {
     export class Left<E, T> extends Either<E, T> {
         constructor(private readonly error: E) {
             super();
@@ -157,7 +157,7 @@ namespace Variations {
         }
 
         public toMaybe(): Maybe<T> {
-            return Nothing();
+            return Nothing;
         }
     }
 
@@ -238,6 +238,6 @@ namespace Variations {
     }
 }
 
-export const Left = <E, T>(error: E): Either<E, T> => new Variations.Left(error);
+export const Left = <E>(error: E): Either<E, any> => new Internal.Left(error);
 
-export const Right = <E, T>(value: T): Either<E, T> => new Variations.Right(value);
+export const Right = <T>(value: T): Either<any, T> => new Internal.Right(value);

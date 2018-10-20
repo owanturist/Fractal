@@ -26,7 +26,7 @@ test('Either.fromNullable()', t => {
 
 test('Either.fromMaybe()', t => {
     t.deepEqual(
-        Either.fromMaybe('err', Nothing()),
+        Either.fromMaybe('err', Nothing),
         Left('err')
     );
 
@@ -252,7 +252,7 @@ test('Either.prototype.ap()', t => {
     );
 
     t.deepEqual(
-        Left<string, number>('1').ap(Right((a: number) => a * 2)),
+        (Left('1') as Either<string, number>).ap(Right((a: number) => a * 2)),
         Left('1')
     );
 
@@ -269,7 +269,7 @@ test('Either.prototype.ap()', t => {
 
 test('Either.prototype.map()', t => {
     t.deepEqual(
-        Left<string, number>('err').map(a => a * 2),
+        (Left('err') as Either<string, number>).map(a => a * 2),
         Left('err')
     );
 
@@ -291,7 +291,7 @@ test('Either.prototype.chain()', t => {
     );
 
     t.deepEqual(
-        Left<string, number>('err').chain(a => Right(a * 2)),
+        (Left('err') as Either<string, number>).chain(a => Right(a * 2)),
         Left('err')
     );
 
@@ -303,12 +303,12 @@ test('Either.prototype.chain()', t => {
 
 test('Either.prototype.bimap()', t => {
     t.deepEqual(
-        Left<string, number>('err').bimap(err => err + '_', a => a * 2),
+        (Left('err') as Either<string, number>).bimap(err => err + '_', a => a * 2),
         Left('err_')
     );
 
     t.deepEqual(
-        Right<string, number>(1).bimap(err => err + '_', a => a * 2),
+        (Right(1) as Either<string, number>).bimap(err => err + '_', a => a * 2),
         Right(2)
     );
 });
@@ -332,7 +332,7 @@ test('Either.prototype.leftMap()', t => {
     );
 
     t.deepEqual(
-        Right<string, number>(1).leftMap(err => err + '_'),
+        (Right(1) as Either<string, number>).leftMap(err => err + '_'),
         Right(1)
     );
 });
@@ -344,7 +344,7 @@ test('Either.prototype.orElse()', t => {
     );
 
     t.deepEqual(
-        Right<string, number>(1).orElse(err => Left(err + '_')),
+        (Right(1) as Either<string, number>).orElse(err => Left(err + '_')),
         Right(1)
     );
 
@@ -361,19 +361,19 @@ test('Either.prototype.orElse()', t => {
 
 test('Either.prototype.fold()', t => {
     t.deepEqual(
-        Left<string, number>('err').fold(err => err + '_', a => '_' + a.toString()),
+        (Left('err') as Either<string, number>).fold(err => err + '_', a => '_' + a.toString()),
         'err_'
     );
 
     t.deepEqual(
-        Right<string, number>(1).fold(err => err + '_', a => '_' + a.toString()),
+        (Right(1) as Either<string, number>).fold(err => err + '_', a => '_' + a.toString()),
         '_1'
     );
 });
 
 test('Either.prototype.cata()', t => {
     t.is(
-        Left<string, number>('err').cata({
+        (Left('err') as Either<string, number>).cata({
             Left: err => err + '_',
             Right: a => '_' + a.toString()
         }),
@@ -381,7 +381,7 @@ test('Either.prototype.cata()', t => {
     );
 
     t.is(
-        Right<string, number>(1).cata({
+        (Right(1) as Either<string, number>).cata({
             Left: err => err + '_',
             Right: a => '_' + a.toString()
         }),
@@ -392,7 +392,7 @@ test('Either.prototype.cata()', t => {
 test('Either.prototype.toMaybe()', t => {
     t.deepEqual(
         Left('err').toMaybe(),
-        Nothing()
+        Nothing
     );
 
     t.deepEqual(

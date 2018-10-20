@@ -56,12 +56,12 @@ test('Json.Encode.boolean()', t => {
 
 test('Json.Encode.nullable()', t => {
     t.is(
-        Encode.nullable(Encode.string, Nothing()).encode(0),
+        Encode.nullable(Encode.string, Nothing).encode(0),
         'null'
     );
 
     t.is(
-        Encode.nullable(Encode.string, Nothing()).serialize(),
+        Encode.nullable(Encode.string, Nothing).serialize(),
         null
     );
 

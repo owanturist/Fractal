@@ -40,7 +40,7 @@ test('Json.Decode.fromMaybe()', t => {
     const toDecimal = (str: string): Maybe<number> => {
         const result = parseInt(str, 10);
 
-        return isNaN(result) ? Nothing() : Just(result);
+        return isNaN(result) ? Nothing : Just(result);
     };
 
     const decoder = Decode.string.chain(
@@ -167,7 +167,7 @@ test('Json.Decode.nullable()', t => {
 
     t.deepEqual(
         decoder.decode(null),
-        Right(Nothing())
+        Right(Nothing)
     );
 
     t.deepEqual(
@@ -192,7 +192,7 @@ test('Json.Decode.maybe()', t => {
 
     t.deepEqual(
         Decode.maybe(Decode.field('s1', Decode.number)).decode(input),
-        Right(Nothing())
+        Right(Nothing)
     );
 
     t.deepEqual(
@@ -202,12 +202,12 @@ test('Json.Decode.maybe()', t => {
 
     t.deepEqual(
         Decode.maybe(Decode.field('s3', Decode.number)).decode(input),
-        Right(Nothing())
+        Right(Nothing)
     );
 
     t.deepEqual(
         Decode.field('s1', Decode.maybe(Decode.number)).decode(input),
-        Right(Nothing())
+        Right(Nothing)
     );
 
     t.deepEqual(

@@ -17,18 +17,18 @@ export abstract class Maybe<T> {
     public static fromNullable<T>(value: null | undefined): Maybe<T>;
     public static fromNullable<T>(value: T): Maybe<T>;
     public static fromNullable<T>(value: T | null | undefined): Maybe<T> {
-        return value == null ? Nothing() : Just(value);
+        return value == null ? Nothing : Just(value);
     }
 
     public static fromEither<E, T>(either: Either<E, T>): Maybe<T> {
         return either.cata({
-            Left: Nothing,
+            Left: () => Nothing,
             Right: Just
-        }) as Maybe<T>;
+        });
     }
 
     public static props<T extends object>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
-        let acc = Just({} as T);
+        let acc: Maybe<T> = Just({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
@@ -48,7 +48,7 @@ export abstract class Maybe<T> {
     }
 
     public static sequence<T>(array: Array<Maybe<T>>): Maybe<Array<T>> {
-        let acc = Just<Array<T>>([]);
+        let acc: Maybe<Array<T>> = Just([]);
 
         for (const item of array) {
             acc = acc.chain(
@@ -82,7 +82,7 @@ export abstract class Maybe<T> {
     public abstract toEither<E>(error: E): Either<E, T>;
 }
 
-namespace Variations {
+namespace Internal {
     export class Nothing<T> extends Maybe<T> {
         public isNothing(): boolean {
             return true;
@@ -195,6 +195,6 @@ namespace Variations {
     }
 }
 
-export const Nothing = <T>(): Maybe<T> => new Variations.Nothing();
+export const Nothing: Maybe<any> = new Internal.Nothing();
 
-export const Just = <T>(value: T): Maybe<T> => new Variations.Just(value);
+export const Just = <T>(value: T): Maybe<T> => new Internal.Just(value);

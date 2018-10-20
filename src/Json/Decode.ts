@@ -53,16 +53,16 @@ export namespace Error {
         Failure(message: string, source: Value): R;
     }, R>;
 
-    export const Field = (field: string, error: Error): Error => new Variations.Field(field, error);
+    export const Field = (field: string, error: Error): Error => new Internal.Field(field, error);
 
-    export const Index = (index: number, error: Error): Error => new Variations.Index(index, error);
+    export const Index = (index: number, error: Error): Error => new Internal.Index(index, error);
 
-    export const OneOf = (errors: Array<Error>): Error => new Variations.OneOf(errors);
+    export const OneOf = (errors: Array<Error>): Error => new Internal.OneOf(errors);
 
-    export const Failure = (message: string, source: Value): Error => new Variations.Failure(message, source);
+    export const Failure = (message: string, source: Value): Error => new Internal.Failure(message, source);
 }
 
-namespace Variations {
+namespace Internal {
     export class Field extends Error {
         constructor(
             private readonly field: string,
@@ -365,7 +365,7 @@ namespace Decode {
         }
 
         public decode(input: Value): Either<Error, T> {
-            let result = Left<Array<Error>, T>([]);
+            let result: Either<Array<Error>, T> = Left([]);
 
             for (const decoder of this.decoders) {
                 result = result.orElse(
@@ -389,7 +389,7 @@ namespace Decode {
         }
 
         public decode(input: Value): Either<Error, T> {
-            let acc = Right<Error, T>({} as T);
+            let acc: Either<Error, T> = Right({} as T);
 
             for (const key in this.config) {
                 if (this.config.hasOwnProperty(key)) {
@@ -477,13 +477,13 @@ export const succeed = <T>(value: T): Decoder<T> => new Decode.Succeed(value);
 export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new Decode.OneOf(decoders);
 
 export const nullable = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
-    nill(Nothing()),
+    nill(Nothing),
     decoder.map(Just)
 ]);
 
 export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
     decoder.map(Just),
-    succeed(Nothing())
+    succeed(Nothing)
 ]);
 
 export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new Decode.List(decoder);
