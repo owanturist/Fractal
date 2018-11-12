@@ -7,14 +7,11 @@
     "sourceMap": false,
     "inlineSourceMap": false,
     "inlineSources": false,
-    "noImplicitThis": true,
-    "noImplicitReturns": true,
+    "preserveConstEnums": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "strict": true,
-    "strictNullChecks": true,
-    "preserveConstEnums": true,
-    "noImplicitAny": true
+    "strictFunctionTypes": false
   },
   "include": [
     "./src/**/*.ts"
