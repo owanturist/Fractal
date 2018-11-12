@@ -11,8 +11,8 @@ import {
 } from '../src/Either';
 
 test('Maybe.fromNullable()', t => {
-    const m1: Maybe<void> = Maybe.fromNullable(undefined);
-    const m2: Maybe<void> = Maybe.fromNullable(null);
+    const m1: Maybe<never> = Maybe.fromNullable(undefined);
+    const m2: Maybe<never> = Maybe.fromNullable(null);
     const m3: Maybe<number> = Maybe.fromNullable(0);
     const m4: Maybe<string> = Maybe.fromNullable('str');
     const m5: Maybe<boolean> = Maybe.fromNullable(true);
@@ -197,15 +197,15 @@ test('Maybe.sequence()', t => {
 });
 
 test('Maybe.prototype.isNothing', t => {
-    t.true(Nothing.isNothing());
+    t.true(Nothing.isNothing);
 
-    t.false(Just(1).isNothing());
+    t.false(Just(1).isNothing);
 });
 
-test('Maybe.prototype.isJust()', t => {
-    t.false(Nothing.isJust());
+test('Maybe.prototype.isJust', t => {
+    t.false(Nothing.isJust);
 
-    t.true(Just(1).isJust());
+    t.true(Just(1).isJust);
 });
 
 test('Maybe.prototype.isEqual()', t => {
@@ -236,7 +236,7 @@ test('Maybe.prototype.isEqual()', t => {
 
 test('Maybe.prototype.getOrElse()', t => {
     t.is(
-        (Nothing as Maybe<number>).getOrElse(1),
+        Nothing.getOrElse(1),
         1
     );
 
@@ -248,12 +248,12 @@ test('Maybe.prototype.getOrElse()', t => {
 
 test('Maybe.prototype.ap()', t => {
     t.deepEqual(
-        (Nothing as Maybe<number>).ap(Nothing),
+        Nothing.ap(Nothing),
         Nothing
     );
 
     t.deepEqual(
-        (Nothing as Maybe<number>).ap(Just((a: number) => a * 2)),
+        Nothing.ap(Just((a: number) => '_' + a * 2)),
         Nothing
     );
 
@@ -263,26 +263,26 @@ test('Maybe.prototype.ap()', t => {
     );
 
     t.deepEqual(
-        Just(1).ap(Just((a: number) => a * 2)),
-        Just(2)
+        Just(1).ap(Just((a: number) => '_' + a * 2)),
+        Just('_2')
     );
 });
 
 test('Maybe.prototype.map()', t => {
     t.deepEqual(
-        (Nothing as Maybe<number>).map(a => a * 2),
+        Nothing.map(a => '_' + a * 2),
         Nothing
     );
 
     t.deepEqual(
-        Just(1).map(a => a * 2),
-        Just(2)
+        Just(1).map(a => '_' + a * 2),
+        Just('_2')
     );
 });
 
 test('Maybe.prototype.chain()', t => {
     t.deepEqual(
-        (Nothing as Maybe<number>).chain(() => Nothing),
+        Nothing.chain(() => Nothing),
         Nothing
     );
 
@@ -292,19 +292,19 @@ test('Maybe.prototype.chain()', t => {
     );
 
     t.deepEqual(
-        (Nothing as Maybe<number>).chain(a => Just(a * 2)),
+        Nothing.chain(a => Just(a * 2)),
         Nothing
     );
 
     t.deepEqual(
-        Just(1).chain(a => Just(a * 2)),
-        Just(2)
+        Just(1).chain(a => Just('_' + a * 2)),
+        Just('_2')
     );
 });
 
 test('Maybe.prototype.orElse()', t => {
     t.deepEqual(
-        (Nothing as Maybe<number>).orElse(() => Nothing),
+        Nothing.orElse(() => Nothing),
         Nothing
     );
 
@@ -314,7 +314,7 @@ test('Maybe.prototype.orElse()', t => {
     );
 
     t.deepEqual(
-        (Nothing as Maybe<number>).orElse(() => Just(2)),
+        Nothing.orElse(() => Just(2)),
         Just(2)
     );
 
@@ -326,37 +326,37 @@ test('Maybe.prototype.orElse()', t => {
 
 test('Maybe.prototype.fold()', t => {
     t.is(
-        (Nothing as Maybe<number>).fold(
-            () => 1,
-            a => a * 2
+        Nothing.fold(
+            () => '_1',
+            a => '_' + a * 2
         ),
-        1
+        '_1'
     );
 
     t.is(
         Just(1).fold(
-            () => 1,
-            a => a * 2
+            () => '_1',
+            a => '_' + a * 2
         ),
-        2
+        '_2'
     );
 });
 
 test('Maybe.prototype.cata()', t => {
     t.is(
-        (Nothing as Maybe<number>).cata({
-            Nothing: () => 1,
-            Just: a => a * 2
+        Nothing.cata({
+            Nothing: () => '_1',
+            Just: a => '_' + a * 2
         }),
-        1
+        '_1'
     );
 
     t.is(
         Just(1).cata({
-            Nothing: () => 1,
-            Just: a => a * 2
+            Nothing: () => '_1',
+            Just: a => '_' + a * 2
         }),
-        2
+        '_2'
     );
 });
 

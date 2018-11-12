@@ -1,5 +1,5 @@
 {
-  "name": "Maybe",
+  "name": "maybe",
   "version": "0.0.1",
   "description": "Maybe monad",
   "main": "index.js",
@@ -17,8 +17,8 @@
     "lint": "tslint --project tsconfig.json --config tslint.json"
   },
   "devDependencies": {
-    "ava": "^0.25.0",
+    "ava": "^1.0.0-rc.2",
     "tslint": "^5.11.0",
-    "typescript": "^2.9.2"
+    "typescript": "^3.1.6"
   }
 }
