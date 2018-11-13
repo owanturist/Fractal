@@ -246,6 +246,53 @@ test('Maybe.prototype.getOrElse()', t => {
     );
 });
 
+test('Maybe.prototype.pipe()', t => {
+    const fnNothing: Maybe<(a: number) => string> = Nothing;
+    const fnJust = Just((a: number) => '_' + a * 2);
+
+    t.deepEqual(
+        fnNothing.pipe(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        fnNothing.pipe(Just(2)),
+        Nothing
+    );
+
+    t.deepEqual(
+        fnJust.pipe(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        fnJust.pipe(Just(2)),
+        Just('_4')
+    );
+
+    const trippleFnNothing: Maybe<(a: number) => (b: string) => (c: boolean) => string> = Nothing;
+    const trippleFnJust = Just((a: number) => (b: string) => (c: boolean) => c ? b : '_' + a * 2);
+
+    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Nothing)   .pipe(Nothing),    Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Nothing)   .pipe(Just(true)), Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Just('hi')).pipe(Nothing),    Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Just('hi')).pipe(Just(true)), Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Nothing)   .pipe(Nothing),    Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Nothing)   .pipe(Just(true)), Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Just('hi')).pipe(Nothing),    Nothing);
+    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Just('hi')).pipe(Just(true)), Nothing);
+
+    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Nothing)   .pipe(Nothing),     Nothing);
+    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Nothing)   .pipe(Just(true)),  Nothing);
+    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Just('hi')).pipe(Nothing),     Nothing);
+    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Just('hi')).pipe(Just(true)),  Nothing);
+    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Nothing)   .pipe(Nothing),     Nothing);
+    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Nothing)   .pipe(Just(true)),  Nothing);
+    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Nothing),     Nothing);
+    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Just(true)),  Just('hi'));
+    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Just(false)), Just('_4'));
+});
+
 test('Maybe.prototype.ap()', t => {
     t.deepEqual(
         Nothing.ap(Nothing),
