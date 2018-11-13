@@ -291,6 +291,36 @@ test('Maybe.prototype.pipe()', t => {
     t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Nothing),     Nothing);
     t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Just(true)),  Just('hi'));
     t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Just(false)), Just('_4'));
+
+    t.deepEqual(
+        Maybe.fromNullable((a: number) => '_' + a * 2).pipe(Just(2)),
+        Just('_4'),
+        'Maybe.fromNullable is piping'
+    );
+
+    t.deepEqual(
+        Maybe.fromEither(Right((a: number) => '_' + a * 2)).pipe(Just(2)),
+        Just('_4'),
+        'Maybe.fromEither is piping'
+    );
+
+    t.deepEqual(
+        Just(2).map(a => (b: number) => '_' + a * b).pipe(Just(3)),
+        Just('_6'),
+        'Maybe.map is piping'
+    );
+
+    t.deepEqual(
+        Just(2).chain(a => Just((b: number) => '_' + a * b)).pipe(Just(3)),
+        Just('_6'),
+        'Maybe.chain is piping'
+    );
+
+    t.deepEqual(
+        Just(2).ap(Just((a: number) => (b: number) => '_' + a * b)).pipe(Just(3)),
+        Just('_6'),
+        'Maybe.ap is piping'
+    );
 });
 
 test('Maybe.prototype.ap()', t => {
