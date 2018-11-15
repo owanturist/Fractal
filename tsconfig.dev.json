@@ -6,7 +6,6 @@
     "module": "commonjs",
     "declaration": false,
     "removeComments": false,
-    "noEmit": true,
     "importHelpers": true,
     "downlevelIteration": true,
     "outDir": "dist",
