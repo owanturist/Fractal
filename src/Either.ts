@@ -1,6 +1,5 @@
 import {
-    DefaultCase,
-    WithDefaultCase
+    Cata
 } from './Basics';
 import {
     Maybe,
@@ -8,10 +7,10 @@ import {
     Just
 } from './Maybe';
 
-export type Pattern<E, T, R> = WithDefaultCase<{
+export type Pattern<E, T, R> = Cata<{
     Left(error: E): R;
     Right(value: T): R;
-}, R>;
+}>;
 
 export abstract class Either<E, T> {
     public static fromNullable<E, T>(error: E, value: null | undefined): Either<E, T>;
@@ -153,7 +152,7 @@ namespace Internal {
                 return pattern.Left(this.error);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public toMaybe(): Maybe<T> {
@@ -229,7 +228,7 @@ namespace Internal {
                 return pattern.Right(this.value);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public toMaybe(): Maybe<T> {

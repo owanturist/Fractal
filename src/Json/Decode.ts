@@ -1,6 +1,5 @@
 import {
-    DefaultCase,
-    WithDefaultCase
+    Cata
 } from '../Basics';
 import {
     Maybe,
@@ -46,12 +45,12 @@ export abstract class Error {
 }
 
 export namespace Error {
-    export type Pattern<R> = WithDefaultCase<{
+    export type Pattern<R> = Cata<{
         Field(field: string, error: Error): R;
         Index(index: number, error: Error): R;
         OneOf(errors: Array<Error>): R;
         Failure(message: string, source: Value): R;
-    }, R>;
+    }>;
 
     export const Field = (field: string, error: Error): Error => new Internal.Field(field, error);
 
@@ -76,7 +75,7 @@ namespace Internal {
                 return pattern.Field(this.field, this.error);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -100,7 +99,7 @@ namespace Internal {
                 return pattern.Index(this.index, this.error);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -118,7 +117,7 @@ namespace Internal {
                 return pattern.OneOf(this.errors);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {
@@ -165,7 +164,7 @@ namespace Internal {
                 return pattern.Failure(this.message, this.source);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public stringifyWithContext(indent: number, context: Array<string>): string {

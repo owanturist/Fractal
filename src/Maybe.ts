@@ -1,7 +1,6 @@
 import {
     WhenNever,
-    DefaultCase,
-    WithDefaultCase
+    Cata
 } from './Basics';
 import {
     Either,
@@ -9,10 +8,10 @@ import {
     Right
 } from './Either';
 
-export type Pattern<T, R> = WithDefaultCase<{
+export type Pattern<T, R> = Cata<{
     Nothing(): R;
     Just(value: T): R;
-}, R>;
+}>;
 
 export abstract class Maybe<T> {
     public static fromNullable<T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> {
@@ -124,7 +123,7 @@ namespace Internal {
                 return pattern.Nothing();
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public toEither<E>(error: E): Either<E, T> {
@@ -183,7 +182,7 @@ namespace Internal {
                 return pattern.Just(this.value);
             }
 
-            return (pattern as DefaultCase<R>)._();
+            return (pattern._ as () => R)();
         }
 
         public toEither<E>(): Either<E, T> {
