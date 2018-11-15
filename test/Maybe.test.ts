@@ -422,6 +422,52 @@ test('Maybe.prototype.fold()', t => {
 test('Maybe.prototype.cata()', t => {
     t.is(
         Nothing.cata({
+            _: () => '_0'
+        }),
+        '_0'
+    );
+
+    t.is(
+        Just(1).cata({
+            _: () => '_0'
+        }),
+        '_0'
+    );
+
+    t.is(
+        Nothing.cata({
+            Nothing: () => '_1',
+            _: () => '_0'
+        }),
+        '_1'
+    );
+
+    t.is(
+        Just(1).cata({
+            Nothing: () => '_1',
+            _: () => '_0'
+        }),
+        '_0'
+    );
+
+    t.is(
+        Nothing.cata({
+            Just: a => '_' + a * 2,
+            _: () => '_0'
+        }),
+        '_0'
+    );
+
+    t.is(
+        Just(1).cata({
+            Just: a => '_' + a * 2,
+            _: () => '_0'
+        }),
+        '_2'
+    );
+
+    t.is(
+        Nothing.cata({
             Nothing: () => '_1',
             Just: a => '_' + a * 2
         }),
