@@ -1,17 +1,32 @@
 {
   "compilerOptions": {
+
+    /* Basic Options */
+    "target": "es3",
+    "module": "commonjs",
+    "declaration": false,
+    "removeComments": false,
+    "noEmit": true,
+    "importHelpers": true,
     "downlevelIteration": true,
     "outDir": "dist",
-    "module": "commonjs",
-    "target": "es3",
+
+    /* Strict Type-Checking Options */
+    "strict": true, // noImplicitAny noImplicitThis alwaysStrict strictNullChecks strictFunctionTypes strictPropertyInitialization
+    "strictFunctionTypes": false, // otherwise brokes .pipe
+
+    /* Additional Checks */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Source Map Options */
     "sourceMap": false,
     "inlineSourceMap": false,
     "inlineSources": false,
-    "preserveConstEnums": true,
-    "noUnusedParameters": true,
-    "noUnusedLocals": true,
-    "strict": true,
-    "strictFunctionTypes": false
+
+    "preserveConstEnums": true
   },
   "include": [
     "./src/**/*.ts"
