@@ -19,10 +19,10 @@ export abstract class Maybe<T> {
     }
 
     public static fromEither<E, T>(either: Either<E, T>): Maybe<T> {
-        return either.fold(() => Nothing, Just);
+        return either.fold((): Maybe<T> => Nothing, Just);
     }
 
-    public static props<T extends object>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
+    public static props<T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
         let acc: Maybe<T> = Just({} as T);
 
         for (const key in config) {
@@ -170,7 +170,7 @@ namespace Internal {
         }
 
         public getOrElse<D>(): WhenNever<T, D> {
-            return this.value as unknown as WhenNever<T, D>;
+            return this.value as WhenNever<T, D>;
         }
 
         public fold<R>(_nothingFn: () => R, justFn: (value: T) => R): R {

@@ -234,15 +234,59 @@ test('Maybe.prototype.isEqual()', t => {
     );
 });
 
-test('Maybe.prototype.getOrElse()', t => {
-    t.is(
-        Nothing.getOrElse(1),
-        1
+test('Maybe.prototype.map()', t => {
+    t.deepEqual(
+        Nothing.map(a => '_' + a * 2),
+        Nothing
     );
 
-    t.is(
-        Just(0).getOrElse(1),
-        0
+    t.deepEqual(
+        Just(1).map(a => '_' + a * 2),
+        Just('_2')
+    );
+});
+
+test('Maybe.prototype.chain()', t => {
+    t.deepEqual(
+        Nothing.chain(() => Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).chain(() => Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Nothing.chain(a => Just(a * 2)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).chain(a => Just('_' + a * 2)),
+        Just('_2')
+    );
+});
+
+test('Maybe.prototype.ap()', t => {
+    t.deepEqual(
+        Nothing.ap(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Nothing.ap(Just((a: number) => '_' + a * 2)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(0).ap(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).ap(Just((a: number) => '_' + a * 2)),
+        Just('_2')
     );
 });
 
@@ -323,62 +367,6 @@ test('Maybe.prototype.pipe()', t => {
     );
 });
 
-test('Maybe.prototype.ap()', t => {
-    t.deepEqual(
-        Nothing.ap(Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        Nothing.ap(Just((a: number) => '_' + a * 2)),
-        Nothing
-    );
-
-    t.deepEqual(
-        Just(0).ap(Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        Just(1).ap(Just((a: number) => '_' + a * 2)),
-        Just('_2')
-    );
-});
-
-test('Maybe.prototype.map()', t => {
-    t.deepEqual(
-        Nothing.map(a => '_' + a * 2),
-        Nothing
-    );
-
-    t.deepEqual(
-        Just(1).map(a => '_' + a * 2),
-        Just('_2')
-    );
-});
-
-test('Maybe.prototype.chain()', t => {
-    t.deepEqual(
-        Nothing.chain(() => Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        Just(1).chain(() => Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        Nothing.chain(a => Just(a * 2)),
-        Nothing
-    );
-
-    t.deepEqual(
-        Just(1).chain(a => Just('_' + a * 2)),
-        Just('_2')
-    );
-});
-
 test('Maybe.prototype.orElse()', t => {
     t.deepEqual(
         Nothing.orElse(() => Nothing),
@@ -398,6 +386,18 @@ test('Maybe.prototype.orElse()', t => {
     t.deepEqual(
         Just(1).orElse(() => Just(2)),
         Just(1)
+    );
+});
+
+test('Maybe.prototype.getOrElse()', t => {
+    t.is(
+        Nothing.getOrElse(1),
+        1
+    );
+
+    t.is(
+        Just(0).getOrElse(1),
+        0
     );
 });
 
