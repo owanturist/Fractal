@@ -325,7 +325,7 @@ namespace Decode {
             if (isObject(input) && this.key in input) {
                 return this.decoder
                     .decode(input[ this.key ])
-                    .leftMap((error: Error): Error => Error.Field(this.key, error));
+                    .mapLeft((error: Error): Error => Error.Field(this.key, error));
             }
 
             return expecting(`an OBJECT with a field named '${this.key}'`, input);
@@ -354,7 +354,7 @@ namespace Decode {
 
             return this.decoder
                 .decode(input[ this.index ])
-                .leftMap((error: Error): Error => Error.Index(this.index, error));
+                .mapLeft((error: Error): Error => Error.Index(this.index, error));
         }
     }
 
@@ -369,7 +369,7 @@ namespace Decode {
             for (const decoder of this.decoders) {
                 result = result.orElse(
                     (acc: Array<Error>): Either<Array<Error>, T> => {
-                        return decoder.decode(input).leftMap((error: Error): Array<Error> => {
+                        return decoder.decode(input).mapLeft((error: Error): Array<Error> => {
                             acc.push(error);
 
                             return acc;
@@ -378,7 +378,7 @@ namespace Decode {
                 );
             }
 
-            return result.leftMap((errors: Array<Error>): Error => Error.OneOf(errors));
+            return result.mapLeft((errors: Array<Error>): Error => Error.OneOf(errors));
         }
     }
 

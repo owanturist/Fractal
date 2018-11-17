@@ -270,7 +270,7 @@ test('Json.Decode.dict()', t => {
 });
 
 test('Json.Decode.keyValue()', t => {
-    const decoder = Decode.keyValue(Decode.string);
+    const decoder = Decode.keyValue(Decode.number);
 
     t.deepEqual(
         decoder.decode(1),
@@ -288,15 +288,15 @@ test('Json.Decode.keyValue()', t => {
     );
 
     t.deepEqual(
-        decoder.decode({ s1: 1 }),
-        Left(Decode.Error.Field('s1', Decode.Error.Failure('Expecting a STRING', 1)))
+        decoder.decode({ s1: 'str' }),
+        Left(Decode.Error.Field('s1', Decode.Error.Failure('Expecting a NUMBER', 'str')))
     );
 
     t.deepEqual(
-        decoder.decode({ s1: 'str1', s2: 'str2' }),
-        Right([
-            [ 's1', 'str1' ],
-            [ 's2', 'str2' ]
+        decoder.decode({ s1: 1, s2: 2 }),
+        Right<Array<[ string, number ]>>([
+            [ 's1', 1 ],
+            [ 's2', 2 ]
         ])
     );
 });

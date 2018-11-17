@@ -99,6 +99,22 @@ test('Maybe.props()', t => {
 
     t.deepEqual(
         Maybe.props({
+            foo: Nothing,
+            bar: Just(1)
+        }).map(obj => obj.foo),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
+            foo: Nothing,
+            bar: Just(1)
+        }).map(obj => obj.bar),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.props({
             foo: Just('foo'),
             bar: Just(1)
         }).map(obj => obj.foo),
@@ -351,19 +367,19 @@ test('Maybe.prototype.pipe()', t => {
     t.deepEqual(
         Just(2).map(a => (b: number) => '_' + a * b).pipe(Just(3)),
         Just('_6'),
-        'Maybe.map is piping'
+        'Maybe.prototype.map is piping'
     );
 
     t.deepEqual(
         Just(2).chain(a => Just((b: number) => '_' + a * b)).pipe(Just(3)),
         Just('_6'),
-        'Maybe.chain is piping'
+        'Maybe.prototype.chain is piping'
     );
 
     t.deepEqual(
         Just(2).ap(Just((a: number) => (b: number) => '_' + a * b)).pipe(Just(3)),
         Just('_6'),
-        'Maybe.ap is piping'
+        'Maybe.prototype.ap is piping'
     );
 });
 

@@ -1,4 +1,5 @@
 import {
+    WhenNever,
     Cata
 } from './Basics';
 import {
@@ -13,27 +14,26 @@ export type Pattern<E, T, R> = Cata<{
 }>;
 
 export abstract class Either<E, T> {
-    public static fromNullable<E, T>(error: E, value: null | undefined): Either<E, T>;
-    public static fromNullable<E, T>(error: E, value: T): Either<E, T>; // tslint:disable-line
-    public static fromNullable<E, T>(error: E, value: T | null | undefined): Either<E, T> {
-        return value == null ? Left(error) : Right(value);
+    public static fromNullable<E, T>(
+        error: E, value: T | null | undefined
+    ): Either<E, T extends null | undefined ? never : T> {
+        return value == null
+            ? Left(error)
+            : Right(value as T extends null | undefined ? never : T);
     }
 
     public static fromMaybe<E, T>(error: E, maybe: Maybe<T>): Either<E, T> {
-        return maybe.cata({
-            Nothing: (): Either<E, T> => Left(error),
-            Just: Right
-        });
+        return maybe.fold((): Either<E, T> => Left(error), Right);
     }
 
-    public static props<E, T extends object>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
+    public static props<E, T>(config: {[ K in keyof T ]: Either<E, T[ K ]>}): Either<E, T> {
         let acc: Either<E, T> = Right({} as T);
 
         for (const key in config) {
             if (config.hasOwnProperty(key)) {
                 acc = acc.chain(
                     (obj: T): Either<E, T> => config[ key ].map(
-                        (value: T[Extract<keyof T, string>]): T => {
+                        (value: T[ Extract<keyof T, string> ]): T => {
                             obj[ key ] = value;
 
                             return obj;
@@ -64,20 +64,27 @@ export abstract class Either<E, T> {
         return acc;
     }
 
-    public abstract isLeft(): boolean;
-    public abstract isRight(): boolean;
-    public abstract isEqual(another: Either<E, T>): boolean;
+    public abstract isLeft: boolean;
+    public abstract isRight: boolean;
+    public abstract isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean;
 
-    public abstract getOrElse(defaults: T): T;
-
-    public abstract ap<R>(eitherFn: Either<E, (value: T) => R>): Either<E, R>;
     public abstract map<R>(fn: (value: T) => R): Either<E, R>;
-    public abstract chain<R>(fn: (value: T) => Either<E, R>): Either<E, R>;
+    public abstract chain<G, R>(fn: (value: T) => Either<WhenNever<E, G>, R>): Either<WhenNever<E, G>, R>;
+    public abstract ap<G, R>(eitherFn: Either<WhenNever<E, G>, (value: T) => R>): Either<WhenNever<E, G>, R>;
+    public abstract pipe<G>(
+        either: T extends (value: infer A) => unknown
+            ? Either<WhenNever<E, G>, A>
+            : never
+    ): Either<WhenNever<E, G>, T extends (value: unknown) => infer U ? U : T>;
+
     public abstract bimap<S, R>(leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R>;
     public abstract swap(): Either<T, E>;
-    public abstract leftMap<S>(fn: (error: E) => S): Either<S, T>;
-    public abstract orElse(fn: (error: E) => Either<E, T>): Either<E, T>;
+    public abstract mapLeft<S>(fn: (error: E) => S): Either<S, T>;
 
+    public abstract orElse<G, D>(
+        fn: (error: WhenNever<E, G>) => Either<WhenNever<E, G>, WhenNever<T, D>>
+    ): Either<WhenNever<E, G>, WhenNever<T, D>>;
+    public abstract getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D>;
 
     public abstract fold<R>(leftFn: (error: E) => R, rightFn: (value: T) => R): R;
     public abstract cata<R>(pattern: Pattern<E, T, R>): R;
@@ -87,40 +94,35 @@ export abstract class Either<E, T> {
 
 namespace Internal {
     export class Left<E, T> extends Either<E, T> {
+        public isLeft: boolean = true;
+
+        public isRight: boolean = false;
+
         constructor(private readonly error: E) {
             super();
         }
 
-        public isLeft(): boolean {
-            return true;
-        }
-
-        public isRight(): boolean {
-            return false;
-        }
-
-        public isEqual(another: Either<E, T>): boolean {
-            return another
-                .fold(
-                    (error: E): boolean => error === this.error,
-                    (): boolean => false
-                );
-        }
-
-        public getOrElse(defaults: T): T {
-            return defaults;
-        }
-
-        public ap<R>(): Either<E, R> {
-            return this as any as Either<E, R>;
+        public isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean {
+            return another.fold(
+                (error: WhenNever<E, G>): boolean => error === this.error,
+                (): boolean => false
+            );
         }
 
         public map<R>(): Either<E, R> {
             return this as any as Either<E, R>;
         }
 
-        public chain<R>(): Either<E, R> {
-            return this as any as Either<E, R>;
+        public chain<G, R>(): Either<WhenNever<E, G>, R> {
+            return this as any as Either<WhenNever<E, G>, R>;
+        }
+
+        public ap<G, R>(): Either<WhenNever<E, G>, R> {
+            return this as any as Either<WhenNever<E, G>, R>;
+        }
+
+        public pipe<G, U>(): Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T> {
+            return this as unknown as Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T>;
         }
 
         public bimap<S, R>(leftFn: (error: E) => S): Either<S, R> {
@@ -133,14 +135,20 @@ namespace Internal {
             return new Right(this.error);
         }
 
-        public leftMap<S>(fn: (error: E) => S): Either<S, T> {
+        public mapLeft<S>(fn: (error: E) => S): Either<S, T> {
             return new Left(
                 fn(this.error)
             );
         }
 
-        public orElse(fn: (error: E) => Either<E, T>): Either<E, T> {
-            return fn(this.error);
+        public orElse<G, D>(
+            fn: (error: WhenNever<E, G>) => Either<WhenNever<E, G>, WhenNever<T, D>>
+        ): Either<WhenNever<E, G>, WhenNever<T, D>> {
+            return fn(this.error as WhenNever<E, G>);
+        }
+
+        public getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D> {
+            return defaults;
         }
 
         public fold<R>(leftFn: (error: E) => R): R {
@@ -161,33 +169,18 @@ namespace Internal {
     }
 
     export class Right<E, T> extends Either<E, T> {
+        public isLeft: boolean = false;
+
+        public isRight: boolean = true;
+
         constructor(private readonly value: T) {
             super();
         }
 
-        public isLeft(): boolean {
-            return false;
-        }
-
-        public isRight(): boolean {
-            return true;
-        }
-
-        public isEqual(another: Either<E, T>): boolean {
-            return another
-                .fold(
-                    (): boolean => false,
-                    (value: T): boolean => value === this.value
-                );
-        }
-
-        public getOrElse(): T {
-            return this.value;
-        }
-
-        public ap<R>(eitherFn: Either<E, (value: T) => R>): Either<E, R> {
-            return eitherFn.map(
-                (fn: (value: T) => R): R => fn(this.value)
+        public isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean {
+            return another.fold(
+                (): boolean => false,
+                (value: WhenNever<T, D>): boolean => value === this.value
             );
         }
 
@@ -197,8 +190,22 @@ namespace Internal {
             );
         }
 
-        public chain<R>(fn: (value: T) => Either<E, R>): Either<E, R> {
+        public chain<G, R>(fn: (value: T) => Either<WhenNever<E, G>, R>): Either<WhenNever<E, G>, R> {
             return fn(this.value);
+        }
+
+        public ap<G, R>(eitherFn: Either<WhenNever<E, G>, (value: T) => R>): Either<WhenNever<E, G>, R> {
+            return eitherFn.pipe<WhenNever<E, G>>(this as unknown as Either<WhenNever<E, G>, T>);
+        }
+
+        public pipe<G, A, U>(
+            either: T extends (value: A) => unknown
+                ? Either<WhenNever<E, G>, A>
+                : never
+        ): Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T> {
+            return either.map(
+                this.value as unknown as (value: A) => U
+            ) as unknown as Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T>;
         }
 
         public bimap<S, R>(_leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R> {
@@ -211,12 +218,16 @@ namespace Internal {
             return new Left(this.value);
         }
 
-        public leftMap<S>(): Either<S, T> {
+        public mapLeft<S>(): Either<S, T> {
             return this as any as Either<S, T>;
         }
 
-        public orElse(): Either<E, T> {
-            return this;
+        public orElse<G, D>(): Either<WhenNever<E, G>, WhenNever<T, D>> {
+            return this as unknown as Either<WhenNever<E, G>, WhenNever<T, D>>;
+        }
+
+        public getOrElse<D>(): WhenNever<T, D> {
+            return this.value as WhenNever<T, D>;
         }
 
         public fold<R>(_leftFn: (error: E) => R, rightFn: (value: T) => R): R {
@@ -237,6 +248,6 @@ namespace Internal {
     }
 }
 
-export const Left = <E>(error: E): Either<E, any> => new Internal.Left(error);
+export const Left = <E>(error: E): Either<E, never> => new Internal.Left(error);
 
-export const Right = <T>(value: T): Either<any, T> => new Internal.Right(value);
+export const Right = <T>(value: T): Either<never, T> => new Internal.Right(value);
