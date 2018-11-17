@@ -60,8 +60,8 @@ export abstract class Maybe<T> {
         return acc;
     }
 
-    public abstract isNothing: boolean;
-    public abstract isJust: boolean;
+    public abstract isNothing(): boolean;
+    public abstract isJust(): boolean;
     public abstract isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean;
 
     public abstract map<R>(fn: (value: T) => R): Maybe<R>;
@@ -82,12 +82,16 @@ export abstract class Maybe<T> {
 
 namespace Internal {
     export class Nothing<T> extends Maybe<T> {
-        public isNothing: boolean = true;
+        public isNothing(): boolean {
+            return true;
+        }
 
-        public isJust: boolean = false;
+        public isJust(): boolean {
+            return false;
+        }
 
         public isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean {
-            return another.isNothing;
+            return another.isNothing();
         }
 
         public map<R>(): Maybe<R> {
@@ -132,12 +136,16 @@ namespace Internal {
     }
 
     export class Just<T> extends Maybe<T> {
-        public isNothing: boolean = false;
-
-        public isJust: boolean = true;
-
         constructor(private readonly value: T) {
             super();
+        }
+
+        public isNothing(): boolean {
+            return false;
+        }
+
+        public isJust(): boolean {
+            return true;
         }
 
         public isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean {

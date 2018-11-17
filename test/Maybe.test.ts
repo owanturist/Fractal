@@ -212,16 +212,16 @@ test('Maybe.sequence()', t => {
     );
 });
 
-test('Maybe.prototype.isNothing', t => {
-    t.true(Nothing.isNothing);
+test('Maybe.prototype.isNothing()', t => {
+    t.true(Nothing.isNothing());
 
-    t.false(Just(1).isNothing);
+    t.false(Just(1).isNothing());
 });
 
-test('Maybe.prototype.isJust', t => {
-    t.false(Nothing.isJust);
+test('Maybe.prototype.isJust()', t => {
+    t.false(Nothing.isJust());
 
-    t.true(Just(1).isJust);
+    t.true(Just(1).isJust());
 });
 
 test('Maybe.prototype.isEqual()', t => {

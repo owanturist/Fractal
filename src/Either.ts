@@ -64,8 +64,8 @@ export abstract class Either<E, T> {
         return acc;
     }
 
-    public abstract isLeft: boolean;
-    public abstract isRight: boolean;
+    public abstract isLeft(): boolean;
+    public abstract isRight(): boolean;
     public abstract isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean;
 
     public abstract map<R>(fn: (value: T) => R): Either<E, R>;
@@ -94,12 +94,16 @@ export abstract class Either<E, T> {
 
 namespace Internal {
     export class Left<E, T> extends Either<E, T> {
-        public isLeft: boolean = true;
-
-        public isRight: boolean = false;
-
         constructor(private readonly error: E) {
             super();
+        }
+
+        public isLeft(): boolean {
+            return true;
+        }
+
+        public isRight(): boolean {
+            return false;
         }
 
         public isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean {
@@ -169,12 +173,16 @@ namespace Internal {
     }
 
     export class Right<E, T> extends Either<E, T> {
-        public isLeft: boolean = false;
-
-        public isRight: boolean = true;
-
         constructor(private readonly value: T) {
             super();
+        }
+
+        public isLeft(): boolean {
+            return false;
+        }
+
+        public isRight(): boolean {
+            return true;
         }
 
         public isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean {

@@ -212,16 +212,16 @@ test('Either.sequence()', t => {
     );
 });
 
-test('Either.prototype.isLeft', t => {
-    t.true(Left('err').isLeft);
+test('Either.prototype.isLeft()', t => {
+    t.true(Left('err').isLeft());
 
-    t.false(Right(1).isLeft);
+    t.false(Right(1).isLeft());
 });
 
-test('Either.prototype.isRight', t => {
-    t.false(Left('err').isRight);
+test('Either.prototype.isRight()', t => {
+    t.false(Left('err').isRight());
 
-    t.true(Right(1).isRight);
+    t.true(Right(1).isRight());
 });
 
 test('Either.prototype.isEqual()', t => {
