@@ -925,11 +925,11 @@ test('Json.Decode.Decoder.prototype.decode', t => {
         comments: Array<Comment>;
     }
 
-    const userDecoder: Decode.Decoder<User> = Decode.props({
-        id: Decode.field('id', Decode.number),
-        username: Decode.field('username', Decode.string),
-        comments: Decode.field('comments', Decode.list(Decode.lazy(() => commentDecoder)))
-    });
+    const userDecoder: Decode.Decoder<User> = Decode.succeed((id: number) => (username: string) => (comments: Array<Comment>) => ({ id, username, comments }))
+        .require('id', Decode.number)
+        .require('username', Decode.string)
+        .require('comments', Decode.list(Decode.lazy(() => commentDecoder)))
+        ;
 
     interface Comment {
         id: number;
