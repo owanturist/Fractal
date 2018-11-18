@@ -361,7 +361,7 @@ test('Either.prototype.pipe()', t => {
     t.deepEqual(
         Either.fromMaybe('err', Just((a: number) => '_' + a * 2)).pipe(Right(2)),
         Right('_4'),
-        'Either.fromEither is piping'
+        'Either.fromMaybe is piping'
     );
 
     t.deepEqual(

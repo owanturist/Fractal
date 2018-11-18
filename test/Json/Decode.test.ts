@@ -647,6 +647,277 @@ test('Json.Decode.Decoder.prototype.chain()', t => {
     );
 });
 
+test('Json.Decode.Decoder.prototype.ap()', t => {
+    t.deepEqual(
+        Decode.fail('err1').ap(Decode.fail('err2')).decode(1),
+        Left(Decode.Error.Failure('err1', 1))
+    );
+
+    t.deepEqual(
+        Decode.fail('err1').ap(Decode.succeed((a: number) => a * 2)).decode(1),
+        Left(Decode.Error.Failure('err1', 1))
+    );
+
+    t.deepEqual(
+        Decode.succeed(2).ap(Decode.fail('err2')).decode(1),
+        Left(Decode.Error.Failure('err2', 1))
+    );
+
+    t.deepEqual(
+        Decode.succeed(2).ap(Decode.succeed((a: number) => a * 2)).decode(1),
+        Right(4)
+    );
+});
+
+test('Json.Decode.Decoder.prototype.pipe()', t => {
+    const fnFail: Decode.Decoder<(a: number) => string> = Decode.fail('_err_');
+    const fnSucceed = Decode.succeed((a: number) => '_' + a * 2);
+
+    t.deepEqual(
+        fnFail.pipe(Decode.fail('err1')).decode('source'),
+        Left(Decode.Error.Failure('_err_', 'source'))
+    );
+
+    t.deepEqual(
+        fnFail.pipe(Decode.succeed(2)).decode('source'),
+        Left(Decode.Error.Failure('_err_', 'source'))
+    );
+
+    t.deepEqual(
+        fnSucceed.pipe(Decode.fail('err1')).decode('source'),
+        Left(Decode.Error.Failure('err1', 'source'))
+    );
+
+    t.deepEqual(
+        fnSucceed.pipe(Decode.succeed(2)).decode('source'),
+        Right('_4')
+    );
+
+    const trippleFnLeft: Decode.Decoder<(a: number) => (b: string) => (c: boolean) => string> = Decode.fail('_err_');
+    const trippleFnRight = Decode.succeed((a: number) => (b: string) => (c: boolean) => c ? b : '_' + a * 2);
+
+    t.deepEqual(trippleFnLeft.pipe(Decode.fail('err1')).pipe(Decode.fail('err2'))  .pipe(Decode.fail('err3')) .decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.fail('err1')).pipe(Decode.fail('err2'))  .pipe(Decode.succeed(true)).decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.fail('err1')).pipe(Decode.succeed('hi')) .pipe(Decode.fail('err3')) .decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.fail('err1')).pipe(Decode.succeed('hi')) .pipe(Decode.succeed(true)).decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.succeed(2))  .pipe(Decode.fail('err2'))  .pipe(Decode.fail('err3')) .decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.succeed(2))  .pipe(Decode.fail('err2'))  .pipe(Decode.succeed(true)).decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.succeed(2))  .pipe(Decode.succeed('hi')) .pipe(Decode.fail('err3')) .decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+    t.deepEqual(trippleFnLeft.pipe(Decode.succeed(2))  .pipe(Decode.succeed('hi')) .pipe(Decode.succeed(true)).decode('source'), Left(Decode.Error.Failure('_err_', 'source')));
+
+    t.deepEqual(trippleFnRight.pipe(Decode.fail('err1')).pipe(Decode.fail('err2'))  .pipe(Decode.fail('err3')) .decode('source'),  Left(Decode.Error.Failure('err1', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.fail('err1')).pipe(Decode.fail('err2'))  .pipe(Decode.succeed(true)).decode('source'),  Left(Decode.Error.Failure('err1', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.fail('err1')).pipe(Decode.succeed('hi')) .pipe(Decode.fail('err3')) .decode('source'),  Left(Decode.Error.Failure('err1', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.fail('err1')).pipe(Decode.succeed('hi')) .pipe(Decode.succeed(true)).decode('source'),  Left(Decode.Error.Failure('err1', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.succeed(2))  .pipe(Decode.fail('err2'))  .pipe(Decode.fail('err3')) .decode('source'),  Left(Decode.Error.Failure('err2', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.succeed(2))  .pipe(Decode.fail('err2'))  .pipe(Decode.succeed(true)).decode('source'),  Left(Decode.Error.Failure('err2', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.succeed(2))  .pipe(Decode.succeed('hi')) .pipe(Decode.fail('err3')) .decode('source'),  Left(Decode.Error.Failure('err3', 'source')));
+    t.deepEqual(trippleFnRight.pipe(Decode.succeed(2))  .pipe(Decode.succeed('hi')) .pipe(Decode.succeed(true)).decode('source'),  Right('hi'));
+    t.deepEqual(trippleFnRight.pipe(Decode.succeed(2))  .pipe(Decode.succeed('hi')) .pipe(Decode.succeed(false)).decode('source'), Right('_4'));
+
+    t.deepEqual(
+        trippleFnRight
+            .pipe(Decode.field('foo', Decode.number))
+            .pipe(Decode.field('bar', Decode.string))
+            .pipe(Decode.field('baz', Decode.boolean))
+            .decode({
+                foo: 2,
+                bar: 'hi',
+                baz: true
+            }),
+        Right('hi')
+    );
+
+    t.deepEqual(
+        trippleFnRight
+            .pipe(Decode.field('foo', Decode.number))
+            .pipe(Decode.field('bar', Decode.string))
+            .pipe(Decode.field('baz', Decode.boolean))
+            .decode({
+                foo: 2,
+                bar: 'hi',
+                baz: false
+            }),
+        Right('_4')
+    );
+
+    t.deepEqual(
+        Decode.fromMaybe('err', Just((a: number) => '_' + a * 2)).pipe(Decode.succeed(2)).decode('source'),
+        Right('_4'),
+        'Decode.fromMaybe is piping'
+    );
+
+    t.deepEqual(
+        Decode.fromEither(Right((a: number) => '_' + a * 2)).pipe(Decode.succeed(2)).decode('source'),
+        Right('_4'),
+        'Decode.fromEither is piping'
+    );
+
+    t.deepEqual(
+        Decode.succeed(2).map(a => (b: number) => '_' + a * b).pipe(Decode.succeed(3)).decode('source'),
+        Right('_6'),
+        'Decode.prototype.map is piping'
+    );
+
+    t.deepEqual(
+        Decode.succeed(2).chain(a => Decode.succeed((b: number) => '_' + a * b)).pipe(Decode.succeed(3)).decode('source'),
+        Right('_6'),
+        'Decode.prototype.chain is piping'
+    );
+
+    t.deepEqual(
+        Decode.succeed(2).ap(Decode.succeed((a: number) => (b: number) => '_' + a * b)).pipe(Decode.succeed(3)).decode('source'),
+        Right('_6'),
+        'Decode.prototype.ap is piping'
+    );
+});
+
+test('Json.Decode.Decoder.prototype.required()', t => {
+    const decoder = Decode.succeed((a: number) => (b: string) => (c: boolean) => ({ a, b, c }))
+        .require('foo', Decode.number)
+        .require('bar', Decode.string)
+        .require('baz', Decode.boolean)
+        ;
+
+    t.deepEqual(
+        decoder.decode({}),
+        Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'foo\'', {}))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 'str',
+            bar: false,
+            baz: 2
+        }),
+        Left(Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Expecting a NUMBER', 'str')
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 1,
+            bar: false,
+            baz: 2
+        }),
+        Left(Decode.Error.Field(
+            'bar',
+            Decode.Error.Failure('Expecting a STRING', false)
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 1,
+            bar: 'str',
+            baz: 2
+        }),
+        Left(Decode.Error.Field(
+            'baz',
+            Decode.Error.Failure('Expecting a BOOLEAN', 2)
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 1,
+            bar: 'str',
+            baz: false
+        }),
+        Right({
+            a: 1,
+            b: 'str',
+            c: false
+        })
+    );
+});
+
+test('Json.Decode.Decoder.prototype.optional()', t => {
+    const decoder = Decode.succeed((a: Maybe<number>) => (b: Maybe<string>) => (c: Maybe<boolean>) => ({ a, b, c }))
+        .optional('foo', Decode.number)
+        .optional('bar', Decode.string)
+        .optional('baz', Decode.boolean)
+        ;
+
+    t.deepEqual(
+        decoder.decode({}),
+        Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'foo\'', {}))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: null,
+            bar: null,
+            baz: null
+        }),
+        Right({
+            a: Nothing,
+            b: Nothing,
+            c: Nothing
+        })
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 'str',
+            bar: false,
+            baz: 2
+        }),
+        Left(Decode.Error.Field(
+            'foo',
+            Decode.Error.OneOf([
+                Decode.Error.Failure('Expecting null', 'str'),
+                Decode.Error.Failure('Expecting a NUMBER', 'str')
+            ])
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 1,
+            bar: false,
+            baz: 2
+        }),
+        Left(Decode.Error.Field(
+            'bar',
+            Decode.Error.OneOf([
+                Decode.Error.Failure('Expecting null', false),
+                Decode.Error.Failure('Expecting a STRING', false)
+            ])
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 1,
+            bar: 'str',
+            baz: 2
+        }),
+        Left(Decode.Error.Field(
+            'baz',
+            Decode.Error.OneOf([
+                Decode.Error.Failure('Expecting null', 2),
+                Decode.Error.Failure('Expecting a BOOLEAN', 2)
+            ])
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decode({
+            foo: 1,
+            bar: 'str',
+            baz: false
+        }),
+        Right({
+            a: Just(1),
+            b: Just('str'),
+            c: Just(false)
+        })
+    );
+});
+
 test('Json.Decode.Decoder.prototype.decode', t => {
     interface User {
         id: number;

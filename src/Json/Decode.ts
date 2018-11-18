@@ -14,11 +14,11 @@ import {
 import * as Encode from './Encode';
 
 const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);
-const isString = (value: Value): value is string => typeof value === 'string';
-const isNumber = (value: Value): value is number => typeof value === 'number';
-const isBoolean = (value: Value): value is boolean => typeof value === 'boolean';
-const isArray = (input: Value): input is Array<Value> => input instanceof Array;
-const isObject = (input: Value): input is {[ key: string ]: Value } => {
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isNumber = (value: unknown): value is number => typeof value === 'number';
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+const isArray = (input: unknown): input is Array<unknown> => input instanceof Array;
+const isObject = (input: unknown): input is {[ key: string ]: Value } => {
     return typeof input === 'object' && input !== null && !isArray(input);
 };
 
@@ -78,7 +78,7 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public stringifyWithContext(indent: number, context: Array<string>): string {
+        protected stringifyWithContext(indent: number, context: Array<string>): string {
             return Error.stringifyWithContext(this.error, indent, [
                 ...context,
                 isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
@@ -102,7 +102,7 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public stringifyWithContext(indent: number, context: Array<string>): string {
+        protected stringifyWithContext(indent: number, context: Array<string>): string {
             return Error.stringifyWithContext(this.error, indent, [ ...context, `[${this.index}]` ]);
         }
     }
@@ -120,7 +120,7 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public stringifyWithContext(indent: number, context: Array<string>): string {
+        protected stringifyWithContext(indent: number, context: Array<string>): string {
             switch (this.errors.length) {
                 case 0: {
                     return 'Ran into a Json.Decode.oneOf with no possibilities'
@@ -167,7 +167,7 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public stringifyWithContext(indent: number, context: Array<string>): string {
+        protected stringifyWithContext(indent: number, context: Array<string>): string {
             const introduction = context.length === 0
                 ? 'Problem with the given value:\n\n'
                 : 'Problem with the value at _' + context.join('') + ':\n\n';
@@ -181,16 +181,20 @@ namespace Internal {
 
 export abstract class Decoder<T> {
     public map<R>(fn: (value: T) => R): Decoder<R> {
-        return new Decode.Map(fn, this);
+        return new Map(fn, this);
     }
 
     public chain<R>(fn: (value: T) => Decoder<R>): Decoder<R> {
-        return new Decode.Chain(fn, this);
+        return new Chain(fn, this);
+    }
+
+    public ap<R>(decoderFn: Decoder<(value: T) => R>): Decoder<R> {
+        return this.chain((value: T): Decoder<R> => decoderFn.map((fn: (value: T) => R): R => fn(value)));
     }
 
     public decodeJSON(input: string): Either<Error, T> {
         try {
-            return this.decode(JSON.parse(input) as Value);
+            return this.decode(JSON.parse(input));
         } catch (err) {
             return Left(
                 Error.Failure(`This is not valid JSON! ${(err as SyntaxError).message}`, input)
@@ -199,75 +203,157 @@ export abstract class Decoder<T> {
     }
 
     public abstract decode(input: Value): Either<Error, T>;
+
+    public abstract pipe(
+        decoder: T extends (value: infer A) => unknown ? Decoder<A> : never
+    ): Decoder<T extends (value: unknown) => infer U ? U : T>;
+
+    public abstract require(
+        key: T extends (value: unknown) => unknown ? string : never,
+        decoder: T extends (value: infer A) => unknown ? Decoder<A> : never
+    ): Decoder<T extends (value: unknown) => infer U ? U : T>;
+
+    public abstract optional(
+        key: T extends (value: Maybe<unknown>) => unknown ? string : never,
+        decoder: T extends (value: Maybe<infer A>) => unknown ? Decoder<A> : never
+    ): Decoder<T extends (value: unknown) => infer U ? U : T>;
 }
 
-namespace Decode {
-    export class Map<T, R> extends Decoder<R> {
-        constructor(
-            private readonly fn: (value: T) => R,
-            protected readonly decoder: Decoder<T>
-        ) {
-            super();
-        }
-
-        public decode(input: Value): Either<Error, R> {
-            return this.decoder.decode(input).map(this.fn);
-        }
+abstract class Streamable<T> extends Decoder<T> {
+    public pipe<A, U>(
+        decoder: T extends (value: A) => unknown ? Decoder<A> : never
+    ): Decoder<U> {
+        return new Pipe(decoder, this as unknown as Decoder<(value: A) => U>);
     }
 
-    export class Chain<T, R> extends Decoder<R> {
-        constructor(
-            private readonly fn: (value: T) => Decoder<R>,
-            protected readonly decoder: Decoder<T>
-        ) {
-            super();
+    public require<A, U>(
+        key: string,
+        decoder: T extends (value: A) => unknown ? Decoder<A> : never
+    ): Decoder<U> {
+        return new Pipe(field(key, decoder), this as unknown as Decoder<(value: A) => U>);
+    }
+
+    public optional<A, U>(
+        key: string,
+        decoder: T extends (value: Maybe<A>) => unknown ? Decoder<A> : never
+    ): Decoder<U> {
+        return new Pipe(field(key, nullable(decoder)), this as unknown as Decoder<(value: Maybe<A>) => U>);
+    }
+
+    public abstract decode(input: Value): Either<Error, T>;
+}
+
+class Pipe<T, R> extends Streamable<R> {
+    constructor(
+        private readonly value: Decoder<T>,
+        private readonly fn: Decoder<(value: T) => R>
+    ) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, R> {
+        return this.fn.chain((fn: (value: T) => R): Decoder<R> => this.value.map(fn)).decode(input);
+    }
+}
+
+class Map<T, R> extends Streamable<R> {
+    constructor(
+        private readonly fn: (value: T) => R,
+        protected readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, R> {
+        return this.decoder.decode(input).map(this.fn);
+    }
+}
+
+class Chain<T, R> extends Streamable<R> {
+    constructor(
+        private readonly fn: (value: T) => Decoder<R>,
+        protected readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, R> {
+        return this.decoder.decode(input).chain(
+            (value: T): Either<Error, R> => this.fn(value).decode(input)
+        );
+    }
+}
+
+class Primitive<T> extends Streamable<T> {
+    constructor(
+        private readonly type: string,
+        private readonly check: (input: any) => input is T
+    ) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, T> {
+        return this.check(input) ? Right(input) : expecting(this.type, input);
+    }
+}
+
+class Identity extends Streamable<Value> {
+    public decode(input: Value): Either<Error, Value> {
+        return Right(input);
+    }
+}
+
+class List<T> extends Streamable<Array<T>> {
+    constructor(private readonly decoder: Decoder<T>) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, Array<T>> {
+        if (!isArray(input)) {
+            return expecting('a LIST', input);
         }
 
-        public decode(input: Value): Either<Error, R> {
-            return this.decoder.decode(input).chain(
-                (value: T): Either<Error, R> => this.fn(value).decode(input)
+        let result: Either<Error, Array<T>> = Right([]);
+
+        for (let index = 0; index < input.length; index++) {
+            result = result.chain(
+                (acc: Array<T>): Either<Error, Array<T>> => {
+                    return this.decoder.decode(input[ index ]).bimap(
+                        (error: Error): Error => Error.Index(index, error),
+                        (value: T): Array<T> => {
+                            acc.push(value);
+
+                            return acc;
+                        }
+                    );
+                }
             );
         }
+
+        return result;
+    }
+}
+
+class KeyValue<T> extends Streamable<Array<[ string, T ]>> {
+    constructor(private readonly decoder: Decoder<T>) {
+        super();
     }
 
-    export class Primitive<T> extends Decoder<T> {
-        constructor(
-            private readonly type: string,
-            private readonly check: (input: any) => input is T
-        ) {
-            super();
+    public decode(input: Value): Either<Error, Array<[ string, T ]>> {
+        if (!isObject(input)) {
+            return expecting('an OBJECT', input);
         }
 
-        public decode(input: Value): Either<Error, T> {
-            return this.check(input) ? Right(input) : expecting(this.type, input);
-        }
-    }
+        let result: Either<Error, Array<[ string, T ]>> = Right([]);
 
-    export class Identity extends Decoder<Value> {
-        public decode(input: Value): Either<Error, Value> {
-            return Right(input);
-        }
-    }
-
-    export class List<T> extends Decoder<Array<T>> {
-        constructor(private readonly decoder: Decoder<T>) {
-            super();
-        }
-
-        public decode(input: Value): Either<Error, Array<T>> {
-            if (!isArray(input)) {
-                return expecting('a LIST', input);
-            }
-
-            let result: Either<Error, Array<T>> = Right([]);
-
-            for (let index = 0; index < input.length; index++) {
+        for (const key in input) {
+            if (input.hasOwnProperty(key)) {
                 result = result.chain(
-                    (acc: Array<T>): Either<Error, Array<T>> => {
-                        return this.decoder.decode(input[ index ]).bimap(
-                            (error: Error): Error => Error.Index(index, error),
-                            (value: T): Array<T> => {
-                                acc.push(value);
+                    (acc: Array<[ string, T ]>): Either<Error, Array<[ string, T ]>> => {
+                        return this.decoder.decode(input[ key ]).bimap(
+                            (error: Error): Error => Error.Field(key, error),
+                            (value: T): Array<[ string, T ]> => {
+                                acc.push([ key, value ]);
 
                                 return acc;
                             }
@@ -275,205 +361,158 @@ namespace Decode {
                     }
                 );
             }
-
-            return result;
         }
+
+        return result;
+    }
+}
+
+class Field<T> extends Streamable<T> {
+    constructor(
+        private readonly key: string,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
     }
 
-    export class KeyValue<T> extends Decoder<Array<[ string, T ]>> {
-        constructor(private readonly decoder: Decoder<T>) {
-            super();
-        }
-
-        public decode(input: Value): Either<Error, Array<[ string, T ]>> {
-            if (!isObject(input)) {
-                return expecting('an OBJECT', input);
-            }
-
-            let result: Either<Error, Array<[ string, T ]>> = Right([]);
-
-            for (const key in input) {
-                if (input.hasOwnProperty(key)) {
-                    result = result.chain(
-                        (acc: Array<[ string, T ]>): Either<Error, Array<[ string, T ]>> => {
-                            return this.decoder.decode(input[ key ]).bimap(
-                                (error: Error): Error => Error.Field(key, error),
-                                (value: T): Array<[ string, T ]> => {
-                                    acc.push([ key, value ]);
-
-                                    return acc;
-                                }
-                            );
-                        }
-                    );
-                }
-            }
-
-            return result;
-        }
-    }
-
-    export class Field<T> extends Decoder<T> {
-        constructor(
-            private readonly key: string,
-            private readonly decoder: Decoder<T>
-        ) {
-            super();
-        }
-
-        public decode(input: Value): Either<Error, T> {
-            if (isObject(input) && this.key in input) {
-                return this.decoder
-                    .decode(input[ this.key ])
-                    .mapLeft((error: Error): Error => Error.Field(this.key, error));
-            }
-
-            return expecting(`an OBJECT with a field named '${this.key}'`, input);
-        }
-    }
-
-    export class Index<T> extends Decoder<T> {
-        constructor(
-            private readonly index: number,
-            private readonly decoder: Decoder<T>
-        ) {
-            super();
-        }
-
-        public decode(input: Value): Either<Error, T> {
-            if (!isArray(input)) {
-                return expecting('an ARRAY', input);
-            }
-
-            if (this.index >= input.length) {
-                return expecting(
-                    `a LONGER array. Need index ${this.index} but only see ${input.length} entries`,
-                    input
-                );
-            }
-
+    public decode(input: Value): Either<Error, T> {
+        if (isObject(input) && this.key in input) {
             return this.decoder
-                .decode(input[ this.index ])
-                .mapLeft((error: Error): Error => Error.Index(this.index, error));
+                .decode(input[ this.key ])
+                .mapLeft((error: Error): Error => Error.Field(this.key, error));
         }
+
+        return expecting(`an OBJECT with a field named '${this.key}'`, input);
+    }
+}
+
+class Index<T> extends Streamable<T> {
+    constructor(
+        private readonly index: number,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
     }
 
-    export class OneOf<T> extends Decoder<T> {
-        constructor(private readonly decoders: Array<Decoder<T>>) {
-            super();
+    public decode(input: Value): Either<Error, T> {
+        if (!isArray(input)) {
+            return expecting('an ARRAY', input);
         }
 
-        public decode(input: Value): Either<Error, T> {
-            let result: Either<Array<Error>, T> = Left([]);
+        if (this.index >= input.length) {
+            return expecting(
+                `a LONGER array. Need index ${this.index} but only see ${input.length} entries`,
+                input
+            );
+        }
 
-            for (const decoder of this.decoders) {
-                result = result.orElse(
-                    (acc: Array<Error>): Either<Array<Error>, T> => {
-                        return decoder.decode(input).mapLeft((error: Error): Array<Error> => {
-                            acc.push(error);
+        return this.decoder
+            .decode(input[ this.index ])
+            .mapLeft((error: Error): Error => Error.Index(this.index, error));
+    }
+}
 
-                            return acc;
-                        });
+class OneOf<T> extends Streamable<T> {
+    constructor(private readonly decoders: Array<Decoder<T>>) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, T> {
+        let result: Either<Array<Error>, T> = Left([]);
+
+        for (const decoder of this.decoders) {
+            result = result.orElse(
+                (acc: Array<Error>): Either<Array<Error>, T> => {
+                    return decoder.decode(input).mapLeft((error: Error): Array<Error> => {
+                        acc.push(error);
+
+                        return acc;
+                    });
+                }
+            );
+        }
+
+        return result.mapLeft(Error.OneOf);
+    }
+}
+
+class Props<T> extends Streamable<T> {
+    constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
+        super();
+    }
+
+    public decode(input: Value): Either<Error, T> {
+        let acc: Either<Error, T> = Right({} as T);
+
+        for (const key in this.config) {
+            if (this.config.hasOwnProperty(key)) {
+                acc = acc.chain(
+                    (obj: T): Either<Error, T> => {
+                        return this.config[ key ].decode(input).map(
+                            (value: T[Extract<keyof T, string>]): T => {
+                                obj[ key ] = value;
+
+                                return obj;
+                            }
+                        );
                     }
                 );
             }
-
-            return result.mapLeft((errors: Array<Error>): Error => Error.OneOf(errors));
         }
+
+        return acc;
+    }
+}
+
+class Nill<T> extends Streamable<T> {
+    constructor(private readonly defaults: T) {
+        super();
     }
 
-    export class Props<T extends object> extends Decoder<T> {
-        constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
-            super();
-        }
+    public decode(input: Value): Either<Error, T> {
+        return input === null ? Right(this.defaults) : expecting('null', input);
+    }
+}
 
-        public decode(input: Value): Either<Error, T> {
-            let acc: Either<Error, T> = Right({} as T);
-
-            for (const key in this.config) {
-                if (this.config.hasOwnProperty(key)) {
-                    acc = acc.chain(
-                        (obj: T): Either<Error, T> => {
-                            return this.config[ key ].decode(input).map(
-                                (value: T[Extract<keyof T, string>]): T => {
-                                    obj[ key ] = value;
-
-                                    return obj;
-                                }
-                            );
-                        }
-                    );
-                }
-            }
-
-            return acc;
-        }
+class Fail extends Streamable<never> {
+    constructor(private readonly msg: string) {
+        super();
     }
 
-    export class Nill<T> extends Decoder<T> {
-        constructor(private readonly defaults: T) {
-            super();
-        }
+    public decode(input: Value): Either<Error, never> {
+        return Left(
+            Error.Failure(this.msg, input)
+        );
+    }
+}
 
-        public decode(input: Value): Either<Error, T> {
-            return input === null ? Right(this.defaults) : expecting('null', input);
-        }
+class Succeed<T> extends Streamable<T> {
+    constructor(private readonly value: T) {
+        super();
     }
 
-    export class Fail<T> extends Decoder<T> {
-        constructor(private readonly msg: string) {
-            super();
-        }
-
-        public decode(input: Value): Either<Error, T> {
-            return Left(
-                Error.Failure(this.msg, input)
-            );
-        }
-    }
-
-    export class Succeed<T> extends Decoder<T> {
-        constructor(private readonly value: T) {
-            super();
-        }
-
-        public decode(): Either<Error, T> {
-            return Right(this.value);
-        }
+    public decode(): Either<Error, T> {
+        return Right(this.value);
     }
 }
 
 export const fromEither = <T>(either: Either<string, T>): Decoder<T> => {
-    return either.cata({
-        Left(msg: string): Decoder<T> {
-            return fail(msg);
-        },
-        Right(value: T): Decoder<T> {
-            return succeed(value);
-        }
-    });
+    return either.fold(fail, succeed);
 };
 
 export const fromMaybe = <T>(msg: string, maybe: Maybe<T>): Decoder<T> => {
-    return maybe.cata({
-        Nothing(): Decoder<T> {
-            return fail(msg);
-        },
-        Just(value: T): Decoder<T> {
-            return succeed(value);
-        }
-    });
+    return maybe.fold((): Decoder<T> => fail(msg), succeed);
 };
 
-export const string: Decoder<string> = new Decode.Primitive('a STRING', isString);
-export const number: Decoder<number> = new Decode.Primitive('a NUMBER', isNumber);
-export const boolean: Decoder<boolean> = new Decode.Primitive('a BOOLEAN', isBoolean);
-export const value: Decoder<Value> = new Decode.Identity();
+export const string: Decoder<string> = new Primitive('a STRING', isString);
+export const number: Decoder<number> = new Primitive('a NUMBER', isNumber);
+export const boolean: Decoder<boolean> = new Primitive('a BOOLEAN', isBoolean);
+export const value: Decoder<Value> = new Identity();
 
-export const nill = <T>(defaults: T): Decoder<T> => new Decode.Nill(defaults);
-export const fail = <T>(msg: string): Decoder<T> => new Decode.Fail(msg);
-export const succeed = <T>(value: T): Decoder<T> => new Decode.Succeed(value);
-export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new Decode.OneOf(decoders);
+export const nill = <T>(defaults: T): Decoder<T> => new Nill(defaults);
+export const fail = (msg: string): Decoder<never> => new Fail(msg);
+export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
+export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders);
 
 export const nullable = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
     nill(Nothing),
@@ -485,8 +524,8 @@ export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
     succeed(Nothing)
 ]);
 
-export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new Decode.List(decoder);
-export const keyValue = <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new Decode.KeyValue(decoder);
+export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder);
+export const keyValue = <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new KeyValue(decoder);
 
 export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => {
     return keyValue(decoder).map((keyValue: Array<[ string, T ]>): {[ key: string ]: T} => {
@@ -500,8 +539,8 @@ export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => 
     });
 };
 
-export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Decode.Index(index, decoder);
-export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Decode.Field(key, decoder);
+export const index = <T>(index: number, decoder: Decoder<T>): Decoder<T> => new Index(index, decoder);
+export const field = <T>(key: string, decoder: Decoder<T>): Decoder<T> => new Field(key, decoder);
 
 export const at = <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
     let result = decoder;
@@ -513,8 +552,8 @@ export const at = <T>(keys: Array<string>, decoder: Decoder<T>): Decoder<T> => {
     return result;
 };
 
-export const props = <T extends object>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => {
-    return new Decode.Props(config);
+export const props = <T>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => {
+    return new Props(config);
 };
 
 export const lazy = <T>(callDecoder: () => Decoder<T>): Decoder<T> => succeed(null).chain(callDecoder);
