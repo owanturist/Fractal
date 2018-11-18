@@ -1,5 +1,10 @@
 import {
-    Cata
+    Cata,
+    isString,
+    isNumber,
+    isBoolean,
+    isArray,
+    isObject
 } from '../Basics';
 import {
     Maybe,
@@ -14,13 +19,6 @@ import {
 import * as Encode from './Encode';
 
 const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);
-const isString = (value: unknown): value is string => typeof value === 'string';
-const isNumber = (value: unknown): value is number => typeof value === 'number';
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-const isArray = (input: unknown): input is Array<unknown> => input instanceof Array;
-const isObject = (input: unknown): input is {[ key: string ]: Value } => {
-    return typeof input === 'object' && input !== null && !isArray(input);
-};
 
 const expecting = <T>(type: string, source: Value): Either<Error, T> => {
     return Left(
