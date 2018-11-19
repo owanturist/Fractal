@@ -63,7 +63,7 @@ const parseHeaders = (rawHeaders: string): {[ name: string ]: string } => {
 
 /* T A S K */
 
-abstract class PhantomTask<E, T> extends Task<E, T> {
+abstract class InternalTask<E, T> extends Task<E, T> {
     public static of<E, T>(executor: (fail: (error: E) => void, succeed: (value: T) => void) => void): Task<E, T> {
         return super.of(executor);
     }
@@ -383,12 +383,12 @@ export class Request<T> {
         let abortRequest = noop;
 
         return [
-            PhantomTask.of((_fail: (error: never) => void, succeed: (value: void) => void): void => {
+            InternalTask.of((_fail: (error: never) => void, succeed: (value: void) => void): void => {
                 abortRequest();
 
                 succeed(null);
             }),
-            PhantomTask.of((fail: (error: Error) => void, succeed: (value: T) => void): void => {
+            InternalTask.of((fail: (error: Error) => void, succeed: (value: T) => void): void => {
                 const xhr = new XMLHttpRequest();
 
                 xhr.addEventListener('error', () => {
