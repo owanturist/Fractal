@@ -276,28 +276,8 @@ export const jsonBody = (encoder: Encode.Encoder): Body => stringBody('applicati
 
 /* R E Q U E S T */
 
-const requestWithMethodAndUrl = (method: string, url: string): Request<string> => new Request({
-    method,
-    url,
-    headers: [],
-    body: emptyBody,
-    expect: expectString,
-    timeout: Nothing,
-    withCredentials: false,
-    queryParams: []
-});
-
-export const get     = (url: string): Request<string> => requestWithMethodAndUrl('GET', url);
-export const post    = (url: string): Request<string> => requestWithMethodAndUrl('GET', url);
-export const put     = (url: string): Request<string> => requestWithMethodAndUrl('PUT', url);
-export const patch   = (url: string): Request<string> => requestWithMethodAndUrl('PATCH', url);
-export const del     = (url: string): Request<string> => requestWithMethodAndUrl('DELETE', url);
-export const options = (url: string): Request<string> => requestWithMethodAndUrl('OPTIONS', url);
-export const trace   = (url: string): Request<string> => requestWithMethodAndUrl('TRACE', url);
-export const head    = (url: string): Request<string> => requestWithMethodAndUrl('HEAD', url);
-
 export class Request<T> {
-    constructor(private readonly config: Readonly<{
+    protected constructor(private readonly config: Readonly<{
         method: string;
         url: string;
         headers: Array<Header>;
@@ -305,7 +285,7 @@ export class Request<T> {
         expect: Expect<T>;
         timeout: Maybe<number>;
         withCredentials: boolean;
-        queryParams: Array<[string, string]>;
+        queryParams: Array<[ string, string ]>;
     }>) {}
 
     public withHeader(name: string, value: string): Request<T> {
@@ -502,3 +482,27 @@ export class Request<T> {
         return this.toTask().attempt(tagger);
     }
 }
+
+abstract class PhantomRequest<T> extends Request<T> {
+    public static of(method: string, url: string): Request<void> {
+        return new Request({
+            method,
+            url,
+            headers: [],
+            body: emptyBody,
+            expect: expectWhatever,
+            timeout: Nothing,
+            withCredentials: false,
+            queryParams: []
+        });
+    }
+}
+
+export const get     = (url: string): Request<void> => PhantomRequest.of('GET', url);
+export const post    = (url: string): Request<void> => PhantomRequest.of('GET', url);
+export const put     = (url: string): Request<void> => PhantomRequest.of('PUT', url);
+export const patch   = (url: string): Request<void> => PhantomRequest.of('PATCH', url);
+export const del     = (url: string): Request<void> => PhantomRequest.of('DELETE', url);
+export const options = (url: string): Request<void> => PhantomRequest.of('OPTIONS', url);
+export const trace   = (url: string): Request<void> => PhantomRequest.of('TRACE', url);
+export const head    = (url: string): Request<void> => PhantomRequest.of('HEAD', url);
