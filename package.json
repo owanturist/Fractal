@@ -19,5 +19,20 @@
     "ava": "^1.0.0-rc.2",
     "tslint": "^5.11.0",
     "typescript": "^3.1.6"
-  }
+  },
+  "files": [
+    "src/Json/Decode.ts",
+    "src/Json/Encode.ts",
+    "src/Platform/Cmd.ts",
+    "src/Platform/Sub.ts",
+    "src/Platform.ts",
+    "src/Basics.ts",
+    "src/Http.ts",
+    "src/Maybe.ts",
+    "src/Process.ts",
+    "src/RemoteData.ts",
+    "src/Router.ts",
+    "src/Task.ts",
+    "src/Time.ts"
+  ]
 }
