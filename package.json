@@ -4,7 +4,7 @@
   "description": "This is an adoptation of Elm by TypeScript",
   "repository": {
     "type": "git",
-    "url": "https://github.com/owanturist/Maybe.git"
+    "url": "https://github.com/owanturist/Fractal.git"
   },
   "author": "Anton Ovechkin <owanturist@gmail.com>",
   "license": "MIT",
