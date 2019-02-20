@@ -14,16 +14,19 @@ import {
     Task
 } from './Task';
 import {
+    Process
+} from './Process';
+import {
     Cmd
 } from './Platform/Cmd';
 import * as Decode from './Json/Decode';
 import * as Encode from './Json/Encode';
+import {
+    TaskInternal,
+    ProcessInternal
+} from './__Internal__';
 
 /* H E L P E R S */
-
-const noop = () => {
-    // do nothing
-};
 
 const queryEscape = (str: string): string => encodeURIComponent(str).replace(/%20/g, '+');
 
@@ -60,14 +63,6 @@ const parseHeaders = (rawHeaders: string): {[ name: string ]: string } => {
 
     return headers;
 };
-
-/* T A S K */
-
-abstract class InternalTask<E, T> extends Task<E, T> {
-    public static of<E, T>(executor: (fail: (error: E) => void, succeed: (value: T) => void) => void): Task<E, T> {
-        return super.of(executor);
-    }
-}
 
 /* E R R O R */
 
@@ -234,7 +229,7 @@ export const expectResponse = <T>(
 ): Expect<T> => PhantomExpect.of('text', responseToResult);
 
 export const expectWhatever: Expect<void> = expectResponse(
-    (): Either<Decode.Error, void> => Right(null)
+    (): Either<Decode.Error, void> => Right(undefined)
 );
 
 export const expectString: Expect<string> = expectResponse(
@@ -379,103 +374,104 @@ export class Request<T> {
         return this.withExpect(expectJson(decoder));
     }
 
-    public toCancelableTask(): [ Task<never, void>, Task<Error, T> ] {
-        let abortRequest = noop;
-
-        return [
-            InternalTask.of((_fail: (error: never) => void, succeed: (value: void) => void): void => {
-                abortRequest();
-
-                succeed(null);
-            }),
-            InternalTask.of((fail: (error: Error) => void, succeed: (value: T) => void): void => {
-                const xhr = new XMLHttpRequest();
-
-                xhr.addEventListener('error', () => {
-                    abortRequest = noop;
-                    fail(Error.NetworkError);
-                });
-
-                xhr.addEventListener('timeout', () => {
-                    abortRequest = noop;
-                    fail(Error.Timeout);
-                });
-
-                xhr.addEventListener('load', () => {
-                    abortRequest = noop;
-
-                    const stringResponse: Response<string> = {
-                        url: xhr.responseURL,
-                        statusCode: xhr.status,
-                        statusText: xhr.statusText,
-                        headers: parseHeaders(xhr.getAllResponseHeaders()),
-                        body: xhr.responseText
-                    };
-
-                    if (xhr.status < 200 || xhr.status >= 300) {
-                        return fail(Error.BadStatus(stringResponse));
-                    }
-
-                    PhantomExpect.toResult({
-                        ...stringResponse,
-                        body: xhr.response as string
-                    }, this.config.expect).cata({
-                        Left(decodeError: Decode.Error): void {
-                            fail(Error.BadBody(decodeError, stringResponse));
-                        },
-
-                        Right: succeed
-                    });
-                });
-
-                try {
-                    xhr.open(this.config.method, buildUrlWithQuery(this.config.url, this.config.queryParams), true);
-                } catch (e) {
-                    return fail(Error.BadUrl(this.config.url));
-                }
-
-                for (const requestHeader of this.config.headers) {
-                    xhr.setRequestHeader(
-                        PhantomHeader.getName(requestHeader),
-                        PhantomHeader.getValue(requestHeader)
-                    );
-                }
-
-                xhr.responseType = PhantomExpect.getType(this.config.expect);
-                xhr.withCredentials = this.config.withCredentials;
-
-                this.config.timeout.cata({
-                    Nothing(): void {
-                        // do nothing
-                    },
-
-                    Just(timeout: number): void {
-                        xhr.timeout = timeout;
-                    }
-                });
-
-                PhantomBody.getContent(this.config.body).cata({
-                    Nothing(): void {
-                        xhr.send();
-                    },
-
-                    Just({ type, value }: BodyContent): void {
-                        xhr.setRequestHeader('Content-Type', type);
-                        xhr.send(value);
-                    }
-                });
-
-                abortRequest = () => {
-                    xhr.abort();
-                };
-            })
-        ];
-    }
-
     public toTask(): Task<Error, T> {
-        const [ , task ] = this.toCancelableTask();
+        return TaskInternal.of((done: (task: Task<Error, T>) => void): Process => {
+            const xhr = new XMLHttpRequest();
 
-        return task;
+            xhr.addEventListener('error', () => {
+                done(
+                    Task.fail(Error.NetworkError)
+                );
+            });
+
+            xhr.addEventListener('timeout', () => {
+                done(
+                    Task.fail(Error.Timeout)
+                );
+            });
+
+            xhr.addEventListener('load', () => {
+                const stringResponse: Response<string> = {
+                    url: xhr.responseURL,
+                    statusCode: xhr.status,
+                    statusText: xhr.statusText,
+                    headers: parseHeaders(xhr.getAllResponseHeaders()),
+                    body: xhr.responseText
+                };
+
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    done(
+                        Task.fail(Error.BadStatus(stringResponse))
+                    );
+
+                    return;
+                }
+
+                PhantomExpect.toResult({
+                    ...stringResponse,
+                    body: xhr.response as string
+                }, this.config.expect).cata({
+                    Left(decodeError: Decode.Error): void {
+                        done(
+                            Task.fail(Error.BadBody(decodeError, stringResponse))
+                        );
+                    },
+
+                    Right(value: T): void {
+                        done(
+                            Task.succeed(value)
+                        );
+                    }
+                });
+            });
+
+            try {
+                xhr.open(this.config.method, buildUrlWithQuery(this.config.url, this.config.queryParams), true);
+            } catch (e) {
+                done(
+                    Task.fail(Error.BadUrl(this.config.url))
+                );
+
+                return ProcessInternal.none;
+            }
+
+            for (const requestHeader of this.config.headers) {
+                xhr.setRequestHeader(
+                    PhantomHeader.getName(requestHeader),
+                    PhantomHeader.getValue(requestHeader)
+                );
+            }
+
+            xhr.responseType = PhantomExpect.getType(this.config.expect);
+            xhr.withCredentials = this.config.withCredentials;
+
+            this.config.timeout.cata({
+                Nothing(): void {
+                    // do nothing
+                },
+
+                Just(timeout: number): void {
+                    xhr.timeout = timeout;
+                }
+            });
+
+            PhantomBody.getContent(this.config.body).cata({
+                Nothing(): void {
+                    xhr.send();
+                },
+
+                Just({ type, value }: BodyContent): void {
+                    xhr.setRequestHeader('Content-Type', type);
+                    xhr.send(value);
+                }
+            });
+
+            return ProcessInternal.of(() => {
+                if (xhr.readyState > 0 && xhr.readyState < 4) {
+                    xhr.abort();
+                }
+            });
+        });
     }
 
     public send<R>(tagger: (result: Either<Error, T>) => R): Cmd<R> {
