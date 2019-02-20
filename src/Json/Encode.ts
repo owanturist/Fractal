@@ -5,8 +5,7 @@ import {
 interface ValueArray extends Array<Value> {}
 
 export type Value
-    = undefined
-    | null
+    = null
     | string
     | boolean
     | number
