@@ -1,8 +1,7 @@
 {
-  "name": "maybe",
+  "name": "fractal",
   "version": "0.0.1",
-  "description": "Maybe monad",
-  "main": "index.js",
+  "description": "This is an adoptation of Elm by TypeScript",
   "repository": {
     "type": "git",
     "url": "https://github.com/owanturist/Maybe.git"
