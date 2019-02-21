@@ -8,21 +8,21 @@ const __1_ON_ERROR = 'ON_ERROR';
 const __1_RECEIVE = 'RECEIVE';
 
 
-function _Scheduler_succeed(value) {
+export function succeed(value) {
     return {
         $: __1_SUCCEED,
         __value: value
     };
 }
 
-function _Scheduler_fail(error) {
+export function fail(error) {
     return {
         $: __1_FAIL,
         __value: error
     };
 }
 
-function _Scheduler_binding(callback) {
+export function binding(callback) {
     return {
         $: __1_BINDING,
         __callback: callback,
@@ -30,7 +30,7 @@ function _Scheduler_binding(callback) {
     };
 }
 
-function _Scheduler_andThen(callback, task) {
+export function andThen(callback, task) {
     return {
         $: __1_AND_THEN,
         __callback: callback,
@@ -38,7 +38,7 @@ function _Scheduler_andThen(callback, task) {
     };
 }
 
-function _Scheduler_onError(callback, task) {
+export function onError(callback, task) {
     return {
         $: __1_ON_ERROR,
         __callback: callback,
@@ -46,7 +46,7 @@ function _Scheduler_onError(callback, task) {
     };
 }
 
-function _Scheduler_receive(callback) {
+export function receive(callback) {
     return {
         $: __1_RECEIVE,
         __callback: callback
@@ -60,7 +60,7 @@ const __2_PROCESS = 'PROCESS';
 
 let GUID = 0;
 
-function _Scheduler_rawSpawn(task) {
+export function rawSpawn(task) {
     const proc = {
         $: __2_PROCESS,
         __id: GUID++,
@@ -69,31 +69,31 @@ function _Scheduler_rawSpawn(task) {
         __mailbox: []
     };
 
-    _Scheduler_enqueue(proc);
+    enqueue(proc);
 
     return proc;
 }
 
-function _Scheduler_spawn(task) {
-    return _Scheduler_binding(callback => {
-        callback(_Scheduler_succeed(_Scheduler_rawSpawn(task)));
+export function spawn(task) {
+    return binding(callback => {
+        callback(succeed(rawSpawn(task)));
     });
 }
 
-function _Scheduler_rawSend(proc, msg) {
+export function rawSend(proc, msg) {
     proc.__mailbox.push(msg);
-    _Scheduler_enqueue(proc);
+    enqueue(proc);
 }
 
-function _Scheduler_send(proc, msg) {
-    return _Scheduler_binding(callback => {
-        _Scheduler_rawSend(proc, msg);
-        callback(_Scheduler_succeed(null));
+export function send(proc, msg) {
+    return binding(callback => {
+        rawSend(proc, msg);
+        callback(succeed(null));
     });
 }
 
-function _Scheduler_kill(proc) {
-    return _Scheduler_binding(callback => {
+export function kill(proc) {
+    return binding(callback => {
         const task = proc.__root;
 
         if (task.$ === __1_BINDING && task.__kill) {
@@ -102,7 +102,7 @@ function _Scheduler_kill(proc) {
 
         proc.__root = null;
 
-        callback(_Scheduler_succeed(null));
+        callback(succeed(null));
     });
 }
 
@@ -112,7 +112,7 @@ function _Scheduler_kill(proc) {
 let working = false;
 const queue = [];
 
-function _Scheduler_enqueue(proc) {
+function enqueue(proc) {
     queue.push(proc);
 
     if (working) {
@@ -124,7 +124,7 @@ function _Scheduler_enqueue(proc) {
     let next = queue.shift();
 
     while (next) {
-        _Scheduler_step(proc);
+        step(proc);
 
         next = queue.shift();
     }
@@ -133,7 +133,7 @@ function _Scheduler_enqueue(proc) {
 }
 
 
-function _Scheduler_step(proc) {
+function step(proc) {
     while (proc.__root) {
         const rootTag = proc.__root.$;
 
@@ -149,7 +149,7 @@ function _Scheduler_step(proc) {
         } else if (rootTag === __1_BINDING) {
             proc.__root.__kill = proc.__root.__callback(newRoot => {
                 proc.__root = newRoot;
-                _Scheduler_enqueue(proc);
+                enqueue(proc);
             });
 
             return;
