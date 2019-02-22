@@ -69,7 +69,7 @@ export function rawSpawn(task) {
         __mailbox: []
     };
 
-    enqueue(proc);
+    _enqueue(proc);
 
     return proc;
 }
@@ -82,7 +82,7 @@ export function spawn(task) {
 
 export function rawSend(proc, msg) {
     proc.__mailbox.push(msg);
-    enqueue(proc);
+    _enqueue(proc);
 }
 
 export function send(proc, msg) {
@@ -109,31 +109,31 @@ export function kill(proc) {
 
 // S T E P
 
-let working = false;
-const queue = [];
+let _working = false;
+const _queue = [];
 
-function enqueue(proc) {
-    queue.push(proc);
+function _enqueue(proc) {
+    _queue.push(proc);
 
-    if (working) {
+    if (_working) {
         return;
     }
 
-    working = true;
+    _working = true;
 
-    let next = queue.shift();
+    let next = _queue.shift();
 
     while (next) {
-        step(proc);
+        _step(next);
 
-        next = queue.shift();
+        next = _queue.shift();
     }
 
-    working = false;
+    _working = false;
 }
 
 
-function step(proc) {
+function _step(proc) {
     while (proc.__root) {
         const rootTag = proc.__root.$;
 
@@ -149,7 +149,7 @@ function step(proc) {
         } else if (rootTag === __1_BINDING) {
             proc.__root.__kill = proc.__root.__callback(newRoot => {
                 proc.__root = newRoot;
-                enqueue(proc);
+                _enqueue(proc);
             });
 
             return;
@@ -158,7 +158,7 @@ function step(proc) {
                 return;
             }
             proc.__root = proc.__root.__callback(proc.__mailbox.shift());
-        } else /* if (rootTag === __1_AND_THEN || rootTag === __1_ON_ERROR) */ {
+        } else {
             proc.__stack = {
                 $: rootTag === __1_AND_THEN ? __1_SUCCEED : __1_FAIL,
                 __callback: proc.__root.__callback,

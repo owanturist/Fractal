@@ -75,18 +75,14 @@ const spawnCmd = <Msg>(router, cmd: MyCmd<Msg>): Task<any, null> => {
 export const home = Platform.createManager(
     succeed(null),
     <Msg>(router, commands: Array<MyCmd<Msg>>): Task<never, null> => {
-        const foo = sequence(commands.map((cmd: MyCmd<Msg>): Task<any, null> => spawnCmd(router, cmd)));
-
         return map(
             () => null,
-            foo
+            sequence(commands.map((cmd: MyCmd<Msg>): Task<any, null> => spawnCmd(router, cmd)))
         );
     },
     () => succeed(null),
     <T, R>(tagger: (value: T) => R, cmd: MyCmd<T>): MyCmd<R> => map(tagger, cmd),
-    () => {
-        // do nothing
-    }
+    null
 );
 
 type MyCmd<Msg> = Task<never, Msg>;
