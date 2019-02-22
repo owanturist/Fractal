@@ -2,16 +2,13 @@ import * as Scheduler from './Scheduler';
 import * as Process from './Process';
 import * as Task from './Task';
 
-const noop = () => {
-    // do nothing
-};
 
 const __2_LEAF = 'LEAF';
 const __2_MAP = 'MAP';
 const __2_NODE = 'NODE';
 const __2_SELF = 'SELF';
 
-// P R O G R A M S
+// PROGRAMS
 
 
 export function worker(impl) {
@@ -38,10 +35,10 @@ function _initialize(init, update, subscriptions) {
 
         model = nextModel;
 
-        _Platform_dispatchEffects(managers, nextCmd, subscriptions(model));
+        _dispatchEffects(managers, nextCmd, subscriptions(model));
     }
 
-    _Platform_dispatchEffects(managers, initialCmd, subscriptions(model));
+    _dispatchEffects(managers, initialCmd, subscriptions(model));
 
     return ports ? { ports } : {};
 }
@@ -105,11 +102,9 @@ function _instantiateManager(info, sendToApp) {
                 return onSelfMsg(router, value, state);
             }
 
-            const o = cmdMap && subMap
+            return cmdMap && subMap
                 ? onEffects(router, value.__cmds, value.__subs, state)
                 : onEffects(router, cmdMap ? value.__cmds : value.__subs, state);
-
-            return o;
         }));
     }
 
@@ -156,7 +151,7 @@ export function batch(list) {
 }
 
 
-function map(tagger, bag) {
+export function map(tagger, bag) {
     return {
         $: __2_MAP,
         __func: tagger,
@@ -167,11 +162,11 @@ function map(tagger, bag) {
 // PIPE BAGS INTO EFFECT MANAGERS
 
 
-function _Platform_dispatchEffects(managers, cmdBag, subBag) {
+function _dispatchEffects(managers, cmdBag, subBag) {
     const effectsDict = {};
 
-    _Platform_gatherEffects(true, cmdBag, effectsDict, null);
-    _Platform_gatherEffects(false, subBag, effectsDict, null);
+    _gatherEffects(true, cmdBag, effectsDict, null);
+    _gatherEffects(false, subBag, effectsDict, null);
 
     // tslint:disable-next-line:forin
     for (const home in managers) {
@@ -183,22 +178,22 @@ function _Platform_dispatchEffects(managers, cmdBag, subBag) {
 }
 
 
-function _Platform_gatherEffects(isCmd, bag, effectsDict, taggers) {
+function _gatherEffects(isCmd, bag, effectsDict, taggers) {
     switch (bag.$) {
         case __2_LEAF:
             const home = bag.__home;
-            const effect = _Platform_toEffect(isCmd, home, taggers, bag.__value);
+            const effect = _toEffect(isCmd, home, taggers, bag.__value);
             effectsDict[home] = _Platform_insert(isCmd, effect, effectsDict[home]);
             return;
 
         case __2_NODE:
             for (const leaf of bag.__bags) {
-                _Platform_gatherEffects(isCmd, leaf, effectsDict, taggers);
+                _gatherEffects(isCmd, leaf, effectsDict, taggers);
             }
             return;
 
         case __2_MAP:
-            _Platform_gatherEffects(isCmd, bag.__bag, effectsDict, {
+            _gatherEffects(isCmd, bag.__bag, effectsDict, {
                 __tagger: bag.__func,
                 __rest: taggers
             });
@@ -207,7 +202,7 @@ function _Platform_gatherEffects(isCmd, bag, effectsDict, taggers) {
 }
 
 
-function _Platform_toEffect(isCmd, home, taggers, value) {
+function _toEffect(isCmd, home, taggers, value) {
     function applyTaggers(x) {
         let y = x;
 
@@ -228,15 +223,17 @@ function _Platform_toEffect(isCmd, home, taggers, value) {
 function _Platform_insert(isCmd, newEffect, effects) {
     const effects_ = effects || { __cmds: [], __subs: [] };
 
-    isCmd
-        ? (effects_.__cmds = [ ...effects_.__cmds, newEffect ])
-        : (effects_.__subs = [ ...effects_.__subs, newEffect ]);
+    if (isCmd) {
+        effects_.__cmds.push(newEffect);
+    } else {
+        effects_.__subs.push(newEffect);
+    }
 
     return effects_;
 }
 
 
-// OUTGOING PORTS
+// PORTS
 
 function _checkPortName(name) {
     if (effectManagers[name]) {
@@ -246,21 +243,24 @@ function _checkPortName(name) {
 }
 
 
+// OUTGOING PORTS
+
+
 export function outgoingPort(name) {
     _checkPortName(name);
 
     effectManagers[name] = {
-        __cmdMap: outgoingPortMap,
-        __portSetup: setupOutgoingPort
+        __cmdMap: _outgoingPortMap,
+        __portSetup: _setupOutgoingPort
     };
 
     return value => leaf(name, value);
 }
 
 
-const outgoingPortMap = (_tagger, value) => value;
+const _outgoingPortMap = (_tagger, value) => value;
 
-function setupOutgoingPort(name) {
+function _setupOutgoingPort(name) {
     let subs = [];
 
     // CREATE MANAGER
@@ -273,9 +273,8 @@ function setupOutgoingPort(name) {
             // grab a separate reference to subs in case unsubscribe is called
             const currentSubs = subs;
 
-            // tslint:disable-next-line:prefer-for-of
-            for (let i = 0; i < currentSubs.length; i++) {
-                currentSubs[i](cmd);
+            for (const sub of currentSubs) {
+                sub(cmd);
             }
         }
         return init;
@@ -308,16 +307,20 @@ function setupOutgoingPort(name) {
 
 export function incomingPort(name) {
     _checkPortName(name);
+
     effectManagers[name] = {
         __subMap: _incomingPortMap,
         __portSetup: _setupIncomingPort
     };
+
     return value => leaf(name, value);
 }
+
 
 function _incomingPortMap(tagger, finalTagger) {
     return value => tagger(finalTagger(value));
 }
+
 
 function _setupIncomingPort(name, sendToApp) {
     let subs = [];
@@ -329,6 +332,7 @@ function _setupIncomingPort(name, sendToApp) {
     effectManagers[name].__init = init;
     effectManagers[name].__onEffects = (router, subList, state) => {
         subs = subList;
+
         return init;
     };
 
