@@ -168,3 +168,68 @@ function step(proc) {
         }
     }
 }
+
+/*
+
+let SchedulerWorking = false;
+const SchedulerQueue = [];
+
+
+function _Scheduler_enqueue(proc) {
+    SchedulerQueue.push(proc);
+
+    if (SchedulerWorking) {
+        return;
+    }
+
+    SchedulerWorking = true;
+
+    let next = SchedulerQueue.shift();
+
+    while (next) {
+        _Scheduler_step(proc);
+
+        next = SchedulerQueue.shift();
+    }
+
+    SchedulerWorking = false;
+}
+
+
+function _Scheduler_step(proc) {
+    while (proc.__root) {
+        const rootTag = proc.__root.$;
+
+        if (rootTag === __1_SUCCEED || rootTag === __1_FAIL) {
+            while (proc.__stack && proc.__stack.$ !== rootTag) {
+                proc.__stack = proc.__stack.__rest;
+            }
+            if (!proc.__stack) {
+                return;
+            }
+            proc.__root = proc.__stack.__callback(proc.__root.__value);
+            proc.__stack = proc.__stack.__rest;
+        } else if (rootTag === __1_BINDING) {
+            proc.__root.__kill = proc.__root.__callback(newRoot => {
+                proc.__root = newRoot;
+                _Scheduler_enqueue(proc);
+            });
+
+            return;
+        } else if (rootTag === __1_RECEIVE) {
+            if (proc.__mailbox.length === 0) {
+                return;
+            }
+            proc.__root = proc.__root.__callback(proc.__mailbox.shift());
+        } else {
+            proc.__stack = {
+                $: rootTag === __1_AND_THEN ? __1_SUCCEED : __1_FAIL,
+                __callback: proc.__root.__callback,
+                __rest: proc.__stack
+            };
+            proc.__root = proc.__root.__task;
+        }
+    }
+}
+
+*/
