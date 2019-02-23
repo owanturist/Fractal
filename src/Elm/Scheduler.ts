@@ -134,7 +134,7 @@ const err = <E, T>(
 
 let GUID = 0;
 
-interface Process<E = unknown, T = unknown, M = unknown> {
+export interface Process<E = unknown, T = unknown, M = unknown> {
     __id: number;
     __root?: Task<E, T>;
     __stack?: Stack<E, T>;
@@ -147,7 +147,7 @@ const process = <E, T>(root: Task<E, T>): Process<E, T> => ({
     __mailbox: []
 });
 
-const rawSpawn = <E, T>(task: Task<E, T>): Process<E, T> => {
+export const rawSpawn = <E, T>(task: Task<E, T>): Process<E, T> => {
     const proc = process(task);
 
     _enqueue(proc);
@@ -155,19 +155,19 @@ const rawSpawn = <E, T>(task: Task<E, T>): Process<E, T> => {
     return proc;
 };
 
-const rawSend = <E, T, M>(proc: Process<E, T, M>, msg: M): void => {
-    proc.__mailbox.push(msg);
-    _enqueue(proc);
-};
-
-export const spawn = <E, T>(task: Task<E, T>): Task<E, Process<E, T>> => binding(
-    (callback: (task: Task<E, Process<E, T>>) => void): void => {
+export const spawn = <E, T>(task: Task<E, T>): Task<never, Process<E, T>> => binding(
+    (callback: (task: Task<never, Process<E, T>>) => void): void => {
         callback(succeed(rawSpawn(task)));
     }
 );
 
-export const send = <E, T, M>(proc: Process<E, T, M>, msg: M): Task<E, void> => binding(
-    (callback: (task: Task<E, void>) => void): void => {
+export const rawSend = <E, T, M>(proc: Process<E, T, M>, msg: M): void => {
+    proc.__mailbox.push(msg);
+    _enqueue(proc);
+};
+
+export const send = <E, T, M>(proc: Process<E, T, M>, msg: M): Task<never, void> => binding(
+    (callback: (task: Task<never, void>) => void): void => {
         rawSend(proc, msg);
         callback(succeed(undefined));
     }
@@ -271,12 +271,14 @@ function _step<E, T, M>(proc: Process<E, T, M>): void {
 
             case '_TASK__AND_THEN_': {
                 proc.__stack = ok(proc.__root.__callback, proc.__stack);
+                proc.__root = proc.__root.__task;
 
                 break;
             }
 
             case '_TASK__ON_ERROR_': {
                 proc.__stack = err(proc.__root.__callback, proc.__stack);
+                proc.__root = proc.__root.__task;
             }
         }
     }
