@@ -39,7 +39,7 @@ interface Binding<E, T> {
     __callback(bind: (task: Task<E, T>) => void): void | (() => void);
 }
 
-export const binding = <E, T>(callback: (bind: (task: Task<E, T>) => void) => void | (() => void)): Task<E, T> => ({
+export const binding = <E, T>(callback: (done: (task: Task<E, T>) => void) => void | (() => void)): Task<E, T> => ({
     $: '_TASK__BINDING',
     __kill: undefined,
     __callback: callback
@@ -141,17 +141,14 @@ const err = <E, T>(
  * P R O C E S S
  */
 
-let GUID = 0;
 
 export interface Process<E = unknown, T = unknown, M = unknown> {
-    __id: number;
     __root?: Task<E, T>;
     __stack: Stack<E, T>;
     __mailbox: Array<M>;
 }
 
 const process = <E, T>(root: Task<E, T>): Process<E, T> => ({
-    __id: GUID++,
     __root: root,
     __stack: head,
     __mailbox: []
@@ -166,8 +163,8 @@ export const rawSpawn = <E, T>(task: Task<E, T>): Process<E, T> => {
 };
 
 export const spawn = <E, T>(task: Task<E, T>): Task<never, Process<E, T>> => binding(
-    (callback: (task: Task<never, Process<E, T>>) => void): void => {
-        callback(succeed(rawSpawn(task)));
+    (done: (task: Task<never, Process<E, T>>) => void): void => {
+        done(succeed(rawSpawn(task)));
     }
 );
 
@@ -177,14 +174,14 @@ export const rawSend = <E, T, M>(proc: Process<E, T, M>, msg: M): void => {
 };
 
 export const send = <E, T, M>(proc: Process<E, T, M>, msg: M): Task<never, void> => binding(
-    (callback: (task: Task<never, void>) => void): void => {
+    (done: (task: Task<never, void>) => void): void => {
         rawSend(proc, msg);
-        callback(succeed(undefined));
+        done(succeed(undefined));
     }
 );
 
 export const kill = <E, T>(proc: Process<E, T>): Task<never, void> => binding(
-    (callback: (task: Task<never, void>) => void): void => {
+    (done: (task: Task<never, void>) => void): void => {
         const task = proc.__root;
 
         if (task && task.$ === '_TASK__BINDING' && task.__kill) {
@@ -193,7 +190,7 @@ export const kill = <E, T>(proc: Process<E, T>): Task<never, void> => binding(
 
         proc.__root = undefined;
 
-        callback(succeed(undefined));
+        done(succeed(undefined));
     }
 );
 
