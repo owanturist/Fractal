@@ -4,11 +4,13 @@
     /* Basic Options */
     "target": "es3",
     "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": false,
-    "removeComments": false,
+    "removeComments": true,
     "importHelpers": true,
     "downlevelIteration": true,
     "outDir": "dist",
+    "baseUrl": "./src/",
 
     /* Strict Type-Checking Options */
     "strict": true, // noImplicitAny noImplicitThis alwaysStrict strictNullChecks strictFunctionTypes strictPropertyInitialization

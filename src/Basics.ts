@@ -14,6 +14,7 @@ export type Cata<T>
     : T
     ;
 
+/*
 type Args<F>
     = F extends (...args: infer A) => unknown
     ? A
@@ -53,3 +54,4 @@ type Curried<F extends (...args: Array<unknown>) => unknown> =
 
 export declare const curry: <F extends (...args: Array<unknown>) => unknown>(func: F) =>
     Args<F> extends [] | [ unknown ] ? F : Curried<F>;
+*/

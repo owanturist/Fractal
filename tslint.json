@@ -29,6 +29,7 @@
     "no-this-assignment": true,
     "no-unsafe-any": true,
     "prefer-object-spread": true,
+    "restrict-plus-operands": true,
     "switch-default": false,
     "triple-equals": [ true, "allow-null-check" ],
 
