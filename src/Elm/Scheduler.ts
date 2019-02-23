@@ -224,6 +224,20 @@ function _enqueue<E, T, M>(proc: Process<E, T, M>): void {
 function _step<E, T, M>(proc: Process<E, T, M>): void {
     while (proc.__root) {
         switch (proc.__root.$) {
+            case '_TASK__AND_THEN_': {
+                proc.__stack = ok(proc.__root.__callback, proc.__stack);
+                proc.__root = proc.__root.__task;
+
+                break;
+            }
+
+            case '_TASK__ON_ERROR_': {
+                proc.__stack = err(proc.__root.__callback, proc.__stack);
+                proc.__root = proc.__root.__task;
+
+                break;
+            }
+
             case '_TASK__SUCCEED_': {
                 while (proc.__stack.$ === '_STACK_ERR_') {
                     proc.__stack = proc.__stack.__next;
@@ -254,16 +268,6 @@ function _step<E, T, M>(proc: Process<E, T, M>): void {
                 break;
             }
 
-            case '_TASK__BINDING': {
-                proc.__root.__kill = proc.__root.__callback((newRoot: Task<E, T>): void => {
-                    proc.__root = newRoot;
-
-                    _enqueue(proc);
-                });
-
-                return;
-            }
-
             case '_TASK__RECEIVE_': {
                 const msg = proc.__mailbox.shift();
 
@@ -276,16 +280,14 @@ function _step<E, T, M>(proc: Process<E, T, M>): void {
                 break;
             }
 
-            case '_TASK__AND_THEN_': {
-                proc.__stack = ok(proc.__root.__callback, proc.__stack);
-                proc.__root = proc.__root.__task;
+            case '_TASK__BINDING': {
+                proc.__root.__kill = proc.__root.__callback((newRoot: Task<E, T>): void => {
+                    proc.__root = newRoot;
 
-                break;
-            }
+                    _enqueue(proc);
+                });
 
-            case '_TASK__ON_ERROR_': {
-                proc.__stack = err(proc.__root.__callback, proc.__stack);
-                proc.__root = proc.__root.__task;
+                return;
             }
         }
     }
