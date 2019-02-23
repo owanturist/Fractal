@@ -93,38 +93,47 @@ export const receive = <E, T>(callback: <M>(msg: M) => Task<E, T>): Task<E, T> =
  */
 
 type Stack<E, T>
-    = Ok<E, T>
+    = Head
+    | Ok<E, T>
     | Err<E, T>
     ;
 
+interface Head {
+    $: '_STACK_HEAD_';
+}
+
+const head: Stack<never, never> = {
+    $: '_STACK_HEAD_'
+};
+
 interface Ok<E, T> {
     $: '_STACK_OK_';
-    __rest?: Stack<E, T>;
+    __next: Stack<E, T>;
     __callback<R>(value: T): Task<E, R>;
 }
 
 const ok = <E, T>(
     callback: <R>(value: T) => Task<E, R>,
-    rest?: Stack<E, T>
+    next: Stack<E, T>
 ): Stack<E, T> => ({
     $: '_STACK_OK_',
-    __rest: rest,
+    __next: next,
     __callback: callback
 });
 
 
 interface Err<E, T> {
     $: '_STACK_ERR_';
-    __rest?: Stack<E, T>;
+    __next: Stack<E, T>;
     __callback<S>(error: E): Task<S, T>;
 }
 
 const err = <E, T>(
     callback: <S>(error: E) => Task<S, T>,
-    rest?: Stack<E, T>
+    next: Stack<E, T>
 ): Stack<E, T> => ({
     $: '_STACK_ERR_',
-    __rest: rest,
+    __next: next,
     __callback: callback
 });
 
@@ -137,13 +146,14 @@ let GUID = 0;
 export interface Process<E = unknown, T = unknown, M = unknown> {
     __id: number;
     __root?: Task<E, T>;
-    __stack?: Stack<E, T>;
+    __stack: Stack<E, T>;
     __mailbox: Array<M>;
 }
 
 const process = <E, T>(root: Task<E, T>): Process<E, T> => ({
     __id: GUID++,
     __root: root,
+    __stack: head,
     __mailbox: []
 });
 
@@ -218,31 +228,31 @@ function _step<E, T, M>(proc: Process<E, T, M>): void {
     while (proc.__root) {
         switch (proc.__root.$) {
             case '_TASK__SUCCEED_': {
-                while (proc.__stack && proc.__stack.$ !== '_STACK_OK_') {
-                    proc.__stack = proc.__stack.__rest;
+                while (proc.__stack.$ === '_STACK_ERR_') {
+                    proc.__stack = proc.__stack.__next;
                 }
 
-                if (!proc.__stack) {
+                if (proc.__stack.$ === '_STACK_HEAD_') {
                     return;
                 }
 
                 proc.__root = proc.__stack.__callback(proc.__root.__value);
-                proc.__stack = proc.__stack.__rest;
+                proc.__stack = proc.__stack.__next;
 
                 break;
             }
 
             case '_TASK__FAIL_': {
-                while (proc.__stack && proc.__stack.$ !== '_STACK_ERR_') {
-                    proc.__stack = proc.__stack.__rest;
+                while (proc.__stack.$ === '_STACK_OK_') {
+                    proc.__stack = proc.__stack.__next;
                 }
 
-                if (!proc.__stack) {
+                if (proc.__stack.$ === '_STACK_HEAD_') {
                     return;
                 }
 
                 proc.__root = proc.__stack.__callback(proc.__root.__error);
-                proc.__stack = proc.__stack.__rest;
+                proc.__stack = proc.__stack.__next;
 
                 break;
             }
