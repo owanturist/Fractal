@@ -8,7 +8,6 @@ import {
     Right
 } from '../Either';
 import * as Scheduler from './Scheduler';
-import * as Process from './Process';
 
 export class Task<E, T> {
     public static succeed<T>(value: T): Task<never, T> {
@@ -44,16 +43,16 @@ export class Task<E, T> {
     public static binding<E, T>(callback: (done: (task: Task<E, T>) => void) => void | (() => void)): Task<E, T> {
         return new Task(Scheduler.binding(
             (done: (task: Scheduler.Task<E, T>) => void): void | (() => void) => callback(
-                (task: Task<E, T>): void => done(task.task)
+                (task: Task<E, T>): void => done(task.internal)
             )
         ));
     }
 
     protected static execute<E, T>(task: Task<E, T>): Scheduler.Task<E, T> {
-        return task.task;
+        return task.internal;
     }
 
-    protected constructor(protected task: Scheduler.Task<E, T>) {}
+    protected constructor(protected internal: Scheduler.Task<E, T>) {}
 
     public map<R>(fn: (value: T) => R): Task<E, R> {
         return this.chain((value: T): Task<E, R> => Task.succeed(fn(value)));
@@ -62,8 +61,8 @@ export class Task<E, T> {
     public chain<G, R>(fn: (value: T) => Task<WhenNever<E, G>, R>): Task<WhenNever<E, G>, R> {
         return new Task(
             Scheduler.chain(
-                (value: T): Scheduler.Task<WhenNever<E, G>, R> => fn(value).task,
-                this.task as Scheduler.Task<WhenNever<E, G>, T>
+                (value: T): Scheduler.Task<WhenNever<E, G>, R> => fn(value).internal,
+                this.internal as Scheduler.Task<WhenNever<E, G>, T>
             )
         );
     }
@@ -75,8 +74,8 @@ export class Task<E, T> {
     public onError<S>(fn: (error: E) => Task<S, T>): Task<S, T> {
         return new Task(
             Scheduler.onError(
-                (error: E): Scheduler.Task<S, T> => fn(error).task,
-                this.task
+                (error: E): Scheduler.Task<S, T> => fn(error).internal,
+                this.internal
             )
         );
     }
@@ -84,7 +83,7 @@ export class Task<E, T> {
     public perform<Msg>(tagger: IsNever<E, (value: T) => Msg, never>): Bag<Msg> {
         const rawTask: Scheduler.Task<never, Msg> = Scheduler.chain(
             (value: T): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(value)),
-            this.task as Scheduler.Task<never, T>
+            this.internal as Scheduler.Task<never, T>
         );
 
         return leaf('TASK', rawTask);
@@ -95,16 +94,21 @@ export class Task<E, T> {
             (error: E): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(Left(error))),
             Scheduler.chain(
                 (value: T): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(Right(value))),
-                this.task
+                this.internal
             )
         );
 
         return leaf('TASK', rawTask);
     }
 
-    public spawn(): Task<never, Process.Process> {
+    public spawn(): Task<never, Process> {
         return new Task(
-            Scheduler.spawn(this.task)
+            Scheduler.chain(
+                (process: Scheduler.Process): Scheduler.Task<never, Process> => {
+                    return Scheduler.succeed(new InternalProcess(process));
+                },
+                Scheduler.spawn(this.internal)
+            )
         );
     }
 }
@@ -116,6 +120,40 @@ class InternalTask<E, T> extends Task<E, T> {
 
     public constructor(task: Scheduler.Task<E, T>) {
         super(task);
+    }
+}
+
+export class Process {
+    public static sleep(time: number): Task<never, void> {
+        return Task.binding(callback => {
+            const id = setTimeout(() => {
+                callback(Task.succeed(undefined));
+            }, time);
+
+            return () => { clearTimeout(id); };
+        });
+    }
+
+    protected static execute(process: Process): Scheduler.Process {
+        return process.internal;
+    }
+
+    protected constructor(protected readonly internal: Scheduler.Process) {}
+
+    public kill(): Task<never, void> {
+        return new InternalTask(
+            Scheduler.kill(this.internal)
+        );
+    }
+}
+
+class InternalProcess extends Process {
+    public static execute(process: Process): Scheduler.Process {
+        return super.execute(process);
+    }
+
+    public constructor(process: Scheduler.Process) {
+        super(process);
     }
 }
 
@@ -163,7 +201,7 @@ export const worker = <Model, Msg>(config: {
 
 type Command<Msg> = Task<never, Msg>;
 
-const spawnCmd = <Msg>(router: Router<Msg, never>, command: Command<Msg>): Task<never, Process.Process> => {
+const spawnCmd = <Msg>(router: Router<Msg, never>, command: Command<Msg>): Task<never, Process> => {
     return command
         .chain((msg: Msg) => sendToApp(router, msg))
         .spawn();
@@ -173,7 +211,7 @@ export const home = createManager({
     init: Task.succeed(null),
     onEffects<Msg>(router: Router<Msg, never>, commands: Array<Command<Msg>>): Task<never, null> {
         return Task.sequence(
-            commands.map((command: Command<Msg>): Task<never, Process.Process> => spawnCmd(router, command))
+            commands.map((command: Command<Msg>): Task<never, Process> => spawnCmd(router, command))
         ).map(() => null);
     },
     onSelfMsg(): Task<never, null> {
