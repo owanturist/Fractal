@@ -71,11 +71,11 @@ export class Task<E, T> {
         return this.onError((error: E): Task<S, T> => Task.fail(fn(error)));
     }
 
-    public onError<S>(fn: (error: E) => Task<S, T>): Task<S, T> {
+    public onError<G, S>(fn: (error: E) => Task<S, WhenNever<T, G>>): Task<S, WhenNever<T, G>> {
         return new Task(
             Scheduler.onError(
-                (error: E): Scheduler.Task<S, T> => fn(error).internal,
-                this.internal
+                (error: E): Scheduler.Task<S, WhenNever<T, G>> => fn(error).internal,
+                this.internal as Scheduler.Task<E, WhenNever<T, G>>
             )
         );
     }
@@ -157,15 +157,13 @@ class InternalProcess extends Process {
     }
 }
 
-const __2_SELF = 'SELF';
-
 // PROGRAMS
 
 interface Program<Model, Msg> {
 }
 
-type Cmd<Msg> = Array<Msg>;
-type Sub<Msg> = Array<Msg>;
+type Cmd<Msg> = Msg;
+type Sub<Msg> = Msg;
 
 
 // INITIALIZE A PROGRAM
@@ -207,7 +205,7 @@ const spawnCmd = <Msg>(router: Router<Msg, never>, command: Command<Msg>): Task<
         .spawn();
 };
 
-export const home = createManager({
+export const home = createManager<unknown, never, null, Command<unknown>, never>({
     init: Task.succeed(null),
     onEffects<Msg>(router: Router<Msg, never>, commands: Array<Command<Msg>>): Task<never, null> {
         return Task.sequence(
@@ -225,13 +223,17 @@ export const home = createManager({
     }
 });
 
-
-const effectManagers = {
+const effectManagers: {
+    [ key: string ]: Manager<unknown, unknown, unknown, unknown, unknown>;
+} = {
     TASK: home
 };
 
+interface Managers {
+    [ key: string ]: Scheduler.Process;
+}
 
-function _setupEffects(managers, sendToApp) {
+function _setupEffects<Msg>(managers: Managers, sendToApp: (msg: Msg) => void) {
     let ports;
 
     // setup all necessary effect managers
@@ -250,51 +252,74 @@ function _setupEffects(managers, sendToApp) {
     return ports;
 }
 
+interface Effects<AppMsg> {
+    commands: Array<Cmd<AppMsg>>;
+    subscriptions: Array<Sub<AppMsg>>;
+}
+
+type InternalMsg<AppMsg, SelfMsg>
+    = { $: '_INTERNAL_MSG__APP_MSG_'; effects: Effects<AppMsg> }
+    | { $: '_INTERNAL_MSG__SELF_MSG_'; msg: SelfMsg }
+    ;
+
+const appMsg = <AppMsg, SelfMsg>(effects: Effects<AppMsg>): InternalMsg<AppMsg, SelfMsg> => ({
+    $: '_INTERNAL_MSG__APP_MSG_',
+    effects
+});
+
+const selfMsg = <AppMsg, SelfMsg>(msg: SelfMsg): InternalMsg<AppMsg, SelfMsg> => ({
+    $: '_INTERNAL_MSG__SELF_MSG_',
+    msg
+});
+
 export interface Router<AppMsg, SelfMsg> {
     __selfProcess: Scheduler.Process;
     __sendToApp(msg: AppMsg): void;
 }
 
-interface Manager<AppMsg, SelfMsg = unknown, State = unknown> {
+interface Manager<AppMsg, SelfMsg, State, Command, Subscription> {
     init: Task<never, State>;
     onEffects(
         router: Router<AppMsg, SelfMsg>,
-        commands: Array<AppMsg>,
-        subscriptions: Array<AppMsg>,
+        commands: Array<Command>,
+        subscriptions: Array<Subscription>,
         state: State
     ): Task<never, State>;
     onSelfMsg(router: Router<AppMsg, SelfMsg>, msg: SelfMsg, state: State): Task<never, State>;
-    cmdMap<R>(tagger: (msg: AppMsg) => R, cmd: SelfMsg): SelfMsg;
-    subMap<R>(tagger: (msg: AppMsg) => R, sub: SelfMsg): SelfMsg;
+    cmdMap<R>(tagger: (command: Command) => R, command: Command): R;
+    subMap<R>(tagger: (subscription: Subscription) => R, subscription: Subscription): R;
 }
 
-export function createManager<AppMsg, SelfMsg, State>(config: Manager<AppMsg, SelfMsg, State>) {
+export function createManager<AppMsg, SelfMsg, State, Command, Subscription>(
+    config: Manager<AppMsg, SelfMsg, State, Command, Subscription>
+) {
     return config;
 }
 
-function _instantiateManager<AppMsg, SelfMsg, State>(
-    manager: Manager<AppMsg, SelfMsg, State>,
+function _instantiateManager<AppMsg, SelfMsg, State, Command, Subscription>(
+    manager: Manager<AppMsg, SelfMsg, State, Command, Subscription>,
     sendToApp: (msg: AppMsg) => void
 ): Scheduler.Process {
-
     const router: Router<AppMsg, SelfMsg> = {
         __sendToApp: sendToApp,
         __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, InternalTask.execute(manager.init)))
     };
 
     function loop(state: State): Scheduler.Task<never, State> {
-        return Scheduler.chain(loop, Scheduler.receive(msg => {
-            const value = msg.a;
+        return Scheduler.chain(loop, Scheduler.receive((msg: InternalMsg<AppMsg, SelfMsg>) => {
+            switch (msg.$) {
+                case '_INTERNAL_MSG__APP_MSG_': {
+                    return InternalTask.execute(
+                        manager.onEffects(router, msg.effects.commands, msg.effects.subscriptions, state)
+                    );
+                }
 
-            if (msg.$ === __2_SELF) {
-                return InternalTask.execute(
-                    manager.onSelfMsg(router, value, state)
-                );
+                case '_INTERNAL_MSG__SELF_MSG_': {
+                    return InternalTask.execute(
+                        manager.onSelfMsg(router, msg.msg, state)
+                    );
+                }
             }
-
-            return InternalTask.execute(
-                manager.onEffects(router, value.__cmds, value.__subs, state)
-            );
         }));
     }
 
@@ -320,11 +345,8 @@ export const sendToApp = <AppMsg, SelfMsg>(
 export const sendToSelf = <AppMsg, SelfMsg>(
     router: Router<AppMsg, SelfMsg>,
     msg: SelfMsg
-) => new InternalTask(
-    Scheduler.send(router.__selfProcess, {
-        $: __2_SELF,
-        a: msg
-    })
+): Task<never, void> => new InternalTask(
+    Scheduler.send(router.__selfProcess, selfMsg(msg))
 );
 
 
@@ -375,17 +397,19 @@ export const map = <T, R>(tagger: (msg: T) => R, bag: Bag<T>): Bag<R> => ({
 
 
 function _dispatchEffects(managers, cmdBag, subBag) {
-    const effectsDict = {};
+    const effectsDict: {
+        [ key: string ]: Effects<unknown>;
+    } = {};
 
     _gatherEffects(true, cmdBag, effectsDict, null);
     _gatherEffects(false, subBag, effectsDict, null);
 
     // tslint:disable-next-line:forin
     for (const home in managers) {
-        Scheduler.rawSend(managers[home], {
-            $: 'fx',
-            a: effectsDict[home] || { __cmds: [], __subs: [] }
-        });
+        Scheduler.rawSend(managers[home], appMsg(effectsDict[ home ] || {
+            commands: [],
+            subscriptions: []
+        }));
     }
 }
 
@@ -395,7 +419,11 @@ function _gatherEffects<T>(isCmd: boolean, bag: Bag<T>, effectsDict, taggers) {
         case '_BAG__LEAF_':
             const home = bag.__home;
             const effect = _toEffect(isCmd, home, taggers, bag.__value);
-            effectsDict[home] = _Platform_insert(isCmd, effect, effectsDict[home]);
+
+            effectsDict[home] = _Platform_insert(isCmd, effect, effectsDict[home] || {
+                commands: [],
+                subscriptions: []
+            });
             return;
 
         case '_BAG__BATCH_':
@@ -433,15 +461,13 @@ function _toEffect(isCmd, home, taggers, value) {
 
 
 function _Platform_insert(isCmd, newEffect, effects) {
-    const effects_ = effects || { __cmds: [], __subs: [] };
-
     if (isCmd) {
-        effects_.__cmds.push(newEffect);
+        effects.commands.push(newEffect);
     } else {
-        effects_.__subs.push(newEffect);
+        effects.subscriptions.push(newEffect);
     }
 
-    return effects_;
+    return effects;
 }
 
 
