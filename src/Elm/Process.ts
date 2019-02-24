@@ -1,17 +1,18 @@
 import * as Scheduler from './Scheduler';
+import {
+    Task
+} from './Task';
 
-export type ID = Scheduler.Process;
+export type Process = Scheduler.Process;
 
-export function sleep(time: number): Scheduler.Task<never, void> {
-    return Scheduler.binding(callback => {
+export function sleep(time: number): Task<never, void> {
+    return Task.binding(callback => {
         const id = setTimeout(() => {
-            callback(Scheduler.succeed(undefined));
+            callback(Task.succeed(undefined));
         }, time);
 
         return () => { clearTimeout(id); };
     });
 }
 
-export const spawn: <E, T>(task: Scheduler.Task<E, T>) => Scheduler.Task<E, ID> = Scheduler.spawn;
-
-export const kill: (process: ID) => Scheduler.Task<never, void> = Scheduler.kill;
+export const kill: (process: Process) => Scheduler.Task<never, void> = Scheduler.kill;

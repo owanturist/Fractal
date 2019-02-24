@@ -6,8 +6,8 @@ export type Task<E, T>
     = Succeed<T>
     | Fail<E>
     | Binding<E, T>
-    | AndThen<E, T>
-    | OnError<E, T>
+    | Chain<E, any, T>
+    | OnError<any, T, E>
     | Receive<E, T>
     ;
 
@@ -46,32 +46,32 @@ export const binding = <E, T>(callback: (done: (task: Task<E, T>) => void) => vo
 });
 
 
-interface AndThen<E, T> {
-    $: '_TASK__AND_THEN_';
+interface Chain<E, T, R> {
+    $: '_TASK__CHAIN_';
     __task: Task<E, T>;
-    __callback<R>(value: T): Task<E, R>;
+    __callback(value: T): Task<E, R>;
 }
 
-export const andThen = <E, T>(
-    callback: <R>(value: T) => Task<E, R>,
+export const chain = <E, T, R>(
+    callback: (value: T) => Task<E, R>,
     task: Task<E, T>
-): Task<E, T> => ({
-    $: '_TASK__AND_THEN_',
+): Task<E, R> => ({
+    $: '_TASK__CHAIN_',
     __task: task,
     __callback: callback
 });
 
 
-interface OnError<E, T> {
+interface OnError<E, T, S> {
     $: '_TASK__ON_ERROR_';
     __task: Task<E, T>;
-    __callback<S>(error: E): Task<S, T>;
+    __callback(error: E): Task<S, T>;
 }
 
-export const onError = <E, T>(
-    callback: <S>(error: E) => Task<S, T>,
+export const onError = <E, T, S>(
+    callback: (error: E) => Task<S, T>,
     task: Task<E, T>
-): Task<E, T> => ({
+): Task<S, T> => ({
     $: '_TASK__ON_ERROR_',
     __task: task,
     __callback: callback
@@ -93,12 +93,12 @@ export const receive = <E, T>(callback: <M>(msg: M) => Task<E, T>): Task<E, T> =
  */
 
 type Stack<E, T>
-    = Head
-    | Ok<E, T>
-    | Err<E, T>
+    = Nil
+    | Ok<E, any, T>
+    | Err<any, T, E>
     ;
 
-interface Head {
+interface Nil {
     $: '_STACK_HEAD_';
 }
 
@@ -106,32 +106,32 @@ const head: Stack<never, never> = {
     $: '_STACK_HEAD_'
 };
 
-interface Ok<E, T> {
+interface Ok<E, T, R> {
     $: '_STACK_OK_';
     __next: Stack<E, T>;
-    __callback<R>(value: T): Task<E, R>;
+    __callback(value: T): Task<E, R>;
 }
 
-const ok = <E, T>(
-    callback: <R>(value: T) => Task<E, R>,
+const ok = <E, T, R>(
+    callback: (value: T) => Task<E, R>,
     next: Stack<E, T>
-): Stack<E, T> => ({
+): Stack<E, R> => ({
     $: '_STACK_OK_',
     __next: next,
     __callback: callback
 });
 
 
-interface Err<E, T> {
+interface Err<E, T, S> {
     $: '_STACK_ERR_';
     __next: Stack<E, T>;
-    __callback<S>(error: E): Task<S, T>;
+    __callback(error: E): Task<S, T>;
 }
 
-const err = <E, T>(
-    callback: <S>(error: E) => Task<S, T>,
+const err = <E, T, S>(
+    callback: (error: E) => Task<S, T>,
     next: Stack<E, T>
-): Stack<E, T> => ({
+): Stack<S, T> => ({
     $: '_STACK_ERR_',
     __next: next,
     __callback: callback
@@ -224,7 +224,7 @@ function _enqueue<E, T, M>(proc: Process<E, T, M>): void {
 function _step<E, T, M>(proc: Process<E, T, M>): void {
     while (proc.__root) {
         switch (proc.__root.$) {
-            case '_TASK__AND_THEN_': {
+            case '_TASK__CHAIN_': {
                 proc.__stack = ok(proc.__root.__callback, proc.__stack);
                 proc.__root = proc.__root.__task;
 

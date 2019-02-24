@@ -1,54 +1,195 @@
+import {
+    IsNever,
+    WhenNever
+} from '../Basics';
+import {
+    Either,
+    Left,
+    Right
+} from '../Either';
 import * as Scheduler from './Scheduler';
 import * as Process from './Process';
-import * as Task from './Task';
 
+export class Task<E, T> {
+    public static succeed<T>(value: T): Task<never, T> {
+        return new Task(
+            Scheduler.succeed(value)
+        );
+    }
 
-const __2_LEAF = 'LEAF';
-const __2_MAP = 'MAP';
-const __2_NODE = 'NODE';
+    public static fail<E>(error: E): Task<E, never> {
+        return new Task(
+            Scheduler.fail(error)
+        );
+    }
+
+    public static sequence<E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> {
+        let acc: Task<E, Array<T>> = Task.succeed([]);
+
+        for (const task of tasks) {
+            acc = acc.chain(
+                (arr: Array<T>): Task<E, Array<T>> => task.map(
+                    (value: T): Array<T> => {
+                        arr.push(value);
+
+                        return arr;
+                    }
+                )
+            );
+        }
+
+        return acc;
+    }
+
+    public static binding<E, T>(callback: (done: (task: Task<E, T>) => void) => void | (() => void)): Task<E, T> {
+        return new Task(Scheduler.binding(
+            (done: (task: Scheduler.Task<E, T>) => void): void | (() => void) => callback(
+                (task: Task<E, T>): void => done(task.task)
+            )
+        ));
+    }
+
+    protected static execute<E, T>(task: Task<E, T>): Scheduler.Task<E, T> {
+        return task.task;
+    }
+
+    protected constructor(protected task: Scheduler.Task<E, T>) {}
+
+    public map<R>(fn: (value: T) => R): Task<E, R> {
+        return this.chain((value: T): Task<E, R> => Task.succeed(fn(value)));
+    }
+
+    public chain<G, R>(fn: (value: T) => Task<WhenNever<E, G>, R>): Task<WhenNever<E, G>, R> {
+        return new Task(
+            Scheduler.chain(
+                (value: T): Scheduler.Task<WhenNever<E, G>, R> => fn(value).task,
+                this.task as Scheduler.Task<WhenNever<E, G>, T>
+            )
+        );
+    }
+
+    public mapError<S>(fn: (error: E) => S): Task<S, T> {
+        return this.onError((error: E): Task<S, T> => Task.fail(fn(error)));
+    }
+
+    public onError<S>(fn: (error: E) => Task<S, T>): Task<S, T> {
+        return new Task(
+            Scheduler.onError(
+                (error: E): Scheduler.Task<S, T> => fn(error).task,
+                this.task
+            )
+        );
+    }
+
+    public perform<Msg>(tagger: IsNever<E, (value: T) => Msg, never>): Bag<Msg> {
+        const rawTask: Scheduler.Task<never, Msg> = Scheduler.chain(
+            (value: T): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(value)),
+            this.task as Scheduler.Task<never, T>
+        );
+
+        return leaf('TASK', rawTask);
+    }
+
+    public attempt<Msg>(tagger: (either: Either<E, T>) => Msg): Bag<Msg> {
+        const rawTask: Scheduler.Task<never, Msg> = Scheduler.onError(
+            (error: E): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(Left(error))),
+            Scheduler.chain(
+                (value: T): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(Right(value))),
+                this.task
+            )
+        );
+
+        return leaf('TASK', rawTask);
+    }
+
+    public spawn(): Task<never, Process.Process> {
+        return new Task(
+            Scheduler.spawn(this.task)
+        );
+    }
+}
+
+class InternalTask<E, T> extends Task<E, T> {
+    public static execute<E, T>(task: Task<E, T>): Scheduler.Task<E, T> {
+        return super.execute(task);
+    }
+
+    public constructor(task: Scheduler.Task<E, T>) {
+        super(task);
+    }
+}
+
 const __2_SELF = 'SELF';
 
 // PROGRAMS
 
-
-export function worker(impl) {
-    return _initialize(
-        impl.init,
-        impl.update,
-        impl.subscriptions
-    );
+interface Program<Model, Msg> {
 }
+
+type Cmd<Msg> = Array<Msg>;
+type Sub<Msg> = Array<Msg>;
+
 
 // INITIALIZE A PROGRAM
 
 
-function _initialize(init, update, subscriptions) {
-    const [initialModel, initialCmd] = init();
+export const worker = <Model, Msg>(config: {
+    init(): [ Model, Cmd<Msg> ];
+    update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+    subscriptions(model: Model): Sub<Msg>;
+}): Program<Model, Msg> => {
+    const [ initialModel, initialCmd ] = config.init();
 
     const managers = {};
     let model = initialModel;
 
-    const ports = _setupEffects(managers, sendToApp);
+    const ports = _setupEffects(managers, dispatch);
 
-    function sendToApp(msg) {
-        const [nextModel, nextCmd] = update(msg, model);
+    function dispatch(msg: Msg): void {
+        const [nextModel, nextCmd] = config.update(msg, model);
 
         model = nextModel;
 
-        _dispatchEffects(managers, nextCmd, subscriptions(model));
+        _dispatchEffects(managers, nextCmd, config.subscriptions(model));
     }
 
-    _dispatchEffects(managers, initialCmd, subscriptions(model));
+    _dispatchEffects(managers, initialCmd, config.subscriptions(model));
 
     return ports ? { ports } : {};
-}
+};
 
 
 // EFFECT MANAGERS
 
+type Command<Msg> = Task<never, Msg>;
+
+const spawnCmd = <Msg>(router: Router<Msg, never>, command: Command<Msg>): Task<never, Process.Process> => {
+    return command
+        .chain((msg: Msg) => sendToApp(router, msg))
+        .spawn();
+};
+
+export const home = createManager({
+    init: Task.succeed(null),
+    onEffects<Msg>(router: Router<Msg, never>, commands: Array<Command<Msg>>): Task<never, null> {
+        return Task.sequence(
+            commands.map((command: Command<Msg>): Task<never, Process.Process> => spawnCmd(router, command))
+        ).map(() => null);
+    },
+    onSelfMsg(): Task<never, null> {
+        return Task.succeed(null);
+    },
+    cmdMap<T, R>(tagger: (value: T) => R, command: Command<T>): Command<R> {
+        return(new InternalTask(command)).map(tagger);
+    },
+    subMap<T, R>(_tagger: (value: T) => R, subscription: never): never {
+        return subscription;
+    }
+});
+
 
 const effectManagers = {
-    TASK: Task.home
+    TASK: home
 };
 
 
@@ -71,93 +212,126 @@ function _setupEffects(managers, sendToApp) {
     return ports;
 }
 
-
-export function createManager(init, onEffects, onSelfMsg, cmdMap, subMap) {
-    return {
-        __init: init,
-        __onEffects: onEffects,
-        __onSelfMsg: onSelfMsg,
-        __cmdMap: cmdMap,
-        __subMap: subMap
-    };
+export interface Router<AppMsg, SelfMsg> {
+    __selfProcess: Scheduler.Process;
+    __sendToApp(msg: AppMsg): void;
 }
 
+interface Manager<AppMsg, SelfMsg = unknown, State = unknown> {
+    init: Task<never, State>;
+    onEffects(
+        router: Router<AppMsg, SelfMsg>,
+        commands: Array<AppMsg>,
+        subscriptions: Array<AppMsg>,
+        state: State
+    ): Task<never, State>;
+    onSelfMsg(router: Router<AppMsg, SelfMsg>, msg: SelfMsg, state: State): Task<never, State>;
+    cmdMap<R>(tagger: (msg: AppMsg) => R, cmd: SelfMsg): SelfMsg;
+    subMap<R>(tagger: (msg: AppMsg) => R, sub: SelfMsg): SelfMsg;
+}
 
-function _instantiateManager(info, sendToApp) {
-    const router = {
+export function createManager<AppMsg, SelfMsg, State>(config: Manager<AppMsg, SelfMsg, State>) {
+    return config;
+}
+
+function _instantiateManager<AppMsg, SelfMsg, State>(
+    manager: Manager<AppMsg, SelfMsg, State>,
+    sendToApp: (msg: AppMsg) => void
+): Scheduler.Process {
+
+    const router: Router<AppMsg, SelfMsg> = {
         __sendToApp: sendToApp,
-        __selfProcess: undefined
+        __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, InternalTask.execute(manager.init)))
     };
 
-    const onEffects = info.__onEffects;
-    const onSelfMsg = info.__onSelfMsg;
-    const cmdMap = info.__cmdMap;
-    const subMap = info.__subMap;
-
-    function loop(state) {
-        return Scheduler.andThen(loop, Scheduler.receive(msg => {
+    function loop(state: State): Scheduler.Task<never, State> {
+        return Scheduler.chain(loop, Scheduler.receive(msg => {
             const value = msg.a;
 
             if (msg.$ === __2_SELF) {
-                return onSelfMsg(router, value, state);
+                return InternalTask.execute(
+                    manager.onSelfMsg(router, value, state)
+                );
             }
 
-            return cmdMap && subMap
-                ? onEffects(router, value.__cmds, value.__subs, state)
-                : onEffects(router, cmdMap ? value.__cmds : value.__subs, state);
+            return InternalTask.execute(
+                manager.onEffects(router, value.__cmds, value.__subs, state)
+            );
         }));
     }
 
-    return router.__selfProcess = Scheduler.rawSpawn(Scheduler.andThen(loop, info.__init));
+    return router.__selfProcess;
 }
 
 
 // ROUTING
 
 
-export function sendToApp(router, msg) {
-    return Scheduler.binding(callback => {
+export const sendToApp = <AppMsg, SelfMsg>(
+    router: Router<AppMsg, SelfMsg>,
+    msg: AppMsg
+): Task<never, void> => new InternalTask(
+    Scheduler.binding(callback => {
         router.__sendToApp(msg);
-        callback(Scheduler.succeed(null));
-    });
-}
+
+        callback(Scheduler.succeed(undefined));
+    })
+);
 
 
-export function sendToSelf(router, msg) {
-    return Scheduler.send(router.__selfProcess, {
+export const sendToSelf = <AppMsg, SelfMsg>(
+    router: Router<AppMsg, SelfMsg>,
+    msg: SelfMsg
+) => new InternalTask(
+    Scheduler.send(router.__selfProcess, {
         $: __2_SELF,
         a: msg
-    });
-}
+    })
+);
 
 
 // BAGS
 
+type Bag<T>
+    = BagLeaf<T>
+    | BagBatch<T>
+    | BagMap<unknown, T>
+    ;
 
-export function leaf(home, value) {
-    return {
-        $: __2_LEAF,
-        __home: home,
-        __value: value
-    };
+interface BagLeaf<T> {
+    $: '_BAG__LEAF_';
+    __home: string;
+    __value: Scheduler.Task<never, T>;
 }
 
+export const leaf = <T>(home: string, value: Scheduler.Task<never, T>): Bag<T> => ({
+    $: '_BAG__LEAF_',
+    __home: home,
+    __value: value
+});
 
-export function batch(list) {
-    return {
-        $: __2_NODE,
-        __bags: list
-    };
+interface BagBatch<T> {
+    $: '_BAG__BATCH_';
+    __bags: Array<Scheduler.Task<never, T>>;
 }
 
+export const batch = <T>(bags: Array<Scheduler.Task<never, T>>): Bag<T> => ({
+    $: '_BAG__BATCH_',
+    __bags: bags
+});
 
-export function map(tagger, bag) {
-    return {
-        $: __2_MAP,
-        __func: tagger,
-        __bag: bag
-    };
+interface BagMap<T, R> {
+    $: '_BAG__MAP_';
+    __bag: Bag<T>;
+    __func(msg: T): R;
 }
+
+export const map = <T, R>(tagger: (msg: T) => R, bag: Bag<T>): Bag<R> => ({
+    $: '_BAG__MAP_',
+    __bag: bag,
+    __func: tagger
+});
+
 
 // PIPE BAGS INTO EFFECT MANAGERS
 
@@ -178,21 +352,21 @@ function _dispatchEffects(managers, cmdBag, subBag) {
 }
 
 
-function _gatherEffects(isCmd, bag, effectsDict, taggers) {
+function _gatherEffects<T>(isCmd: boolean, bag: Bag<T>, effectsDict, taggers) {
     switch (bag.$) {
-        case __2_LEAF:
+        case '_BAG__LEAF_':
             const home = bag.__home;
             const effect = _toEffect(isCmd, home, taggers, bag.__value);
             effectsDict[home] = _Platform_insert(isCmd, effect, effectsDict[home]);
             return;
 
-        case __2_NODE:
+        case '_BAG__BATCH_':
             for (const leaf of bag.__bags) {
                 _gatherEffects(isCmd, leaf, effectsDict, taggers);
             }
             return;
 
-        case __2_MAP:
+        case '_BAG__MAP_':
             _gatherEffects(isCmd, bag.__bag, effectsDict, {
                 __tagger: bag.__func,
                 __rest: taggers
@@ -213,8 +387,8 @@ function _toEffect(isCmd, home, taggers, value) {
     }
 
     const map = isCmd
-        ? effectManagers[home].__cmdMap
-        : effectManagers[home].__subMap;
+        ? effectManagers[home].cmdMap
+        : effectManagers[home].subMap;
 
     return map(applyTaggers, value);
 }
@@ -250,7 +424,7 @@ export function outgoingPort(name) {
     _checkPortName(name);
 
     effectManagers[name] = {
-        __cmdMap: _outgoingPortMap,
+        cmdMap: _outgoingPortMap,
         __portSetup: _setupOutgoingPort
     };
 
@@ -267,8 +441,8 @@ function _setupOutgoingPort(name) {
 
     const init = Process.sleep(0);
 
-    effectManagers[name].__init = init;
-    effectManagers[name].__onEffects = (router, cmdList, state) => {
+    effectManagers[name].init = init;
+    effectManagers[name].onEffects = (router, cmdList, state) => {
         for (const cmd of cmdList) {
             // grab a separate reference to subs in case unsubscribe is called
             const currentSubs = subs;
@@ -309,7 +483,7 @@ export function incomingPort(name) {
     _checkPortName(name);
 
     effectManagers[name] = {
-        __subMap: _incomingPortMap,
+        subMap: _incomingPortMap,
         __portSetup: _setupIncomingPort
     };
 
@@ -327,10 +501,10 @@ function _setupIncomingPort(name, sendToApp) {
 
     // CREATE MANAGER
 
-    const init = Scheduler.succeed(null);
+    const init = Task.succeed(null);
 
-    effectManagers[name].__init = init;
-    effectManagers[name].__onEffects = (router, subList, state) => {
+    effectManagers[name].init = init;
+    effectManagers[name].onEffects = (router, cmdList, subList, state) => {
         subs = subList;
 
         return init;
