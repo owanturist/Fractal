@@ -114,15 +114,15 @@ namespace Internal {
         }
 
         public map<R>(): Either<E, R> {
-            return this as any as Either<E, R>;
+            return this as unknown as Either<E, R>;
         }
 
         public chain<G, R>(): Either<WhenNever<E, G>, R> {
-            return this as any as Either<WhenNever<E, G>, R>;
+            return this as unknown as Either<WhenNever<E, G>, R>;
         }
 
         public ap<G, R>(): Either<WhenNever<E, G>, R> {
-            return this as any as Either<WhenNever<E, G>, R>;
+            return this as unknown as Either<WhenNever<E, G>, R>;
         }
 
         public pipe<G, U>(): Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T> {
@@ -227,7 +227,7 @@ namespace Internal {
         }
 
         public mapLeft<S>(): Either<S, T> {
-            return this as any as Either<S, T>;
+            return this as unknown as Either<S, T>;
         }
 
         public orElse<G, D>(): Either<WhenNever<E, G>, WhenNever<T, D>> {
