@@ -80,25 +80,18 @@ export class Task<E, T> {
         );
     }
 
-    public perform<Msg>(tagger: IsNever<E, (value: T) => Msg, never>): Bag<Msg> {
-        const rawTask: Scheduler.Task<never, Msg> = Scheduler.chain(
-            (value: T): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(value)),
-            this.internal as Scheduler.Task<never, T>
-        );
+    public perform<Msg>(tagger: IsNever<E, (value: T) => Msg, never>): Cmd<Msg> {
+        const result = this.map((value: T): Msg => tagger(value)) as Task<never, Msg>;
 
-        return leaf('TASK', rawTask);
+        return registerCmd('TASK', result);
     }
 
-    public attempt<Msg>(tagger: (either: Either<E, T>) => Msg): Bag<Msg> {
-        const rawTask: Scheduler.Task<never, Msg> = Scheduler.onError(
-            (error: E): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(Left(error))),
-            Scheduler.chain(
-                (value: T): Scheduler.Task<never, Msg> => Scheduler.succeed(tagger(Right(value))),
-                this.internal
-            )
-        );
+    public attempt<Msg>(tagger: (either: Either<E, T>) => Msg): Cmd<Msg> {
+        const result = this
+            .map((value: T): Msg => tagger(Right(value)))
+            .onError((error: E): Task<never, Msg> => Task.succeed(tagger(Left(error))));
 
-        return leaf('TASK', rawTask);
+        return registerCmd('TASK', result);
     }
 
     public spawn(): Task<never, Process> {
@@ -162,9 +155,6 @@ class InternalProcess extends Process {
 interface Program<Model, Msg> {
 }
 
-type Cmd<Msg> = Msg;
-type Sub<Msg> = Msg;
-
 
 // INITIALIZE A PROGRAM
 
@@ -176,7 +166,7 @@ export const worker = <Model, Msg>(config: {
 }): Program<Model, Msg> => {
     const [ initialModel, initialCmd ] = config.init();
 
-    const managers = {};
+    const managers: Map<string, Scheduler.Process> = new Map();
     let model = initialModel;
 
     const ports = _setupEffects(managers, dispatch);
@@ -229,11 +219,7 @@ const effectManagers: {
     TASK: home
 };
 
-interface Managers {
-    [ key: string ]: Scheduler.Process;
-}
-
-function _setupEffects<Msg>(managers: Managers, sendToApp: (msg: Msg) => void) {
+function _setupEffects<Msg>(managers: Map<string, Scheduler.Process>, sendToApp: (msg: Msg) => void) {
     let ports;
 
     // setup all necessary effect managers
@@ -246,15 +232,15 @@ function _setupEffects<Msg>(managers: Managers, sendToApp: (msg: Msg) => void) {
             ports[key] = manager.__portSetup(key, sendToApp);
         }
 
-        managers[key] = _instantiateManager(manager, sendToApp);
+        managers.set(key, _instantiateManager(manager, sendToApp));
     }
 
     return ports;
 }
 
 interface Effects<AppMsg> {
-    commands: Array<Cmd<AppMsg>>;
-    subscriptions: Array<Sub<AppMsg>>;
+    commands: Array<AppMsg>;
+    subscriptions: Array<AppMsg>;
 }
 
 type InternalMsg<AppMsg, SelfMsg>
@@ -349,125 +335,173 @@ export const sendToSelf = <AppMsg, SelfMsg>(
     Scheduler.send(router.__selfProcess, selfMsg(msg))
 );
 
+abstract class Bag<T> {
+    public static get none(): Bag<never> {
+        return new Batch([]);
+    }
 
-// BAGS
+    public static batch<T>(bags: Array<Bag<T>>): Bag<T> {
+        if (bags.length === 1) {
+            return bags[ 0 ];
+        }
 
-type Bag<T>
-    = BagLeaf<T>
-    | BagBatch<T>
-    | BagMap<unknown, T>
-    ;
+        return new Batch(bags);
+    }
 
-interface BagLeaf<T> {
-    $: '_BAG__LEAF_';
-    __home: string;
-    __value: Scheduler.Task<never, T>;
+    protected static gather<T>(effectDict: Map<string, Effects<T>>, bag: Bag<T>): void {
+        bag.gather(effectDict);
+    }
+
+    public abstract map<R>(fn: (effect: T) => R): Bag<R>;
+
+
+    protected abstract gather(effectDict: Map<string, Effects<T>>): void;
 }
 
-export const leaf = <T>(home: string, value: Scheduler.Task<never, T>): Bag<T> => ({
-    $: '_BAG__LEAF_',
-    __home: home,
-    __value: value
-});
-
-interface BagBatch<T> {
-    $: '_BAG__BATCH_';
-    __bags: Array<Scheduler.Task<never, T>>;
+abstract class BagInternal<T> extends Bag<T> {
+    public static gather<T>(effectDict: Map<string, Effects<T>>, bag: Bag<T>): void {
+        super.gather(effectDict, bag);
+    }
 }
 
-export const batch = <T>(bags: Array<Scheduler.Task<never, T>>): Bag<T> => ({
-    $: '_BAG__BATCH_',
-    __bags: bags
-});
+class Batch<T> extends Bag<T> {
+    public constructor(
+        private readonly bags: Array<Bag<T>>
+    ) {
+        super();
+    }
 
-interface BagMap<T, R> {
-    $: '_BAG__MAP_';
-    __bag: Bag<T>;
-    __func(msg: T): R;
+    public map<R>(fn: (effect: T) => R): Bag<R> {
+        const result: Array<Bag<R>> = [];
+
+        for (const bag of this.bags) {
+            result.push(bag.map(fn));
+        }
+
+        return new Batch(result);
+    }
+
+    protected gather(effectDict: Map<string, Effects<T>>): void {
+        for (const bag of this.bags) {
+            BagInternal.gather(effectDict, bag);
+        }
+    }
 }
 
-export const map = <T, R>(tagger: (msg: T) => R, bag: Bag<T>): Bag<R> => ({
-    $: '_BAG__MAP_',
-    __bag: bag,
-    __func: tagger
-});
+export class Cmd<T> extends Bag<T> {
+    public static get none(): Cmd<never> {
+        return Bag.none as Cmd<never>;
+    }
+
+    public static batch<T>(cmds: Array<Cmd<T>>): Cmd<T> {
+        return Bag.batch(cmds as Array<Bag<T>>) as Cmd<T>;
+    }
+
+    protected constructor(
+        private readonly manager: string,
+        private readonly effect: T
+    ) {
+        super();
+    }
+
+    public map<R>(fn: (effect: T) => R): Cmd<R> {
+        return new Cmd(this.manager, fn(this.effect));
+    }
+
+    protected gather(effectDict: Map<string, Effects<T>>): void {
+        const effects = effectDict.get(this.manager);
+
+        if (typeof effects === 'undefined') {
+            effectDict.set(this.manager, {
+                commands: [ this.effect ],
+                subscriptions: []
+            });
+        } else {
+            effects.commands.push(this.effect);
+        }
+    }
+}
+
+abstract class CmdInternal<T> extends Cmd<T> {
+    public static of<T>(manager: string, effect: T): Cmd<T> {
+        return new Cmd(manager, effect);
+    }
+}
+
+export const registerCmd = <T>(manager: string, effect: T): Cmd<T> => {
+    return CmdInternal.of(manager, effect);
+};
+
+export class Sub<T> extends Bag<T> {
+    public static get none(): Sub<never> {
+        return Bag.none as Sub<never>;
+    }
+
+    public static batch<T>(cmds: Array<Sub<T>>): Sub<T> {
+        return Bag.batch(cmds as Array<Bag<T>>) as Sub<T>;
+    }
+
+    protected constructor(
+        private readonly manager: string,
+        private readonly effect: T
+    ) {
+        super();
+    }
+
+    public map<R>(fn: (effect: T) => R): Sub<R> {
+        return new Sub(this.manager, fn(this.effect));
+    }
+
+    protected gather(effectDict: Map<string, Effects<T>>): void {
+        const effects = effectDict.get(this.manager);
+
+        if (typeof effects === 'undefined') {
+            effectDict.set(this.manager, {
+                commands: [],
+                subscriptions: [ this.effect ]
+            });
+        } else {
+            effects.subscriptions.push(this.effect);
+        }
+    }
+}
+
+abstract class SubInternal<T> extends Sub<T> {
+    public static of<T>(manager: string, effect: T): Sub<T> {
+        return new Sub(manager, effect);
+    }
+}
+
+export const registerSub = <T>(manager: string, effect: T): Sub<T> => {
+    return SubInternal.of(manager, effect);
+};
+
+const foo = Sub.batch([
+    Cmd.none,
+    Sub.none,
+    registerSub('', 1),
+    Sub.batch([
+        Sub.none,
+        registerSub('', 1)
+    ])
+])
 
 
 // PIPE BAGS INTO EFFECT MANAGERS
 
 
-function _dispatchEffects(managers, cmdBag, subBag) {
-    const effectsDict: {
-        [ key: string ]: Effects<unknown>;
-    } = {};
+function _dispatchEffects<Msg>(managers: Map<string, Scheduler.Process>, cmdBag: Cmd<Msg>, subBag: Sub<Msg>) {
+    const effectsDict: Map<string, Effects<Msg>> = new Map();
 
-    _gatherEffects(true, cmdBag, effectsDict, null);
-    _gatherEffects(false, subBag, effectsDict, null);
+    BagInternal.gather(effectsDict, cmdBag);
+    BagInternal.gather(effectsDict, subBag);
 
-    // tslint:disable-next-line:forin
-    for (const home in managers) {
-        Scheduler.rawSend(managers[home], appMsg(effectsDict[ home ] || {
+    for (const [ home, manager ] of managers) {
+        Scheduler.rawSend(manager, appMsg(effectsDict.get(home) || {
             commands: [],
             subscriptions: []
         }));
     }
-}
-
-
-function _gatherEffects<T>(isCmd: boolean, bag: Bag<T>, effectsDict, taggers) {
-    switch (bag.$) {
-        case '_BAG__LEAF_':
-            const home = bag.__home;
-            const effect = _toEffect(isCmd, home, taggers, bag.__value);
-
-            effectsDict[home] = _Platform_insert(isCmd, effect, effectsDict[home] || {
-                commands: [],
-                subscriptions: []
-            });
-            return;
-
-        case '_BAG__BATCH_':
-            for (const leaf of bag.__bags) {
-                _gatherEffects(isCmd, leaf, effectsDict, taggers);
-            }
-            return;
-
-        case '_BAG__MAP_':
-            _gatherEffects(isCmd, bag.__bag, effectsDict, {
-                __tagger: bag.__func,
-                __rest: taggers
-            });
-            return;
-    }
-}
-
-
-function _toEffect(isCmd, home, taggers, value) {
-    function applyTaggers(x) {
-        let y = x;
-
-        for (let temp = taggers; temp; temp = temp.__rest) {
-            y = temp.__tagger(y);
-        }
-        return y;
-    }
-
-    const map = isCmd
-        ? effectManagers[home].cmdMap
-        : effectManagers[home].subMap;
-
-    return map(applyTaggers, value);
-}
-
-
-function _Platform_insert(isCmd, newEffect, effects) {
-    if (isCmd) {
-        effects.commands.push(newEffect);
-    } else {
-        effects.subscriptions.push(newEffect);
-    }
-
-    return effects;
 }
 
 
@@ -492,7 +526,7 @@ export function outgoingPort(name) {
         __portSetup: _setupOutgoingPort
     };
 
-    return value => leaf(name, value);
+    return value => registerCmd(name, value);
 }
 
 
@@ -551,7 +585,7 @@ export function incomingPort(name) {
         __portSetup: _setupIncomingPort
     };
 
-    return value => leaf(name, value);
+    return value => registerSub(name, value);
 }
 
 
