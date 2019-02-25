@@ -8,7 +8,7 @@ export type Task<E, T>
     | Binding<E, T>
     | Chain<E, any, T>
     | OnError<any, T, E>
-    | Receive<E, T>
+    | Receive<unknown, E, T>
     ;
 
 interface Succeed<T> {
@@ -78,12 +78,12 @@ export const onError = <E, T, S>(
 });
 
 
-interface Receive<E, T> {
+interface Receive<M, E, T> {
     $: '_TASK__RECEIVE_';
-    __callback<M>(msg: M): Task<E, T>;
+    __callback(msg: M): Task<E, T>;
 }
 
-export const receive = <E, T>(callback: <M>(msg: M) => Task<E, T>): Task<E, T> => ({
+export const receive = <M, E, T>(callback: (msg: M) => Task<E, T>): Task<E, T> => ({
     $: '_TASK__RECEIVE_',
     __callback: callback
 });
