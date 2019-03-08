@@ -244,32 +244,23 @@ export const worker = <Model, Msg>(config: {
     function dispatch(msg: Msg): void {
         const [nextModel, nextCmd] = config.update(msg, model);
 
-        console.log(msg, model, nextModel)
+        console.log(msg, model, nextModel);
 
         model = nextModel;
 
         _dispatchEffects(managers, nextCmd, config.subscriptions(model));
     }
 
-    let k;
+    const [ send, incomingPortCmd ] = Port.init();
 
     _dispatchEffects(
         managers,
-        Cmd.batch([
-            initialCmd,
-            Port.baz((send: (name: string, value: Value) => void) => {
-                k = send
-            })
-        ]),
+        Cmd.batch([ initialCmd, incomingPortCmd ]),
         config.subscriptions(model)
     );
 
     return {
-        ports: {
-            send(name: string, value: Value): void {
-                k(name, value);
-            }
-        }
+        ports: { send }
     };
 };
 
@@ -345,21 +336,6 @@ namespace Port {
         }
     }
 
-    const foo = (send: (callback: (name: string, value: Value) => void) => void): Task<never, SelfMsg> => {
-        return Task.binding((callback: (task: Task<never, SelfMsg>) => void): void => {
-            send((name: string, value: Value): void => {
-                callback(Task.succeed({ name, value }));
-            });
-        });
-    };
-
-    const bar = <AppMsg>(
-        router: Router<AppMsg, SelfMsg>,
-        send: (callback: (name: string, value: Value) => void) => void
-    ): Task<never, void> => {
-        return foo(send).chain((msg: SelfMsg) => sendToSelf(router, msg));
-    };
-
     class Send<AppMsg> extends Cmd<AppMsg> {
         protected readonly manager = 'PORT';
 
@@ -370,19 +346,28 @@ namespace Port {
         }
 
         public map<R>(): Send<R> {
-            return new Send(this.send);
+            return this as unknown as Send<R>;
         }
 
-        public register(router: Router<AppMsg, SelfMsg>): Task<never, void> {
-            return bar(router, this.send);
+        public register(router: Router<AppMsg, SelfMsg>): void {
+            this.send((name: string, value: Value): void => {
+                Scheduler.rawSpawn(sendToSelf(router, { name, value }).execute());
+            });
         }
     }
 
-    export const baz = <AppMsg>(send: (callback: (name: string, value: Value) => void) => void): Cmd<AppMsg> => {
-        return new Send(send);
+    export const init = (): [ (name: string, value: Value) => void, Cmd<any> ] => {
+        let send: (name: string, value: Value) => void;
+
+        return [
+            (name: string, value: Value): void => send(name, value),
+            new Send((callback: (name: string, value: Value) => void): void => {
+                send = callback;
+            })
+        ];
     };
 
-    export const port = <AppMsg>(name: string, tagger: (value: Value) => AppMsg): Sub<AppMsg> => {
+    export const listen = <AppMsg>(name: string, tagger: (value: Value) => AppMsg): Sub<AppMsg> => {
         return new Incoming(name, tagger);
     };
 
@@ -401,9 +386,11 @@ namespace Port {
                 sub.register(incoming);
             }
 
-            return Task.sequence(
-                commands.map((cmd: Send<AppMsg>) => cmd.register(router))
-            ).map(() => ({ incoming }));
+            for (const cmd of commands) {
+                cmd.register(router);
+            }
+
+            return Task.succeed({ incoming });
         },
         onSelfMsg(
             router: Router<AppMsg, SelfMsg>,
@@ -423,7 +410,7 @@ namespace Port {
     }))();
 }
 
-export const port = Port.port;
+export const listen = Port.listen;
 
 const effectManagers: {
     [ key: string ]: Manager<unknown, unknown, unknown>;
@@ -549,7 +536,6 @@ function _dispatchEffects<Msg>(managers: Map<string, Scheduler.Process>, cmdBag:
         }));
     }
 }
-
 
 
 // OUTGOING PORTS
