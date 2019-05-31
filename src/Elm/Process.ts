@@ -1,1 +1,1 @@
-export { Process } from './Platform';
+export { Process } from '../Elm/Platform';

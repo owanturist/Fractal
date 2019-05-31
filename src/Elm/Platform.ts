@@ -12,25 +12,67 @@ import {
 } from '../Json/Encode';
 import * as Scheduler from './Scheduler';
 
+class EffectManager {
+    private readonly office: Map<number, Fas<unknown, unknown, unknown>> = new Map();
+
+    public register<AppMsg, SelfMsg, State>(
+        init: () => Manager<AppMsg, SelfMsg, State>
+    ): Fas<AppMsg, SelfMsg, State> {
+        const id = this.office.size;
+        const manager = new Fas(id, init());
+
+        this.office.set(id, manager);
+
+        return manager;
+    }
+
+    public setupEffects<Msg>(managers: Map<number, Scheduler.Process>, sendToApp: (msg: Msg) => void): void {
+        // setup all necessary effect managers
+        // tslint:disable-next-line:forin
+        for (const [key, manager] of this.office) {
+            managers.set(key, _instantiateManager(manager, sendToApp));
+        }
+    }
+}
+
+class Fas<AppMsg, SelfMsg, State> {
+    constructor(
+        public readonly id: number,
+        public readonly config: Manager<AppMsg, SelfMsg, State>
+    ) {}
+}
+
+const em = new EffectManager();
+
 abstract class Bag<T> {
     public static get none(): Bag<never> {
-        return new Batch([]);
+        return Batch.EMPTY;
     }
 
     public static batch<T>(bags: Array<Bag<T>>): Bag<T> {
-        if (bags.length === 1) {
-            return bags[ 0 ];
-        }
+        switch (bags.length) {
+            case 0: {
+                return Bag.none;
+            }
 
-        return new Batch(bags);
+            case 1: {
+                return bags[ 0 ];
+            }
+
+            default: {
+                return new Batch(bags);
+            }
+        }
     }
 
     public abstract map<R>(fn: (effect: T) => R): Bag<R>;
 
-    public abstract gather(effectDict: Map<string, Effects<T>>): void;
+    public abstract gather(effectDict: Map<number, Effects<T>>): void;
 }
 
 class Batch<T> extends Bag<T> {
+    public static EMPTY: Bag<never> = new Batch([]);
+
     public constructor(
         private readonly bags: Array<Bag<T>>
     ) {
@@ -47,7 +89,7 @@ class Batch<T> extends Bag<T> {
         return new Batch(result);
     }
 
-    public gather(effectDict: Map<string, Effects<T>>): void {
+    public gather(effectDict: Map<number, Effects<T>>): void {
         for (const bag of this.bags) {
             bag.gather(effectDict);
         }
@@ -63,13 +105,13 @@ export abstract class Cmd<T> extends Bag<T> {
         return Bag.batch(cmds) as Cmd<T>;
     }
 
-    protected abstract readonly manager: string;
+    protected abstract readonly manager: Fas<T, unknown, unknown>;
 
-    public gather(effectDict: Map<string, Effects<T>>): void {
-        const effects = effectDict.get(this.manager);
+    public gather(effectDict: Map<number, Effects<T>>): void {
+        const effects = effectDict.get(this.manager.id);
 
         if (typeof effects === 'undefined') {
-            effectDict.set(this.manager, {
+            effectDict.set(this.manager.id, {
                 commands: [ this ],
                 subscriptions: []
             });
@@ -88,13 +130,13 @@ export abstract class Sub<T> extends Bag<T> {
         return Bag.batch(cmds) as Sub<T>;
     }
 
-    protected abstract readonly manager: string;
+    protected abstract readonly manager: Fas<T, unknown, unknown>;
 
-    public gather(effectDict: Map<string, Effects<T>>): void {
-        const effects = effectDict.get(this.manager);
+    public gather(effectDict: Map<number, Effects<T>>): void {
+        const effects = effectDict.get(this.manager.id);
 
         if (typeof effects === 'undefined') {
-            effectDict.set(this.manager, {
+            effectDict.set(this.manager.id, {
                 commands: [],
                 subscriptions: [ this ]
             });
@@ -118,21 +160,23 @@ export class Task<E, T> {
     }
 
     public static sequence<E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> {
-        let acc: Task<E, Array<T>> = Task.succeed([]);
+        let acc: Scheduler.Task<E, Array<T>> = Scheduler.succeed([]);
 
         for (const task of tasks) {
-            acc = acc.chain(
-                (arr: Array<T>): Task<E, Array<T>> => task.map(
-                    (value: T): Array<T> => {
+            acc = Scheduler.chain(
+                (arr: Array<T>): Scheduler.Task<E, Array<T>> => Scheduler.chain(
+                    (value: T): Scheduler.Task<E, Array<T>> => {
                         arr.push(value);
 
-                        return arr;
-                    }
-                )
+                        return Scheduler.succeed(arr);
+                    },
+                    task.internal
+                ),
+                acc
             );
         }
 
-        return acc;
+        return new Task(acc);
     }
 
     public static binding<E, T>(callback: (done: (task: Task<E, T>) => void) => void | (() => void)): Task<E, T> {
@@ -235,10 +279,10 @@ export const worker = <Model, Msg>(config: {
 }) => {
     const [ initialModel, initialCmd ] = config.init();
 
-    const managers: Map<string, Scheduler.Process> = new Map();
+    const managers: Map<number, Scheduler.Process> = new Map();
     let model = initialModel;
 
-    _setupEffects(managers, dispatch);
+    em.setupEffects(managers, dispatch);
 
     function dispatch(msg: Msg): void {
         const [ nextModel, nextCmd ] = config.update(msg, model);
@@ -267,8 +311,20 @@ export const worker = <Model, Msg>(config: {
 
 // EFFECT MANAGERS
 
+const foo = em.register(<AppMsg>() => ({
+    init: Task.succeed(null),
+    onEffects(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, null> {
+        return Task.sequence(
+            commands.map((command: Perform<AppMsg>): Task<never, Process> => command.onEffects(router))
+        ).map(() => null);
+    },
+    onSelfMsg(): Task<never, null> {
+        return Task.succeed(null);
+    }
+}));
+
 class Perform<Msg> extends Cmd<Msg> {
-    protected readonly manager = 'TASK';
+    protected readonly manager: Fas<Msg, unknown, unknown> = foo;
 
     public constructor(protected readonly task: Task<never, Msg>) {
         super();
@@ -285,18 +341,6 @@ class Perform<Msg> extends Cmd<Msg> {
     }
 }
 
-const home = (<AppMsg>() => createManager<AppMsg, never, null>({
-    init: Task.succeed(null),
-    onEffects(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, null> {
-        return Task.sequence(
-            commands.map((command: Perform<AppMsg>): Task<never, Process> => command.onEffects(router))
-        ).map(() => null);
-    },
-    onSelfMsg(): Task<never, null> {
-        return Task.succeed(null);
-    }
-}))();
-
 // PORTS
 
 namespace Port {
@@ -312,8 +356,67 @@ namespace Port {
         | { type: 'OUTCOMING'; name: string; cb(value: Value): void }
         ;
 
+    const home = em.register(<AppMsg>() => ({
+        init: Task.succeed({
+            incoming: new Map(),
+            outcoming: new Map()
+        }),
+        onEffects(
+            router: Router<AppMsg, SelfMsg>,
+            commands: Array<PortCmd<AppMsg>>,
+            subscriptions: Array<PortSub<AppMsg>>,
+            state: State<AppMsg>
+        ): Task<never, State<AppMsg>> {
+            const nextState: State<AppMsg> = {
+                incoming: new Map(),
+                outcoming: state.outcoming
+            };
+
+            for (const sub of subscriptions) {
+                sub.register(nextState);
+            }
+
+            for (const cmd of commands) {
+                cmd.register(nextState, router);
+            }
+
+            return Task.succeed(nextState);
+        },
+        onSelfMsg(
+            router: Router<AppMsg, SelfMsg>,
+            msg: SelfMsg,
+            state: State<AppMsg>
+        ): Task<never, State<AppMsg>> {
+            switch (msg.type) {
+                case 'SEND': {
+                    const taggers = state.incoming.get(msg.name);
+
+                    if (typeof taggers === 'undefined') {
+                        return Task.succeed(state);
+                    }
+
+                    return Task.sequence(
+                        taggers.map((tagger: (value: Value) => AppMsg) => sendToApp(router, tagger(msg.value)))
+                    ).map(() => state);
+                }
+
+                case 'OUTCOMING': {
+                    const taggers = state.outcoming.get(msg.name);
+
+                    if (typeof taggers === 'undefined') {
+                        state.outcoming.set(msg.name, [ msg.cb ]);
+                    } else {
+                        taggers.push(msg.cb);
+                    }
+
+                    return Task.succeed(state);
+                }
+            }
+        }
+    }));
+
     abstract class PortSub<AppMsg> extends Sub<AppMsg> {
-        protected readonly manager = 'PORT';
+        protected readonly manager: Fas<AppMsg, SelfMsg, State<AppMsg>> = home;
 
         public abstract map<R>(fn: (msg: AppMsg) => R): PortSub<R>;
 
@@ -344,7 +447,7 @@ namespace Port {
     }
 
     abstract class PortCmd<AppMsg> extends Cmd<AppMsg> {
-        protected readonly manager = 'PORT';
+        protected readonly manager: Fas<AppMsg, SelfMsg, State<AppMsg>> = home;
 
         public map<R>(): PortCmd<R> {
             return this as unknown as PortCmd<R>;
@@ -429,65 +532,6 @@ namespace Port {
     export const fire = <AppMsg>(name: string, value: Value): Cmd<AppMsg> => {
         return new Fire(name, value);
     };
-
-    export const home = (<AppMsg>() => createManager<AppMsg, SelfMsg, State<AppMsg>>({
-        init: Task.succeed({
-            incoming: new Map(),
-            outcoming: new Map()
-        }),
-        onEffects(
-            router: Router<AppMsg, SelfMsg>,
-            commands: Array<PortCmd<AppMsg>>,
-            subscriptions: Array<PortSub<AppMsg>>,
-            state: State<AppMsg>
-        ): Task<never, State<AppMsg>> {
-            const nextState: State<AppMsg> = {
-                incoming: new Map(),
-                outcoming: state.outcoming
-            };
-
-            for (const sub of subscriptions) {
-                sub.register(nextState);
-            }
-
-            for (const cmd of commands) {
-                cmd.register(nextState, router);
-            }
-
-            return Task.succeed(nextState);
-        },
-        onSelfMsg(
-            router: Router<AppMsg, SelfMsg>,
-            msg: SelfMsg,
-            state: State<AppMsg>
-        ): Task<never, State<AppMsg>> {
-            switch (msg.type) {
-                case 'SEND': {
-                    const taggers = state.incoming.get(msg.name);
-
-                    if (typeof taggers === 'undefined') {
-                        return Task.succeed(state);
-                    }
-
-                    return Task.sequence(
-                        taggers.map((tagger: (value: Value) => AppMsg) => sendToApp(router, tagger(msg.value)))
-                    ).map(() => state);
-                }
-
-                case 'OUTCOMING': {
-                    const taggers = state.outcoming.get(msg.name);
-
-                    if (typeof taggers === 'undefined') {
-                        state.outcoming.set(msg.name, [ msg.cb ]);
-                    } else {
-                        taggers.push(msg.cb);
-                    }
-
-                    return Task.succeed(state);
-                }
-            }
-        }
-    }))();
 }
 
 
@@ -503,51 +547,7 @@ export namespace Time {
         processes: Processes;
     }
 
-    abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
-        protected readonly manager = 'TIME';
-
-        public abstract register(taggers: Taggers<AppMsg>): Taggers<AppMsg>;
-    }
-
-    class Every<Msg> extends TimeSub<Msg> {
-        public constructor(
-            private readonly interval: number,
-            private readonly tagger: (poxis: number) => Msg
-        ) {
-            super();
-        }
-
-        public map<R>(fn: (msg: Msg) => R): TimeSub<R> {
-            return new Every(
-                this.interval,
-                (posix: number): R => fn(this.tagger(posix))
-            );
-        }
-
-        public register(taggers: Taggers<Msg>): Taggers<Msg> {
-            const bag = taggers.get(this.interval);
-
-            if (bag == null) {
-                taggers.set(this.interval, [ this.tagger ]);
-            } else {
-                bag.push(this.tagger);
-            }
-
-            return taggers;
-        }
-    }
-
-    const setEvery = (timeout: number, task: Task<never, void>): Task<never, void> => {
-        return Task.binding(() => {
-            const intervalId = setInterval(() => {
-                Scheduler.rawSpawn(task.execute());
-            }, timeout);
-
-            return () => clearInterval(intervalId);
-        });
-    };
-
-    export const home = (<AppMsg>() => createManager<AppMsg, number, State<AppMsg>>({
+    const home = em.register(<AppMsg>() => ({
         init: Task.succeed({
             taggers: new Map(),
             processes: new Map()
@@ -612,7 +612,51 @@ export namespace Time {
                 taggers.map((tagger: (posix: number) => AppMsg) => sendToApp(router, tagger(now)))
             ).map(() => state);
         }
-    }))();
+    }));
+
+    abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
+        protected readonly manager: Fas<AppMsg, number, State<AppMsg>> = home;
+
+        public abstract register(taggers: Taggers<AppMsg>): Taggers<AppMsg>;
+    }
+
+    class Every<Msg> extends TimeSub<Msg> {
+        public constructor(
+            private readonly interval: number,
+            private readonly tagger: (poxis: number) => Msg
+        ) {
+            super();
+        }
+
+        public map<R>(fn: (msg: Msg) => R): TimeSub<R> {
+            return new Every(
+                this.interval,
+                (posix: number): R => fn(this.tagger(posix))
+            );
+        }
+
+        public register(taggers: Taggers<Msg>): Taggers<Msg> {
+            const bag = taggers.get(this.interval);
+
+            if (bag == null) {
+                taggers.set(this.interval, [ this.tagger ]);
+            } else {
+                bag.push(this.tagger);
+            }
+
+            return taggers;
+        }
+    }
+
+    const setEvery = (timeout: number, task: Task<never, void>): Task<never, void> => {
+        return Task.binding(() => {
+            const intervalId = setInterval(() => {
+                Scheduler.rawSpawn(task.execute());
+            }, timeout);
+
+            return () => clearInterval(intervalId);
+        });
+    };
 
     export const now: Task<never, number> = Task.binding((done: (task: Task<never, number>) => void): void => {
         done(Task.succeed(Date.now()));
@@ -626,24 +670,6 @@ export namespace Time {
 
 export const listen = Port.listen;
 export const fire = Port.fire;
-
-const effectManagers: {
-    [ key: string ]: Manager<unknown, unknown, unknown>;
-} = {
-    TASK: home,
-    PORT: Port.home,
-    TIME: Time.home
-};
-
-function _setupEffects<Msg>(managers: Map<string, Scheduler.Process>, sendToApp: (msg: Msg) => void) {
-    // setup all necessary effect managers
-    // tslint:disable-next-line:forin
-    for (const key in effectManagers) {
-        const manager = effectManagers[key];
-
-        managers.set(key, _instantiateManager(manager, sendToApp));
-    }
-}
 
 interface Effects<AppMsg> {
     commands: Array<Cmd<AppMsg>>;
@@ -685,32 +711,26 @@ export interface Manager<AppMsg, SelfMsg, State> {
     ): Task<never, State>;
 }
 
-export function createManager<AppMsg, SelfMsg, State>(
-    config: Manager<AppMsg, SelfMsg, State>
-) {
-    return config;
-}
-
 function _instantiateManager<AppMsg, SelfMsg, State>(
-    manager: Manager<AppMsg, SelfMsg, State>,
+    manager: Fas<AppMsg, SelfMsg, State>,
     sendToApp: (msg: AppMsg) => void
 ): Scheduler.Process {
     const router: Router<AppMsg, SelfMsg> = {
         __sendToApp: sendToApp,
-        __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, manager.init.execute()))
+        __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, manager.config.init.execute()))
     };
 
     function loop(state: State): Scheduler.Task<never, State> {
         return Scheduler.chain(loop, Scheduler.receive((msg: InternalMsg<AppMsg, SelfMsg>) => {
             switch (msg.$) {
                 case '_INTERNAL_MSG__APP_MSG_': {
-                    return manager
+                    return manager.config
                         .onEffects(router, msg.effects.commands, msg.effects.subscriptions, state)
                         .execute();
                 }
 
                 case '_INTERNAL_MSG__SELF_MSG_': {
-                    return manager.onSelfMsg(router, msg.msg, state).execute();
+                    return manager.config.onSelfMsg(router, msg.msg, state).execute();
                 }
             }
         }));
@@ -743,8 +763,8 @@ export const sendToSelf = <AppMsg, SelfMsg>(
 // PIPE BAGS INTO EFFECT MANAGERS
 
 
-function _dispatchEffects<Msg>(managers: Map<string, Scheduler.Process>, cmdBag: Cmd<Msg>, subBag: Sub<Msg>) {
-    const effectsDict: Map<string, Effects<Msg>> = new Map();
+function _dispatchEffects<Msg>(managers: Map<number, Scheduler.Process>, cmdBag: Cmd<Msg>, subBag: Sub<Msg>) {
+    const effectsDict: Map<number, Effects<Msg>> = new Map();
 
     cmdBag.gather(effectsDict);
     subBag.gather(effectsDict);
@@ -756,4 +776,3 @@ function _dispatchEffects<Msg>(managers: Map<string, Scheduler.Process>, cmdBag:
         }));
     }
 }
-

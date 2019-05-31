@@ -1,1 +1,1 @@
-export { Task } from './Platform';
+export { Task } from '../Elm/Platform';

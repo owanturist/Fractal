@@ -1,1 +1,1 @@
-export { Cmd } from '../__Internal__';
+export { Cmd } from '../Elm/Platform';
