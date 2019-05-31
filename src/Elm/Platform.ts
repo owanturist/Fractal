@@ -240,27 +240,27 @@ export const worker = <Model, Msg>(config: {
 
     _setupEffects(managers, dispatch);
 
-
     function dispatch(msg: Msg): void {
-        const [nextModel, nextCmd] = config.update(msg, model);
-
-        console.log(msg, model, nextModel);
+        const [ nextModel, nextCmd ] = config.update(msg, model);
 
         model = nextModel;
 
         _dispatchEffects(managers, nextCmd, config.subscriptions(model));
     }
 
-    const [ send, incomingPortCmd ] = Port.init();
+    const ports = Port.init<Msg>();
 
     _dispatchEffects(
         managers,
-        Cmd.batch([ initialCmd, incomingPortCmd ]),
+        Cmd.batch([ initialCmd, ports.cmd ]),
         config.subscriptions(model)
     );
 
     return {
-        ports: { send }
+        ports: {
+            send: ports.send,
+            subscribe: ports.subscribe
+        }
     };
 };
 
@@ -285,7 +285,7 @@ class Perform<Msg> extends Cmd<Msg> {
     }
 }
 
-export const home = (<AppMsg>() => createManager<AppMsg, never, null>({
+const home = (<AppMsg>() => createManager<AppMsg, never, null>({
     init: Task.succeed(null),
     onEffects(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, null> {
         return Task.sequence(
@@ -304,16 +304,23 @@ namespace Port {
 
     interface State<AppMsg> {
         incoming: PortsDict<AppMsg>;
+        outcoming: PortsDict<void>;
     }
 
-    interface SelfMsg {
-        name: string;
-        value: Value;
-    }
+    type SelfMsg
+        = { type: 'SEND'; name: string; value: Value }
+        | { type: 'OUTCOMING'; name: string; cb(value: Value): void }
+        ;
 
-    class Incoming<AppMsg> extends Sub<AppMsg> {
+    abstract class PortSub<AppMsg> extends Sub<AppMsg> {
         protected readonly manager = 'PORT';
 
+        public abstract map<R>(fn: (msg: AppMsg) => R): PortSub<R>;
+
+        public abstract register(state: State<AppMsg>): void;
+    }
+
+    class Incoming<AppMsg> extends PortSub<AppMsg> {
         public constructor(
             protected readonly name: string,
             protected readonly tagger: (value: Value) => AppMsg
@@ -325,98 +332,307 @@ namespace Port {
             return new Incoming(this.name, (value: Value) => fn(this.tagger(value)));
         }
 
-        public register(incoming: PortsDict<AppMsg>): void {
-            const taggers = incoming.get(this.name);
+        public register(state: State<AppMsg>): void {
+            const taggers = state.incoming.get(this.name);
 
             if (typeof taggers === 'undefined') {
-                incoming.set(this.name, [ this.tagger ]);
+                state.incoming.set(this.name, [ this.tagger ]);
             } else {
                 taggers.push(this.tagger);
             }
         }
     }
 
-    class Send<AppMsg> extends Cmd<AppMsg> {
+    abstract class PortCmd<AppMsg> extends Cmd<AppMsg> {
         protected readonly manager = 'PORT';
 
+        public map<R>(): PortCmd<R> {
+            return this as unknown as PortCmd<R>;
+        }
+
+        public abstract register(state: State<AppMsg>, router: Router<AppMsg, SelfMsg>): void;
+    }
+
+    class Fire<AppMsg> extends PortCmd<AppMsg> {
         public constructor(
-            protected readonly send: (callback: (name: string, value: Value) => void) => void
+            private readonly name: string,
+            private readonly value: Value
         ) {
             super();
         }
 
-        public map<R>(): Send<R> {
-            return this as unknown as Send<R>;
+        public register(state: State<AppMsg>): void {
+            const taggers = state.outcoming.get(this.name);
+
+            if (typeof taggers !== 'undefined') {
+                for (const tagger of taggers) {
+                    tagger(this.value);
+                }
+            }
+        }
+    }
+
+    class Outcoming<AppMsg> extends PortCmd<AppMsg> {
+        public constructor(
+            protected readonly send: (callback: (name: string, cb: (value: Value) => void) => void) => void
+        ) {
+            super();
         }
 
-        public register(router: Router<AppMsg, SelfMsg>): void {
-            this.send((name: string, value: Value): void => {
-                Scheduler.rawSpawn(sendToSelf(router, { name, value }).execute());
+        public register(_state: State<AppMsg>, router: Router<AppMsg, SelfMsg>): void {
+            this.send((name: string, cb: (value: Value) => void): void => {
+                Scheduler.rawSpawn(sendToSelf(router, { type: 'OUTCOMING', name, cb }).execute());
             });
         }
     }
 
-    export const init = (): [ (name: string, value: Value) => void, Cmd<any> ] => {
-        let send: (name: string, value: Value) => void;
+    class Send<AppMsg> extends PortCmd<AppMsg> {
+        public constructor(
+            private readonly send: (callback: (name: string, value: Value) => void) => void
+        ) {
+            super();
+        }
 
-        return [
-            (name: string, value: Value): void => send(name, value),
-            new Send((callback: (name: string, value: Value) => void): void => {
-                send = callback;
-            })
-        ];
+        public register(_state: State<AppMsg>, router: Router<AppMsg, SelfMsg>): void {
+            this.send((name: string, value: Value): void => {
+                Scheduler.rawSpawn(sendToSelf(router, { type: 'SEND', name, value }).execute());
+            });
+        }
+    }
+
+    export const init = <AppMsg>(): {
+        cmd: Cmd<AppMsg>;
+        send(name: string, value: Value): void;
+        subscribe(name: string, cb: (value: Value) => void): void;
+    } => {
+        let send: (name: string, value: Value) => void;
+        let subscribe: (name: string, cb: (value: Value) => void) => void;
+
+        return {
+            send: (name: string, value: Value): void => send(name, value),
+            cmd: Cmd.batch([
+                new Send((callback: (name: string, value: Value) => void): void => {
+                    send = callback;
+                }),
+                new Outcoming((callback: (name: string, cb: (value: Value) => void) => void): void => {
+                    subscribe = callback;
+                })
+            ]),
+            subscribe: (name: string, cb: (value: Value) => void): void => subscribe(name, cb)
+        };
     };
 
     export const listen = <AppMsg>(name: string, tagger: (value: Value) => AppMsg): Sub<AppMsg> => {
         return new Incoming(name, tagger);
     };
 
+    export const fire = <AppMsg>(name: string, value: Value): Cmd<AppMsg> => {
+        return new Fire(name, value);
+    };
+
     export const home = (<AppMsg>() => createManager<AppMsg, SelfMsg, State<AppMsg>>({
         init: Task.succeed({
-            incoming: new Map()
+            incoming: new Map(),
+            outcoming: new Map()
         }),
         onEffects(
             router: Router<AppMsg, SelfMsg>,
-            commands: Array<Send<AppMsg>>,
-            subscriptions: Array<Incoming<AppMsg>>
+            commands: Array<PortCmd<AppMsg>>,
+            subscriptions: Array<PortSub<AppMsg>>,
+            state: State<AppMsg>
         ): Task<never, State<AppMsg>> {
-            const incoming: PortsDict<AppMsg> = new Map();
+            const nextState: State<AppMsg> = {
+                incoming: new Map(),
+                outcoming: state.outcoming
+            };
 
             for (const sub of subscriptions) {
-                sub.register(incoming);
+                sub.register(nextState);
             }
 
             for (const cmd of commands) {
-                cmd.register(router);
+                cmd.register(nextState, router);
             }
 
-            return Task.succeed({ incoming });
+            return Task.succeed(nextState);
         },
         onSelfMsg(
             router: Router<AppMsg, SelfMsg>,
             msg: SelfMsg,
             state: State<AppMsg>
         ): Task<never, State<AppMsg>> {
-            const taggers = state.incoming.get(msg.name);
+            switch (msg.type) {
+                case 'SEND': {
+                    const taggers = state.incoming.get(msg.name);
 
-            if (typeof taggers === 'undefined') {
-                return Task.succeed(state);
+                    if (typeof taggers === 'undefined') {
+                        return Task.succeed(state);
+                    }
+
+                    return Task.sequence(
+                        taggers.map((tagger: (value: Value) => AppMsg) => sendToApp(router, tagger(msg.value)))
+                    ).map(() => state);
+                }
+
+                case 'OUTCOMING': {
+                    const taggers = state.outcoming.get(msg.name);
+
+                    if (typeof taggers === 'undefined') {
+                        state.outcoming.set(msg.name, [ msg.cb ]);
+                    } else {
+                        taggers.push(msg.cb);
+                    }
+
+                    return Task.succeed(state);
+                }
             }
-
-            return Task.sequence(
-                taggers.map((tagger: (value: Value) => AppMsg) => sendToApp(router, tagger(msg.value)))
-            ).map(() => state);
         }
     }))();
 }
 
+
+// TIME
+
+export namespace Time {
+    type Processes = Map<number, Process>;
+
+    type Taggers<Msg> = Map<number, Array<(posix: number) => Msg>>;
+
+    interface State<Msg> {
+        taggers: Taggers<Msg>;
+        processes: Processes;
+    }
+
+    abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
+        protected readonly manager = 'TIME';
+
+        public abstract register(taggers: Taggers<AppMsg>): Taggers<AppMsg>;
+    }
+
+    class Every<Msg> extends TimeSub<Msg> {
+        public constructor(
+            private readonly interval: number,
+            private readonly tagger: (poxis: number) => Msg
+        ) {
+            super();
+        }
+
+        public map<R>(fn: (msg: Msg) => R): TimeSub<R> {
+            return new Every(
+                this.interval,
+                (posix: number): R => fn(this.tagger(posix))
+            );
+        }
+
+        public register(taggers: Taggers<Msg>): Taggers<Msg> {
+            const bag = taggers.get(this.interval);
+
+            if (bag == null) {
+                taggers.set(this.interval, [ this.tagger ]);
+            } else {
+                bag.push(this.tagger);
+            }
+
+            return taggers;
+        }
+    }
+
+    const setEvery = (timeout: number, task: Task<never, void>): Task<never, void> => {
+        return Task.binding(() => {
+            const intervalId = setInterval(() => {
+                Scheduler.rawSpawn(task.execute());
+            }, timeout);
+
+            return () => clearInterval(intervalId);
+        });
+    };
+
+    export const home = (<AppMsg>() => createManager<AppMsg, number, State<AppMsg>>({
+        init: Task.succeed({
+            taggers: new Map(),
+            processes: new Map()
+        }),
+        onEffects(
+            router: Router<AppMsg, number>,
+            _commands: Array<never>,
+            subscriptions: Array<TimeSub<AppMsg>>,
+            { processes }: State<AppMsg>
+        ): Task<never, State<AppMsg>> {
+            const expiredProcesses: Array<Process> = [];
+            const newIntervals: Array<number> = [];
+            const existingProcesses: Processes = new Map();
+            const newTaggers: Taggers<AppMsg> = subscriptions.reduce(
+                (acc: Taggers<AppMsg>, sub: TimeSub<AppMsg>): Taggers<AppMsg> => sub.register(acc),
+                new Map()
+            );
+
+            for (const [ interval, existingProcess ] of processes) {
+                if (newTaggers.has(interval)) {
+                    existingProcesses.set(interval, existingProcess);
+                } else {
+                    expiredProcesses.push(existingProcess);
+                }
+            }
+
+            for (const interval of newTaggers.keys()) {
+                if (!existingProcesses.has(interval)) {
+                    newIntervals.push(interval);
+                }
+            }
+
+            return Task.sequence(expiredProcesses.map((process: Process): Task<never, void> => process.kill()))
+                .chain(() => newIntervals.reduce(
+                    (acc: Task<never, Processes>, interval: number): Task<never, Processes> => {
+                        return acc.chain((processes: Processes) => {
+                            return setEvery(interval, sendToSelf(router, interval))
+                                .spawn()
+                                .map((process: Process) => processes.set(interval, process));
+                        });
+                    },
+                    Task.succeed(existingProcesses)
+                )).map((newProcesses: Processes): State<AppMsg> => ({
+                    taggers: newTaggers,
+                    processes: newProcesses
+                }));
+        },
+        onSelfMsg(
+            router: Router<AppMsg, number>,
+            interval: number,
+            state: State<AppMsg>
+        ): Task<never, State<AppMsg>> {
+            const taggers = state.taggers.get(interval);
+
+            if (taggers == null) {
+                return Task.succeed(state);
+            }
+
+            const now = Date.now();
+
+            return Task.sequence(
+                taggers.map((tagger: (posix: number) => AppMsg) => sendToApp(router, tagger(now)))
+            ).map(() => state);
+        }
+    }))();
+
+    export const now: Task<never, number> = Task.binding((done: (task: Task<never, number>) => void): void => {
+        done(Task.succeed(Date.now()));
+    });
+
+    export const every = <Msg>(interval: number, tagger: (posix: number) => Msg): Sub<Msg> => {
+        return new Every(interval, tagger);
+    };
+}
+
+
 export const listen = Port.listen;
+export const fire = Port.fire;
 
 const effectManagers: {
     [ key: string ]: Manager<unknown, unknown, unknown>;
 } = {
     TASK: home,
-    PORT: Port.home
+    PORT: Port.home,
+    TIME: Time.home
 };
 
 function _setupEffects<Msg>(managers: Map<string, Scheduler.Process>, sendToApp: (msg: Msg) => void) {
@@ -454,7 +670,7 @@ export interface Router<AppMsg, SelfMsg> {
     __sendToApp(msg: AppMsg): void;
 }
 
-interface Manager<AppMsg, SelfMsg, State> {
+export interface Manager<AppMsg, SelfMsg, State> {
     init: Task<never, State>;
     onEffects(
         router: Router<AppMsg, SelfMsg>,
@@ -462,7 +678,11 @@ interface Manager<AppMsg, SelfMsg, State> {
         subscriptions: Array<Sub<AppMsg>>,
         state: State
     ): Task<never, State>;
-    onSelfMsg(router: Router<AppMsg, SelfMsg>, msg: SelfMsg, state: State): Task<never, State>;
+    onSelfMsg(
+        router: Router<AppMsg, SelfMsg>,
+        msg: SelfMsg,
+        state: State
+    ): Task<never, State>;
 }
 
 export function createManager<AppMsg, SelfMsg, State>(
@@ -537,105 +757,3 @@ function _dispatchEffects<Msg>(managers: Map<string, Scheduler.Process>, cmdBag:
     }
 }
 
-
-// OUTGOING PORTS
-
-
-function outgoingPort(name) {
-    _checkPortName(name);
-
-    effectManagers[name] = {
-        cmdMap: _outgoingPortMap,
-        __portSetup: _setupOutgoingPort
-    };
-
-    return value => registerCmd(name, value);
-}
-
-
-const _outgoingPortMap = (_tagger, value) => value;
-
-function _setupOutgoingPort(name) {
-    let subs = [];
-
-    // CREATE MANAGER
-
-    const init = Process.sleep(0);
-
-    effectManagers[name].init = init;
-    effectManagers[name].onEffects = (router, cmdList, state) => {
-        for (const cmd of cmdList) {
-            // grab a separate reference to subs in case unsubscribe is called
-            for (const sub of subs) {
-                sub(cmd);
-            }
-        }
-        return init;
-    };
-
-    // PUBLIC API
-
-    function subscribe(callback) {
-        subs.push(callback);
-    }
-
-    function unsubscribe(callback) {
-        // copy subs into a new array in case unsubscribe is called within a
-        // subscribed callback
-        subs = subs.slice();
-
-        const index = subs.indexOf(callback);
-
-        if (index >= 0) {
-            subs.splice(index, 1);
-        }
-    }
-
-    return { subscribe, unsubscribe };
-}
-
-
-// INCOMING PORTS
-
-
-function incomingPort(name) {
-    _checkPortName(name);
-
-    effectManagers[name] = {
-        subMap: _incomingPortMap,
-        __portSetup: _setupIncomingPort
-    };
-
-    return value => registerSub(name, value);
-}
-
-
-function _incomingPortMap(tagger, finalTagger) {
-    return value => tagger(finalTagger(value));
-}
-
-
-function _setupIncomingPort(name, sendToApp) {
-    let subs = [];
-
-    // CREATE MANAGER
-
-    const init = Task.succeed(null);
-
-    effectManagers[name].init = init;
-    effectManagers[name].onEffects = (router, cmdList, subList, state) => {
-        subs = subList;
-
-        return init;
-    };
-
-    // PUBLIC API
-
-    function send(incomingValue) {
-        for (const sub of subs) {
-            sendToApp(sub(incomingValue));
-        }
-    }
-
-    return { send };
-}

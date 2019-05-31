@@ -1,1 +1,1 @@
-export { Sub } from '../__Internal__';
+export { Sub } from '../Elm/Platform';
