@@ -1,1 +1,1 @@
-export { Task } from './__Internal__';
+export { Task } from './Elm/Platform';

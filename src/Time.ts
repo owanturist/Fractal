@@ -1,20 +1,17 @@
+import * as Scheduler from './Elm/Scheduler';
 import {
     Task
 } from './Task';
 import {
-    Process
-} from './Process';
-import {
-    Router
-} from './Router';
-import {
-    Sub
-} from './Platform/Sub';
-import {
-    Effect,
-    TaskInternal,
-    ProcessInternal
-} from './__Internal__';
+    Process,
+    Router,
+    Fas,
+    Sub,
+    reg,
+    sendToApp,
+    sendToSelf
+} from './Elm/Platform';
+
 
 type Processes = Map<number, Process>;
 
@@ -25,24 +22,22 @@ interface State<Msg> {
     processes: Processes;
 }
 
-class TimeRouter<Msg> extends Router<Msg, number, State<Msg>> {
-    public init(): Task<never, State<Msg>> {
-        return Task.succeed({
-            taggers: new Map(),
-            processes: new Map()
-        });
-    }
-
-    public onEffects(
-        sendToSelf: (interval: number) => Task<never, void>,
-        effects: Array<Time<Msg>>,
-        { processes }: State<Msg>
-    ): Task<never, State<Msg>> {
+const manager = reg(<AppMsg>() => ({
+    init: Task.succeed({
+        taggers: new Map(),
+        processes: new Map()
+    }),
+    onEffects(
+        router: Router<AppMsg, number>,
+        _commands: Array<never>,
+        subscriptions: Array<TimeSub<AppMsg>>,
+        { processes }: State<AppMsg>
+    ): Task<never, State<AppMsg>> {
         const expiredProcesses: Array<Process> = [];
         const newIntervals: Array<number> = [];
         const existingProcesses: Processes = new Map();
-        const newTaggers: Taggers<Msg> = effects.reduce(
-            (acc: Taggers<Msg>, effect: Time<Msg>): Taggers<Msg> => effect.register(acc),
+        const newTaggers: Taggers<AppMsg> = subscriptions.reduce(
+            (acc: Taggers<AppMsg>, sub: TimeSub<AppMsg>): Taggers<AppMsg> => sub.register(acc),
             new Map()
         );
 
@@ -63,23 +58,23 @@ class TimeRouter<Msg> extends Router<Msg, number, State<Msg>> {
         return Task.sequence(expiredProcesses.map((process: Process): Task<never, void> => process.kill()))
             .chain(() => newIntervals.reduce(
                 (acc: Task<never, Processes>, interval: number): Task<never, Processes> => {
-                    return setEvery(interval, sendToSelf(interval))
-                        .spawn()
-                        .map((process: Process) => (newProcesses: Processes) => newProcesses.set(interval, process))
-                        .pipe(acc);
+                    return acc.chain((processes: Processes) => {
+                        return setEvery(interval, sendToSelf(router, interval))
+                            .spawn()
+                            .map((process: Process) => processes.set(interval, process));
+                    });
                 },
                 Task.succeed(existingProcesses)
-            )).map((newProcesses: Processes): State<Msg> => ({
+            )).map((newProcesses: Processes): State<AppMsg> => ({
                 taggers: newTaggers,
                 processes: newProcesses
             }));
-    }
-
-    public onSelfMsg(
-        sendToApp: (msgs: Array<Msg>) => Task<never, void>,
+    },
+    onSelfMsg(
+        router: Router<AppMsg, number>,
         interval: number,
-        state: State<Msg>
-    ): Task<never, State<Msg>> {
+        state: State<AppMsg>
+    ): Task<never, State<AppMsg>> {
         const taggers = state.taggers.get(interval);
 
         if (taggers == null) {
@@ -88,35 +83,19 @@ class TimeRouter<Msg> extends Router<Msg, number, State<Msg>> {
 
         const now = Date.now();
 
-        return sendToApp(
-            taggers.map((tagger: (posix: number) => Msg): Msg => tagger(now))
-        ).chain(() => Task.succeed(state));
+        return Task.sequence(
+            taggers.map((tagger: (posix: number) => AppMsg) => sendToApp(router, tagger(now)))
+        ).map(() => state);
     }
+}));
+
+abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
+    protected readonly manager: Fas<AppMsg, number, State<AppMsg>> = manager;
+
+    public abstract register(taggers: Taggers<AppMsg>): Taggers<AppMsg>;
 }
 
-const setEvery = (timeout: number, task: Task<never, void>): Task<never, void> => {
-    return TaskInternal.of((done: (task: Task<never, void>) => void): Process => {
-        const intervalId = setInterval(() => done(task), timeout);
-
-        return ProcessInternal.of(() => clearInterval(intervalId));
-    });
-};
-
-export const now: Task<never, number> = TaskInternal.of((done: (task: Task<never, number>) => void): Process => {
-    done(Task.succeed(Date.now()));
-
-    return ProcessInternal.none;
-});
-
-abstract class Time<Msg> extends Effect<Msg, number, State<Msg>> {
-    public abstract register(taggers: Taggers<Msg>): Taggers<Msg>;
-
-    public createRouter(): Router<Msg, number, State<Msg>> {
-        return new TimeRouter();
-    }
-}
-
-class Every<Msg> extends Time<Msg> {
+class Every<Msg> extends TimeSub<Msg> {
     public constructor(
         private readonly interval: number,
         private readonly tagger: (poxis: number) => Msg
@@ -124,7 +103,7 @@ class Every<Msg> extends Time<Msg> {
         super();
     }
 
-    public map<R>(fn: (msg: Msg) => R): Time<R> {
+    public map<R>(fn: (msg: Msg) => R): TimeSub<R> {
         return new Every(
             this.interval,
             (posix: number): R => fn(this.tagger(posix))
@@ -143,6 +122,20 @@ class Every<Msg> extends Time<Msg> {
         return taggers;
     }
 }
+
+const setEvery = (timeout: number, task: Task<never, void>): Task<never, void> => {
+    return Task.binding(() => {
+        const intervalId = setInterval(() => {
+            Scheduler.rawSpawn(task.execute());
+        }, timeout);
+
+        return () => clearInterval(intervalId);
+    });
+};
+
+export const now: Task<never, number> = Task.binding((done: (task: Task<never, number>) => void): void => {
+    done(Task.succeed(Date.now()));
+});
 
 export const every = <Msg>(interval: number, tagger: (posix: number) => Msg): Sub<Msg> => {
     return new Every(interval, tagger);
