@@ -1,14 +1,12 @@
-import * as Scheduler from './Elm/Scheduler';
-import {
-    Task
-} from './Task';
+import * as Scheduler from './Core/Scheduler';
 import {
     Process,
     Router,
     Manager,
     Sub,
+    Task,
     createManager
-} from './Elm/Platform';
+} from './Core';
 
 
 type Processes = Map<number, Process>;

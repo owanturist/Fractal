@@ -453,7 +453,7 @@ export const worker = <Model, Msg>(config: {
 
 // PORTS
 
-namespace Port {
+export namespace Port {
     type PortsDict<T> = Map<string, Array<(value: Value) => T>>;
 
     interface State<AppMsg> {
@@ -645,6 +645,3 @@ namespace Port {
         return new Fire(name, value);
     };
 }
-
-export const listen = Port.listen;
-export const fire = Port.fire;

@@ -1,1 +1,1 @@
-export { Cmd } from '../Elm/Platform';
+export { Cmd } from '../Core';

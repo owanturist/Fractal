@@ -1,1 +1,1 @@
-export { Sub } from '../Elm/Platform';
+export { Sub } from '../Core';

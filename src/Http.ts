@@ -21,10 +21,6 @@ import {
 } from './Platform/Cmd';
 import * as Decode from './Json/Decode';
 import * as Encode from './Json/Encode';
-import {
-    TaskInternal,
-    ProcessInternal
-} from './__Internal__';
 
 /* H E L P E R S */
 

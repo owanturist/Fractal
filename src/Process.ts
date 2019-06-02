@@ -1,1 +1,1 @@
-export { Process } from './__Internal__';
+export { Process } from './Core';
