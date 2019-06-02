@@ -7,9 +7,7 @@ import {
     Router,
     Fas,
     Sub,
-    reg,
-    sendToApp,
-    sendToSelf
+    createManager
 } from './Elm/Platform';
 
 
@@ -22,7 +20,7 @@ interface State<Msg> {
     processes: Processes;
 }
 
-const manager = reg({
+const manager = createManager({
     init: Task.succeed({
         taggers: new Map(),
         processes: new Map()
@@ -59,7 +57,7 @@ const manager = reg({
             .chain(() => newIntervals.reduce(
                 (acc: Task<never, Processes>, interval: number): Task<never, Processes> => {
                     return acc.chain((processes: Processes) => {
-                        return setEvery(interval, sendToSelf(router, interval))
+                        return setEvery(interval, router.sendToSelf(interval))
                             .spawn()
                             .map((process: Process) => processes.set(interval, process));
                     });
@@ -84,7 +82,7 @@ const manager = reg({
         const now = Date.now();
 
         return Task.sequence(
-            taggers.map((tagger: (posix: number) => AppMsg) => sendToApp(router, tagger(now)))
+            taggers.map((tagger: (posix: number) => AppMsg) => router.sendToApp(tagger(now)))
         ).map(() => state);
     }
 });

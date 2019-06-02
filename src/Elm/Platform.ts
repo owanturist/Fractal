@@ -46,12 +46,11 @@ class EffectManager<AppMsg> {
             }));
         };
 
-        const router: Router<AppMsg, SelfMsg> = {
-            __sendToApp: dispatch,
-            __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, manager.config.init.execute()))
-        };
+        const process: Scheduler.Process<never, unknown, InternalMsg<AppMsg, SelfMsg>>
+            = Scheduler.rawSpawn(Scheduler.chain(loop, manager.config.init.execute()));
+        const router: Router<AppMsg, SelfMsg> = new Router(process, dispatch);
 
-        return router.__selfProcess;
+        return process;
     }
 
     private readonly processes: Map<number, Scheduler.Process> = new Map();
@@ -84,7 +83,7 @@ export class Fas<AppMsg, SelfMsg, State> {
     ) {}
 }
 
-export const reg = <AppMsg, SelfMsg, State>(
+export const createManager = <AppMsg, SelfMsg, State>(
     config: Manager<AppMsg, SelfMsg, State>
 ): Fas<AppMsg, SelfMsg, State> => EffectManager.createManager(config);
 
@@ -351,7 +350,7 @@ export const worker = <Model, Msg>(config: {
 
 // EFFECT MANAGERS
 
-const taskManager = reg({
+const taskManager = createManager({
     init: Task.succeed(undefined),
     onEffects<AppMsg>(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, void> {
         return Task.sequence(
@@ -376,7 +375,7 @@ class Perform<AppMsg> extends Cmd<AppMsg> {
 
     public onEffects(router: Router<AppMsg, never>): Task<never, Process> {
         return this.task
-            .chain((msg: AppMsg): Task<never, void> => sendToApp(router, msg))
+            .chain((msg: AppMsg): Task<never, void> => router.sendToApp(msg))
             .spawn();
     }
 }
@@ -396,7 +395,7 @@ namespace Port {
         | { type: 'OUTCOMING'; name: string; cb(value: Value): void }
         ;
 
-    const home = reg({
+    const home = createManager({
         init: Task.succeed({
             incoming: new Map(),
             outcoming: new Map()
@@ -417,7 +416,7 @@ namespace Port {
             }
 
             for (const cmd of commands) {
-                cmd.register(nextState, router);
+                cmd.register(router, nextState);
             }
 
             return Task.succeed(nextState);
@@ -436,7 +435,7 @@ namespace Port {
                     }
 
                     return Task.sequence(
-                        taggers.map((tagger: (value: Value) => AppMsg) => sendToApp(router, tagger(msg.value)))
+                        taggers.map((tagger: (value: Value) => AppMsg) => router.sendToApp(tagger(msg.value)))
                     ).map(() => state);
                 }
 
@@ -493,7 +492,7 @@ namespace Port {
             return this as unknown as PortCmd<R>;
         }
 
-        public abstract register(state: State<AppMsg>, router: Router<AppMsg, SelfMsg>): void;
+        public abstract register(router: Router<AppMsg, SelfMsg>, state: State<AppMsg>): void;
     }
 
     class Fire<AppMsg> extends PortCmd<AppMsg> {
@@ -504,7 +503,7 @@ namespace Port {
             super();
         }
 
-        public register(state: State<AppMsg>): void {
+        public register(_router: Router<AppMsg, SelfMsg>, state: State<AppMsg>): void {
             const taggers = state.outcoming.get(this.name);
 
             if (typeof taggers !== 'undefined') {
@@ -522,9 +521,9 @@ namespace Port {
             super();
         }
 
-        public register(_state: State<AppMsg>, router: Router<AppMsg, SelfMsg>): void {
+        public register(router: Router<AppMsg, SelfMsg>): void {
             this.send((name: string, cb: (value: Value) => void): void => {
-                Scheduler.rawSpawn(sendToSelf(router, { type: 'OUTCOMING', name, cb }).execute());
+                Scheduler.rawSpawn(router.sendToSelf({ type: 'OUTCOMING', name, cb }).execute());
             });
         }
     }
@@ -536,9 +535,9 @@ namespace Port {
             super();
         }
 
-        public register(_state: State<AppMsg>, router: Router<AppMsg, SelfMsg>): void {
+        public register(router: Router<AppMsg, SelfMsg>): void {
             this.send((name: string, value: Value): void => {
-                Scheduler.rawSpawn(sendToSelf(router, { type: 'SEND', name, value }).execute());
+                Scheduler.rawSpawn(router.sendToSelf({ type: 'SEND', name, value }).execute());
             });
         }
     }
@@ -597,9 +596,25 @@ const selfMsg = <AppMsg, SelfMsg>(msg: SelfMsg): InternalMsg<AppMsg, SelfMsg> =>
     msg
 });
 
-export interface Router<AppMsg, SelfMsg> {
-    __selfProcess: Scheduler.Process<never, unknown, InternalMsg<AppMsg, SelfMsg>>;
-    __sendToApp(msg: AppMsg): void;
+export class Router<AppMsg, SelfMsg> {
+    public constructor(
+        private readonly process: Scheduler.Process<never, unknown, InternalMsg<AppMsg, SelfMsg>>,
+        private readonly dispatch: (msg: AppMsg) => void
+    ) {}
+
+    public sendToApp(msg: AppMsg): Task<never, void> {
+        return new Task(
+            Scheduler.binding((done: (task: Scheduler.Task<never, void>) => void) => {
+                done(Scheduler.succeed(this.dispatch(msg)));
+            })
+        );
+    }
+
+    public sendToSelf(msg: SelfMsg): Task<never, void> {
+        return new Task(
+            Scheduler.send(this.process, selfMsg(msg))
+        );
+    }
 }
 
 export interface Manager<AppMsg, SelfMsg, State> {
@@ -616,23 +631,3 @@ export interface Manager<AppMsg, SelfMsg, State> {
         state: State
     ): Task<never, State>;
 }
-
-
-// ROUTING
-
-
-export const sendToApp = <AppMsg, SelfMsg>(
-    router: Router<AppMsg, SelfMsg>,
-    msg: AppMsg
-): Task<never, void> => new Task(
-    Scheduler.binding(callback => {
-        callback(Scheduler.succeed(router.__sendToApp(msg)));
-    })
-);
-
-export const sendToSelf = <AppMsg, SelfMsg>(
-    router: Router<AppMsg, SelfMsg>,
-    msg: SelfMsg
-): Task<never, void> => new Task(
-    Scheduler.send(router.__selfProcess, selfMsg(msg))
-);
