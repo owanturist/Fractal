@@ -148,14 +148,14 @@ export interface Process<E = unknown, T = unknown, M = unknown> {
     __mailbox: Array<M>;
 }
 
-const process = <E, T>(root: Task<E, T>): Process<E, T> => ({
+const process = <E, T, M>(root: Task<E, T>): Process<E, T, M> => ({
     __root: root,
     __stack: head,
     __mailbox: []
 });
 
-export const rawSpawn = <E, T>(task: Task<E, T>): Process<E, T> => {
-    const proc = process(task);
+export const rawSpawn = <E, T, M>(task: Task<E, T>): Process<E, T, M> => {
+    const proc = process<E, T, M>(task);
 
     _enqueue(proc);
 
