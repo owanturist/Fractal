@@ -93,7 +93,7 @@ export abstract class Either<E, T> {
 }
 
 namespace Internal {
-    export class Left<E, T> extends Either<E, T> {
+    export class Left<E> extends Either<E, never> {
         constructor(private readonly error: E) {
             super();
         }
@@ -106,7 +106,7 @@ namespace Internal {
             return false;
         }
 
-        public isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean {
+        public isEqual<G, T>(another: Either<WhenNever<E, G>, T>): boolean {
             return another.fold(
                 (error: WhenNever<E, G>): boolean => error === this.error,
                 (): boolean => false
@@ -125,8 +125,8 @@ namespace Internal {
             return this as unknown as Either<WhenNever<E, G>, R>;
         }
 
-        public pipe<G, U>(): Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T> {
-            return this as unknown as Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T>;
+        public pipe<G, U>(): Either<WhenNever<E, G>, U> {
+            return this as unknown as Either<WhenNever<E, G>, U>;
         }
 
         public bimap<S, R>(leftFn: (error: E) => S): Either<S, R> {
@@ -135,23 +135,23 @@ namespace Internal {
             );
         }
 
-        public swap(): Either<T, E> {
+        public swap<T>(): Either<T, E> {
             return new Right(this.error);
         }
 
-        public mapLeft<S>(fn: (error: E) => S): Either<S, T> {
+        public mapLeft<S, T>(fn: (error: E) => S): Either<S, T> {
             return new Left(
                 fn(this.error)
             );
         }
 
-        public orElse<G, D>(
-            fn: (error: WhenNever<E, G>) => Either<WhenNever<E, G>, WhenNever<T, D>>
-        ): Either<WhenNever<E, G>, WhenNever<T, D>> {
+        public orElse<G, T>(
+            fn: (error: WhenNever<E, G>) => Either<WhenNever<E, G>, T>
+        ): Either<WhenNever<E, G>, T> {
             return fn(this.error as WhenNever<E, G>);
         }
 
-        public getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D> {
+        public getOrElse<T>(defaults: T): T {
             return defaults;
         }
 
@@ -159,7 +159,7 @@ namespace Internal {
             return leftFn(this.error);
         }
 
-        public cata<R>(pattern: Pattern<E, T, R>): R {
+        public cata<T, R>(pattern: Pattern<E, T, R>): R {
             if (typeof pattern.Left === 'function') {
                 return pattern.Left(this.error);
             }
@@ -167,12 +167,12 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public toMaybe(): Maybe<T> {
+        public toMaybe(): Maybe<never> {
             return Nothing;
         }
     }
 
-    export class Right<E, T> extends Either<E, T> {
+    export class Right<T> extends Either<never, T> {
         constructor(private readonly value: T) {
             super();
         }
@@ -185,44 +185,44 @@ namespace Internal {
             return true;
         }
 
-        public isEqual<G, D>(another: Either<WhenNever<E, G>, WhenNever<T, D>>): boolean {
+        public isEqual<E, D>(another: Either<E, WhenNever<T, D>>): boolean {
             return another.fold(
                 (): boolean => false,
                 (value: WhenNever<T, D>): boolean => value === this.value
             );
         }
 
-        public map<R>(fn: (value: T) => R): Either<E, R> {
+        public map<E, R>(fn: (value: T) => R): Either<E, R> {
             return new Right(
                 fn(this.value)
             );
         }
 
-        public chain<G, R>(fn: (value: T) => Either<WhenNever<E, G>, R>): Either<WhenNever<E, G>, R> {
+        public chain<E, R>(fn: (value: T) => Either<E, R>): Either<E, R> {
             return fn(this.value);
         }
 
-        public ap<G, R>(eitherFn: Either<WhenNever<E, G>, (value: T) => R>): Either<WhenNever<E, G>, R> {
-            return eitherFn.pipe<WhenNever<E, G>>(this as unknown as Either<WhenNever<E, G>, T>);
+        public ap<E, R>(eitherFn: Either<E, (value: T) => R>): Either<E, R> {
+            return eitherFn.pipe<E>(this as unknown as Either<E, T>);
         }
 
-        public pipe<G, A, U>(
+        public pipe<E, A, U>(
             either: T extends (value: A) => unknown
-                ? Either<WhenNever<E, G>, A>
+                ? Either<E, A>
                 : never
-        ): Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T> {
+        ): Either<E, T extends (value: unknown) => U ? U : T> {
             return either.map(
                 this.value as unknown as (value: A) => U
-            ) as unknown as Either<WhenNever<E, G>, T extends (value: unknown) => U ? U : T>;
+            ) as Either<E, T extends (value: unknown) => U ? U : T>;
         }
 
-        public bimap<S, R>(_leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R> {
+        public bimap<E, S, R>(_leftFn: (error: E) => S, rightFn: (value: T) => R): Either<S, R> {
             return new Right(
                 rightFn(this.value)
             );
         }
 
-        public swap(): Either<T, E> {
+        public swap<E>(): Either<T, E> {
             return new Left(this.value);
         }
 
@@ -230,19 +230,19 @@ namespace Internal {
             return this as unknown as Either<S, T>;
         }
 
-        public orElse<G, D>(): Either<WhenNever<E, G>, WhenNever<T, D>> {
-            return this as unknown as Either<WhenNever<E, G>, WhenNever<T, D>>;
+        public orElse<E, D>(): Either<E, WhenNever<T, D>> {
+            return this as unknown as Either<E, WhenNever<T, D>>;
         }
 
         public getOrElse<D>(): WhenNever<T, D> {
             return this.value as WhenNever<T, D>;
         }
 
-        public fold<R>(_leftFn: (error: E) => R, rightFn: (value: T) => R): R {
+        public fold<E, R>(_leftFn: (error: E) => R, rightFn: (value: T) => R): R {
             return rightFn(this.value);
         }
 
-        public cata<R>(pattern: Pattern<E, T, R>): R {
+        public cata<E, R>(pattern: Pattern<E, T, R>): R {
             if (typeof pattern.Right === 'function') {
                 return pattern.Right(this.value);
             }

@@ -81,7 +81,7 @@ export abstract class Maybe<T> {
 }
 
 namespace Internal {
-    export class Nothing<T> extends Maybe<T> {
+    export class Nothing extends Maybe<never> {
         public isNothing(): boolean {
             return true;
         }
@@ -90,7 +90,7 @@ namespace Internal {
             return false;
         }
 
-        public isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean {
+        public isEqual<T>(another: Maybe<T>): boolean {
             return another.isNothing();
         }
 
@@ -106,15 +106,15 @@ namespace Internal {
             return this as unknown as Maybe<R>;
         }
 
-        public pipe<U>(): Maybe<T extends (value: unknown) => U ? U : T> {
-            return this as unknown as Maybe<T extends (value: unknown) => U ? U : T>;
+        public pipe<U>(): Maybe<U> {
+            return this;
         }
 
-        public orElse<D>(fn: () => Maybe<WhenNever<T, D>>): Maybe<WhenNever<T, D>> {
+        public orElse<T>(fn: () => Maybe<T>): Maybe<T> {
             return fn();
         }
 
-        public getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D> {
+        public getOrElse<T>(defaults: T): T {
             return defaults;
         }
 
@@ -122,7 +122,7 @@ namespace Internal {
             return nothingFn();
         }
 
-        public cata<R>(pattern: Pattern<T, R>): R {
+        public cata<T, R>(pattern: Pattern<T, R>): R {
             if (typeof pattern.Nothing === 'function') {
                 return pattern.Nothing();
             }
@@ -130,7 +130,7 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public toEither<E>(error: E): Either<E, T> {
+        public toEither<E, T>(error: E): Either<E, T> {
             return Left(error);
         }
     }

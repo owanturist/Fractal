@@ -1,4 +1,5 @@
 import {
+    WhenNever,
     Cata
 } from './Basics';
 import {
@@ -68,21 +69,21 @@ export abstract class RemoteData<E, T> {
     public abstract isLoading(): boolean;
     public abstract isFailure(): boolean;
     public abstract isSucceed(): boolean;
-    public abstract isEqual(another: RemoteData<E, T>): boolean;
+    public abstract isEqual<G, D>(another: RemoteData<WhenNever<E, G>, WhenNever<T, D>>): boolean;
 
     public abstract getOrElse(defaults: T): T;
 
-    public abstract ap<R>(remoteDataFn: RemoteData<E, (value: T) => R>): RemoteData<E, R>;
+    public abstract ap<G, R>(tagger: RemoteData<WhenNever<E, G>, (value: T) => R>): RemoteData<WhenNever<E, G>, R>;
     public abstract map<R>(fn: (value: T) => R): RemoteData<E, R>;
-    public abstract chain<R>(fn: (value: T) => RemoteData<E, R>): RemoteData<E, R>;
+    public abstract chain<G, R>(fn: (value: T) => RemoteData<WhenNever<E, G>, R>): RemoteData<WhenNever<E, G>, R>;
     public abstract bimap<S, R>(failureFn: (error: E) => S, succeedFn: (value: T) => R): RemoteData<S, R>;
     public abstract swap(): RemoteData<T, E>;
     public abstract failureMap<S>(fn: (error: E) => S): RemoteData<S, T>;
     public abstract pipe<S>(
         either: T extends (value: infer A) => unknown
-            ? RemoteData<[ E ] extends [ never ] ? S : E, A>
+            ? RemoteData<WhenNever<E, S>, A>
             : never
-    ): RemoteData<[ E ] extends [ never ] ? S : E, T extends (value: unknown) => infer U ? U : T>;
+    ): RemoteData<WhenNever<E, S>, T extends (value: unknown) => infer U ? U : T>;
 
     public abstract cata<R>(pattern: Pattern<E, T, R>): R;
 
@@ -90,7 +91,7 @@ export abstract class RemoteData<E, T> {
 }
 
 namespace Internal {
-    export class NotAsked<E, T> extends RemoteData<E, T> {
+    export class NotAsked extends RemoteData<never, never> {
         public isNotAsked(): boolean {
             return true;
         }
@@ -107,49 +108,46 @@ namespace Internal {
             return false;
         }
 
-        public isEqual(another: RemoteData<E, T>): boolean {
+        public isEqual<E, T>(another: RemoteData<E, T>): boolean {
             return another.cata({
                 NotAsked: (): boolean  => true,
                 _: (): boolean => false
             });
         }
 
-        public getOrElse(defaults: T): T {
+        public getOrElse<T>(defaults: T): T {
             return defaults;
         }
 
-        public ap<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public ap(): RemoteData<never, never> {
+            return this;
         }
 
-        public map<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public map(): RemoteData<never, never> {
+            return this;
         }
 
-        public chain<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public chain(): RemoteData<never, never> {
+            return this;
         }
 
-        public bimap<S, R>(): RemoteData<S, R> {
-            return this as unknown as RemoteData<S, R>;
+        public bimap(): RemoteData<never, never> {
+            return this;
         }
 
-        public swap(): RemoteData<T, E> {
-            return this as unknown as RemoteData<T, E>;
+        public swap(): RemoteData<never, never> {
+            return this;
         }
 
-        public failureMap<S>(): RemoteData<S, T> {
-            return this as unknown as RemoteData<S, T>;
+        public failureMap(): RemoteData<never, never> {
+            return this;
         }
 
-        public pipe<S, U>(): RemoteData<[ E ] extends [ never ] ? S : E, T extends (value: unknown) => U ? U : T> {
-            return this as unknown as RemoteData<
-                [ E ] extends [ never ] ? S : E,
-                T extends (value: unknown) => U ? U : T
-            >;
+        public pipe(): RemoteData<never, never> {
+            return this;
         }
 
-        public cata<R>(pattern: Pattern<E, T, R>): R {
+        public cata<E, T, R>(pattern: Pattern<E, T, R>): R {
             if (typeof pattern.NotAsked === 'function') {
                 return pattern.NotAsked();
             }
@@ -157,12 +155,12 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public toMaybe(): Maybe<T> {
+        public toMaybe(): Maybe<never> {
             return Nothing;
         }
     }
 
-    export class Loading<E, T> extends RemoteData<E, T> {
+    export class Loading extends RemoteData<never, never> {
         public isNotAsked(): boolean {
             return false;
         }
@@ -179,49 +177,46 @@ namespace Internal {
             return false;
         }
 
-        public isEqual(another: RemoteData<E, T>): boolean {
+        public isEqual<E, T>(another: RemoteData<E, T>): boolean {
             return another.cata({
                 Loading: (): boolean  => true,
                 _: (): boolean => false
             });
         }
 
-        public getOrElse(defaults: T): T {
+        public getOrElse<T>(defaults: T): T {
             return defaults;
         }
 
-        public ap<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public ap(): RemoteData<never, never> {
+            return this;
         }
 
-        public map<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public map(): RemoteData<never, never> {
+            return this;
         }
 
-        public chain<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public chain(): RemoteData<never, never> {
+            return this;
         }
 
-        public bimap<S, R>(): RemoteData<S, R> {
-            return this as unknown as RemoteData<S, R>;
+        public bimap(): RemoteData<never, never> {
+            return this;
         }
 
-        public swap(): RemoteData<T, E> {
-            return this as unknown as RemoteData<T, E>;
+        public swap(): RemoteData<never, never> {
+            return this;
         }
 
-        public failureMap<S>(): RemoteData<S, T> {
-            return this as unknown as RemoteData<S, T>;
+        public failureMap(): RemoteData<never, never> {
+            return this;
         }
 
-        public pipe<S, U>(): RemoteData<[ E ] extends [ never ] ? S : E, T extends (value: unknown) => U ? U : T> {
-            return this as unknown as RemoteData<
-                [ E ] extends [ never ] ? S : E,
-                T extends (value: unknown) => U ? U : T
-            >;
+        public pipe(): RemoteData<never, never> {
+            return this;
         }
 
-        public cata<R>(pattern: Pattern<E, T, R>): R {
+        public cata<E, T, R>(pattern: Pattern<E, T, R>): R {
             if (typeof pattern.Loading === 'function') {
                 return pattern.Loading();
             }
@@ -229,12 +224,12 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public toMaybe(): Maybe<T> {
+        public toMaybe(): Maybe<never> {
             return Nothing;
         }
     }
 
-    export class Failure<E, T> extends RemoteData<E, T> {
+    export class Failure<E> extends RemoteData<E, never> {
         constructor(private readonly error: E) {
             super();
         }
@@ -255,53 +250,50 @@ namespace Internal {
             return false;
         }
 
-        public isEqual(another: RemoteData<E, T>): boolean {
+        public isEqual<G, T>(another: RemoteData<WhenNever<E, G>, T>): boolean {
             return another.cata({
-                Failure: (error: E): boolean  => error === this.error,
+                Failure: (error: WhenNever<E, G>): boolean => error === this.error,
                 _: (): boolean => false
             });
         }
 
-        public getOrElse(defaults: T): T {
+        public getOrElse<T>(defaults: T): T {
             return defaults;
         }
 
-        public ap<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public ap<G>(): RemoteData<WhenNever<E, G>, never> {
+            return this as unknown as RemoteData<WhenNever<E, G>, never>;
         }
 
-        public map<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public map(): RemoteData<E, never> {
+            return this as unknown as RemoteData<E, never>;
         }
 
-        public chain<R>(): RemoteData<E, R> {
-            return this as unknown as RemoteData<E, R>;
+        public chain<G>(): RemoteData<WhenNever<E, G>, never> {
+            return this as unknown as RemoteData<WhenNever<E, G>, never>;
         }
 
-        public bimap<S, R>(failureFn: (error: E) => S): Failure<S, R> {
+        public bimap<S>(failureFn: (error: E) => S): RemoteData<S, never> {
             return new Failure(
                 failureFn(this.error)
             );
         }
 
-        public swap(): RemoteData<T, E> {
+        public swap(): RemoteData<never, E> {
             return new Succeed(this.error);
         }
 
-        public failureMap<S>(fn: (error: E) => S): Failure<S, T> {
+        public failureMap<S>(fn: (error: E) => S): RemoteData<S, never> {
             return new Failure(
                 fn(this.error)
             );
         }
 
-        public pipe<S, U>(): RemoteData<[ E ] extends [ never ] ? S : E, T extends (value: unknown) => U ? U : T> {
-            return this as unknown as RemoteData<
-                [ E ] extends [ never ] ? S : E,
-                T extends (value: unknown) => U ? U : T
-            >;
+        public pipe<S>(): RemoteData<WhenNever<E, S>, never> {
+            return this as unknown as RemoteData<WhenNever<E, S>, never>;
         }
 
-        public cata<R>(pattern: Pattern<E, T, R>): R {
+        public cata<T, R>(pattern: Pattern<E, T, R>): R {
             if (typeof pattern.Failure === 'function') {
                 return pattern.Failure(this.error);
             }
@@ -309,12 +301,12 @@ namespace Internal {
             return (pattern._ as () => R)();
         }
 
-        public toMaybe(): Maybe<T> {
+        public toMaybe(): Maybe<never> {
             return Nothing;
         }
     }
 
-    export class Succeed<E, T> extends RemoteData<E, T> {
+    export class Succeed<T> extends RemoteData<never, T> {
         constructor(private readonly value: T) {
             super();
         }
@@ -335,9 +327,9 @@ namespace Internal {
             return true;
         }
 
-        public isEqual(another: RemoteData<E, T>): boolean {
+        public isEqual<E, D>(another: RemoteData<E, WhenNever<T, D>>): boolean {
             return another.cata({
-                Succeed: (value: T): boolean  => value === this.value,
+                Succeed: (value: WhenNever<T, D>): boolean  => value === this.value,
                 _: (): boolean => false
             });
         }
@@ -346,29 +338,29 @@ namespace Internal {
             return this.value;
         }
 
-        public ap<R>(remoteDataFn: RemoteData<E, (value: T) => R>): RemoteData<E, R> {
+        public ap<E, R>(remoteDataFn: RemoteData<E, (value: T) => R>): RemoteData<E, R> {
             return remoteDataFn.map(
                 (fn: (value: T) => R): R => fn(this.value)
             );
         }
 
-        public map<R>(fn: (value: T) => R): RemoteData<E, R> {
+        public map<R>(fn: (value: T) => R): RemoteData<never, R> {
             return new Succeed(
                 fn(this.value)
             );
         }
 
-        public chain<R>(fn: (value: T) => RemoteData<E, R>): RemoteData<E, R> {
+        public chain<E, R>(fn: (value: T) => RemoteData<E, R>): RemoteData<E, R> {
             return fn(this.value);
         }
 
-        public bimap<S, R>(_failureFn: (error: E) => S, succeedFn: (value: T) => R): RemoteData<S, R> {
+        public bimap<R>(_failureFn: (error: never) => never, succeedFn: (value: T) => R): RemoteData<never, R> {
             return new Succeed(
                 succeedFn(this.value)
             );
         }
 
-        public swap(): RemoteData<T, E> {
+        public swap(): RemoteData<T, never> {
             return new Failure(this.value);
         }
 
@@ -376,17 +368,17 @@ namespace Internal {
             return this as unknown as RemoteData<S, T>;
         }
 
-        public pipe<S, A, U>(
+        public pipe<E, A, U>(
             either: T extends (value: A) => unknown
-                ? RemoteData<[ E ] extends [ never ] ? S : E, A>
+                ? RemoteData<E, A>
                 : never
-        ): RemoteData<[ E ] extends [ never ] ? S : E, T extends (value: unknown) => U ? U : T> {
+        ): RemoteData<E, T extends (value: unknown) => U ? U : T> {
             return either.map(
                 this.value as unknown as (value: A) => U
-            ) as unknown as RemoteData<[ E ] extends [ never ] ? S : E, T extends (value: unknown) => U ? U : T>;
+            ) as unknown as RemoteData<E, T extends (value: unknown) => U ? U : T>;
         }
 
-        public cata<R>(pattern: Pattern<E, T, R>): R {
+        public cata<E, R>(pattern: Pattern<E, T, R>): R {
             if (typeof pattern.Succeed === 'function') {
                 return pattern.Succeed(this.value);
             }
