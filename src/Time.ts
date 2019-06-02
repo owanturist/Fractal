@@ -5,7 +5,7 @@ import {
 import {
     Process,
     Router,
-    Fas,
+    Manager,
     Sub,
     createManager
 } from './Elm/Platform';
@@ -13,19 +13,20 @@ import {
 
 type Processes = Map<number, Process>;
 
-type Taggers<Msg> = Map<number, Array<(posix: number) => Msg>>;
+type Taggers<AppMsg> = Map<number, Array<(posix: number) => AppMsg>>;
 
-interface State<Msg> {
-    taggers: Taggers<Msg>;
+interface State<AppMsg> {
+    taggers: Taggers<AppMsg>;
     processes: Processes;
 }
 
-const manager = createManager({
-    init: Task.succeed({
+const manager = createManager(class TimeManager<AppMsg> extends Manager<AppMsg, number, State<AppMsg>> {
+    public init = Task.succeed({
         taggers: new Map(),
         processes: new Map()
-    }),
-    onEffects<AppMsg>(
+    });
+
+    public onEffects<AppMsg>(
         router: Router<AppMsg, number>,
         _commands: Array<never>,
         subscriptions: Array<TimeSub<AppMsg>>,
@@ -67,8 +68,9 @@ const manager = createManager({
                 taggers: newTaggers,
                 processes: newProcesses
             }));
-    },
-    onSelfMsg<AppMsg>(
+    }
+
+    public onSelfMsg<AppMsg>(
         router: Router<AppMsg, number>,
         interval: number,
         state: State<AppMsg>
@@ -88,27 +90,27 @@ const manager = createManager({
 });
 
 abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
-    protected readonly manager: Fas<AppMsg, number, State<AppMsg>> = manager;
+    protected readonly manager: Manager<AppMsg, number, State<AppMsg>> = manager;
 
     public abstract register(taggers: Taggers<AppMsg>): Taggers<AppMsg>;
 }
 
-class Every<Msg> extends TimeSub<Msg> {
+class Every<AppMsg> extends TimeSub<AppMsg> {
     public constructor(
         private readonly interval: number,
-        private readonly tagger: (poxis: number) => Msg
+        private readonly tagger: (poxis: number) => AppMsg
     ) {
         super();
     }
 
-    public map<R>(fn: (msg: Msg) => R): TimeSub<R> {
+    public map<R>(fn: (msg: AppMsg) => R): TimeSub<R> {
         return new Every(
             this.interval,
             (posix: number): R => fn(this.tagger(posix))
         );
     }
 
-    public register(taggers: Taggers<Msg>): Taggers<Msg> {
+    public register(taggers: Taggers<AppMsg>): Taggers<AppMsg> {
         const bag = taggers.get(this.interval);
 
         if (bag == null) {
@@ -135,6 +137,6 @@ export const now: Task<never, number> = Task.binding((done: (task: Task<never, n
     done(Task.succeed(Date.now()));
 });
 
-export const every = <Msg>(interval: number, tagger: (posix: number) => Msg): Sub<Msg> => {
+export const every = <AppMsg>(interval: number, tagger: (posix: number) => AppMsg): Sub<AppMsg> => {
     return new Every(interval, tagger);
 };
