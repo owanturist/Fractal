@@ -22,12 +22,12 @@ interface State<Msg> {
     processes: Processes;
 }
 
-const manager = reg(<AppMsg>() => ({
+const manager = reg({
     init: Task.succeed({
         taggers: new Map(),
         processes: new Map()
     }),
-    onEffects(
+    onEffects<AppMsg>(
         router: Router<AppMsg, number>,
         _commands: Array<never>,
         subscriptions: Array<TimeSub<AppMsg>>,
@@ -70,7 +70,7 @@ const manager = reg(<AppMsg>() => ({
                 processes: newProcesses
             }));
     },
-    onSelfMsg(
+    onSelfMsg<AppMsg>(
         router: Router<AppMsg, number>,
         interval: number,
         state: State<AppMsg>
@@ -87,7 +87,7 @@ const manager = reg(<AppMsg>() => ({
             taggers.map((tagger: (posix: number) => AppMsg) => sendToApp(router, tagger(now)))
         ).map(() => state);
     }
-}));
+});
 
 abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
     protected readonly manager: Fas<AppMsg, number, State<AppMsg>> = manager;
