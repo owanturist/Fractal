@@ -13,7 +13,7 @@ import {
 import * as Scheduler from './Scheduler';
 
 class EffectManager<AppMsg> {
-    public static register<AppMsg, SelfMsg, State>(
+    public static createManager<AppMsg, SelfMsg, State>(
         config: Manager<AppMsg, SelfMsg, State>
     ): Fas<AppMsg, SelfMsg, State> {
         const id = EffectManager.office.size;
@@ -26,11 +26,39 @@ class EffectManager<AppMsg> {
 
     private static readonly office: Map<number, Fas<unknown, unknown, unknown>> = new Map();
 
+    private static initManager<AppMsg, SelfMsg, State>(
+        manager: Fas<AppMsg, SelfMsg, State>,
+        dispatch: (msg: AppMsg) => void
+    ): Scheduler.Process<never, unknown, InternalMsg<AppMsg, SelfMsg>> {
+        const loop = (state: State): Scheduler.Task<never, State> => {
+            return Scheduler.chain(loop, Scheduler.receive((msg: InternalMsg<AppMsg, SelfMsg>) => {
+                switch (msg.$) {
+                    case '_INTERNAL_MSG__APP_MSG_': {
+                        return manager.config
+                            .onEffects(router, msg.effects.commands, msg.effects.subscriptions, state)
+                            .execute();
+                    }
+
+                    case '_INTERNAL_MSG__SELF_MSG_': {
+                        return manager.config.onSelfMsg(router, msg.msg, state).execute();
+                    }
+                }
+            }));
+        };
+
+        const router: Router<AppMsg, SelfMsg> = {
+            __sendToApp: dispatch,
+            __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, manager.config.init.execute()))
+        };
+
+        return router.__selfProcess;
+    }
+
     private readonly processes: Map<number, Scheduler.Process> = new Map();
 
-    public constructor(sendToApp: (msg: AppMsg) => void) {
+    public constructor(dispatch: (msg: AppMsg) => void) {
         for (const [key, manager] of EffectManager.office) {
-            this.processes.set(key, _instantiateManager(manager, sendToApp));
+            this.processes.set(key, EffectManager.initManager(manager, dispatch));
         }
     }
 
@@ -58,7 +86,7 @@ export class Fas<AppMsg, SelfMsg, State> {
 
 export const reg = <AppMsg, SelfMsg, State>(
     config: Manager<AppMsg, SelfMsg, State>
-): Fas<AppMsg, SelfMsg, State> => EffectManager.register(config);
+): Fas<AppMsg, SelfMsg, State> => EffectManager.createManager(config);
 
 abstract class Bag<T> {
     public static get none(): Bag<never> {
@@ -587,34 +615,6 @@ export interface Manager<AppMsg, SelfMsg, State> {
         msg: SelfMsg,
         state: State
     ): Task<never, State>;
-}
-
-function _instantiateManager<AppMsg, SelfMsg, State>(
-    manager: Fas<AppMsg, SelfMsg, State>,
-    sendToApp: (msg: AppMsg) => void
-): Scheduler.Process {
-    const router: Router<AppMsg, SelfMsg> = {
-        __sendToApp: sendToApp,
-        __selfProcess: Scheduler.rawSpawn(Scheduler.chain(loop, manager.config.init.execute()))
-    };
-
-    function loop(state: State): Scheduler.Task<never, State> {
-        return Scheduler.chain(loop, Scheduler.receive((msg: InternalMsg<AppMsg, SelfMsg>) => {
-            switch (msg.$) {
-                case '_INTERNAL_MSG__APP_MSG_': {
-                    return manager.config
-                        .onEffects(router, msg.effects.commands, msg.effects.subscriptions, state)
-                        .execute();
-                }
-
-                case '_INTERNAL_MSG__SELF_MSG_': {
-                    return manager.config.onSelfMsg(router, msg.msg, state).execute();
-                }
-            }
-        }));
-    }
-
-    return router.__selfProcess;
 }
 
 
