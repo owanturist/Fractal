@@ -12,25 +12,39 @@ import {
 } from '../Json/Encode';
 import * as Scheduler from './Scheduler';
 
-class EffectManager {
-    private readonly office: Map<number, Fas<unknown, unknown, unknown>> = new Map();
-
-    public register<AppMsg, SelfMsg, State>(
+class EffectManager<AppMsg> {
+    public static register<AppMsg, SelfMsg, State>(
         init: () => Manager<AppMsg, SelfMsg, State>
     ): Fas<AppMsg, SelfMsg, State> {
-        const id = this.office.size;
+        const id = EffectManager.office.size;
         const manager = new Fas(id, init());
 
-        this.office.set(id, manager);
+        EffectManager.office.set(id, manager);
 
         return manager;
     }
 
-    public setupEffects<Msg>(managers: Map<number, Scheduler.Process>, sendToApp: (msg: Msg) => void): void {
-        // setup all necessary effect managers
-        // tslint:disable-next-line:forin
-        for (const [key, manager] of this.office) {
-            managers.set(key, _instantiateManager(manager, sendToApp));
+    private static readonly office: Map<number, Fas<unknown, unknown, unknown>> = new Map();
+
+    private readonly processes: Map<number, Scheduler.Process> = new Map();
+
+    public constructor(sendToApp: (msg: AppMsg) => void) {
+        for (const [key, manager] of EffectManager.office) {
+            this.processes.set(key, _instantiateManager(manager, sendToApp));
+        }
+    }
+
+    public dispatchEffects<Msg>(cmdBag: Cmd<Msg>, subBag: Sub<Msg>) {
+        const effectsDict: Map<number, Effects<Msg>> = new Map();
+
+        cmdBag.gather(effectsDict);
+        subBag.gather(effectsDict);
+
+        for (const [ home, manager ] of this.processes) {
+            Scheduler.rawSend(manager, appMsg(effectsDict.get(home) || {
+                commands: [],
+                subscriptions: []
+            }));
         }
     }
 }
@@ -42,11 +56,9 @@ export class Fas<AppMsg, SelfMsg, State> {
     ) {}
 }
 
-const em = new EffectManager();
-
 export const reg = <AppMsg, SelfMsg, State>(
     init: () => Manager<AppMsg, SelfMsg, State>
-): Fas<AppMsg, SelfMsg, State> => em.register(init);
+): Fas<AppMsg, SelfMsg, State> => EffectManager.register(init);
 
 abstract class Bag<T> {
     public static get none(): Bag<never> {
@@ -281,25 +293,21 @@ export const worker = <Model, Msg>(config: {
     update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
     subscriptions(model: Model): Sub<Msg>;
 }) => {
-    const [ initialModel, initialCmd ] = config.init();
-
-    const managers: Map<number, Scheduler.Process> = new Map();
-    let model = initialModel;
-
-    em.setupEffects(managers, dispatch);
-
     function dispatch(msg: Msg): void {
         const [ nextModel, nextCmd ] = config.update(msg, model);
 
         model = nextModel;
 
-        _dispatchEffects(managers, nextCmd, config.subscriptions(model));
+        em.dispatchEffects(nextCmd, config.subscriptions(model));
     }
+
+    const em = new EffectManager(dispatch);
+    const [ initialModel, initialCmd ] = config.init();
+    let model = initialModel;
 
     const ports = Port.init<Msg>();
 
-    _dispatchEffects(
-        managers,
+    em.dispatchEffects(
         Cmd.batch([ initialCmd, ports.cmd ]),
         config.subscriptions(model)
     );
@@ -315,7 +323,7 @@ export const worker = <Model, Msg>(config: {
 
 // EFFECT MANAGERS
 
-const foo = em.register(<AppMsg>() => ({
+const foo = reg(<AppMsg>() => ({
     init: Task.succeed(null),
     onEffects(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, null> {
         return Task.sequence(
@@ -360,7 +368,7 @@ namespace Port {
         | { type: 'OUTCOMING'; name: string; cb(value: Value): void }
         ;
 
-    const home = em.register(<AppMsg>() => ({
+    const home = reg(<AppMsg>() => ({
         init: Task.succeed({
             incoming: new Map(),
             outcoming: new Map()
@@ -628,21 +636,3 @@ export const sendToSelf = <AppMsg, SelfMsg>(
 ): Task<never, void> => new Task(
     Scheduler.send(router.__selfProcess, selfMsg(msg))
 );
-
-
-// PIPE BAGS INTO EFFECT MANAGERS
-
-
-function _dispatchEffects<Msg>(managers: Map<number, Scheduler.Process>, cmdBag: Cmd<Msg>, subBag: Sub<Msg>) {
-    const effectsDict: Map<number, Effects<Msg>> = new Map();
-
-    cmdBag.gather(effectsDict);
-    subBag.gather(effectsDict);
-
-    for (const [ home, manager ] of managers) {
-        Scheduler.rawSend(manager, appMsg(effectsDict.get(home) || {
-            commands: [],
-            subscriptions: []
-        }));
-    }
-}
