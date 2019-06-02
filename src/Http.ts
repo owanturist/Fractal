@@ -12,10 +12,7 @@ import {
 } from './Either';
 import {
     Task
-} from './Task';
-import {
-    Process
-} from './Process';
+} from './Core';
 import {
     Cmd
 } from './Platform/Cmd';
@@ -371,7 +368,7 @@ export class Request<T> {
     }
 
     public toTask(): Task<Error, T> {
-        return TaskInternal.of((done: (task: Task<Error, T>) => void): Process => {
+        return Task.binding((done: (task: Task<Error, T>) => void) => {
             const xhr = new XMLHttpRequest();
 
             xhr.addEventListener('error', () => {
@@ -428,7 +425,7 @@ export class Request<T> {
                     Task.fail(Error.BadUrl(this.config.url))
                 );
 
-                return ProcessInternal.none;
+                return;
             }
 
             for (const requestHeader of this.config.headers) {
@@ -462,11 +459,11 @@ export class Request<T> {
                 }
             });
 
-            return ProcessInternal.of(() => {
+            return () => {
                 if (xhr.readyState > 0 && xhr.readyState < 4) {
                     xhr.abort();
                 }
-            });
+            };
         });
     }
 

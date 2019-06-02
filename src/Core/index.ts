@@ -219,6 +219,8 @@ export abstract class Cmd<T> extends Bag<T> {
 
     protected abstract readonly manager: Manager<T, unknown, unknown>;
 
+    public abstract map<R>(fn: (effect: T) => R): Cmd<R>;
+
     public gather(effectDict: Map<number, Effects<T>>): void {
         const effects = effectDict.get(this.manager.identity());
 
@@ -243,6 +245,8 @@ export abstract class Sub<T> extends Bag<T> {
     }
 
     protected abstract readonly manager: Manager<T, unknown, unknown>;
+
+    public abstract map<R>(fn: (effect: T) => R): Sub<R>;
 
     public gather(effectDict: Map<number, Effects<T>>): void {
         const effects = effectDict.get(this.manager.identity());
@@ -417,38 +421,107 @@ export class Process {
 
 // PROGRAMS
 
-
-export const worker = <Model, Msg>(config: {
-    init(): [ Model, Cmd<Msg> ];
-    update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
-    subscriptions(model: Model): Sub<Msg>;
-}) => {
-    function dispatch(msg: Msg): void {
-        const [ nextModel, nextCmd ] = config.update(msg, model);
-
-        model = nextModel;
-
-        runtime.dispatchEffects(nextCmd, config.subscriptions(model));
+export class Program<Model, Msg> {
+    public static worker<Model, Msg>(config: {
+        init(): [ Model, Cmd<Msg> ];
+        update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+        subscriptions(model: Model): Sub<Msg>;
+    }): Program<Model, Msg> {
+        return new Program(config.init, config.update, config.subscriptions);
     }
 
-    const runtime = new Runtime(dispatch);
-    const [ initialModel, initialCmd ] = config.init();
-    let model = initialModel;
+    public readonly ports: {
+        send(name: string, value: Value): void;
+        subscribe(name: string, listener: (value: Value) => void): void;
+    };
 
-    const ports = Port.init();
+    private model: Model;
+    private readonly runtime: Runtime<Msg>;
+    private readonly subscribers: Array<() => void> = [];
 
-    runtime.dispatchEffects(
-        Cmd.batch([ initialCmd, ports.cmd ]),
-        config.subscriptions(model)
-    );
+    private constructor(
+        init: () => [ Model, Cmd<Msg> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
+        private readonly subscriptions: (model: Model) => Sub<Msg>
+    ) {
+        const [ initialModel, initialCmd ] = init();
+        const ports = Port.init();
 
-    return {
-        ports: {
+        this.model = initialModel;
+        this.ports = {
             send: ports.send,
             subscribe: ports.subscribe
+        };
+
+        this.runtime = new Runtime((msg: Msg): void => this.dispatch(msg));
+
+        this.runtime.dispatchEffects(
+            Cmd.batch([ initialCmd, ports.cmd ]),
+            this.subscriptions(initialModel)
+        );
+    }
+
+    public getModel(): Model {
+        return this.model;
+    }
+
+    public dispatch(msg: Msg): void {
+        const [ nextModel, nextCmd ] = this.update(msg, this.model);
+
+        this.model = nextModel;
+
+        this.runtime.dispatchEffects(nextCmd, this.subscriptions(nextModel));
+
+        for (const subscriber of this.subscribers) {
+            subscriber();
         }
-    };
-};
+    }
+
+    public subscribe(subscriber: () => void): () => void {
+        let subscribed = true;
+
+        this.subscribers.push(subscriber);
+
+        return () => {
+            if (subscribed) {
+                this.subscribers.splice(this.subscribers.indexOf(subscriber), 1);
+                subscribed = false;
+            }
+        };
+    }
+}
+
+// export const worker = <Model, Msg>(config: {
+//     init(): [ Model, Cmd<Msg> ];
+//     update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+//     subscriptions(model: Model): Sub<Msg>;
+// }) => {
+//     function dispatch(msg: Msg): void {
+//         const [ nextModel, nextCmd ] = config.update(msg, model);
+
+//         model = nextModel;
+
+//         runtime.dispatchEffects(nextCmd, config.subscriptions(model));
+//     }
+
+//     const runtime = new Runtime(dispatch);
+//     const [ initialModel, initialCmd ] = config.init();
+//     let model = initialModel;
+
+//     const ports = Port.init();
+
+//     runtime.dispatchEffects(
+//         Cmd.batch([ initialCmd, ports.cmd ]),
+//         config.subscriptions(model)
+//     );
+
+//     return {
+//         ports: {
+//             send: ports.send,
+//             subscribe: ports.subscribe
+//         }
+//     };
+// };
 
 
 // PORTS
