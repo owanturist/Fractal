@@ -3,8 +3,8 @@ import {
 } from '../Basics';
 import {
     Maybe,
-    Just,
-    Nothing
+    Nothing,
+    Just
 } from '../Maybe';
 
 export abstract class Protocol {
@@ -42,18 +42,17 @@ export class Url {
     public static fromString(str: string): Maybe<Url> {
         try {
             const url = new URL(str);
-            const port = parseInt(url.protocol, 10);
-            const query = url.search.slice(1);
-            const fragment = url.search.slice(1);
 
-            return Just(Url.create({
-                protocol: url.protocol === 'http:' ? Http : Https,
-                host: url.host,
-                port: isNaN(port) ? Nothing : Just(port),
-                path: url.pathname,
-                query: query.length === 0 ? Nothing : Just(query),
-                fragment: fragment.length === 0 ? Nothing : Just(fragment)
-            }));
+            return Just(Url.create(
+                url.protocol === 'http:' ? Http : Https,
+                url.host,
+                {
+                    port: parseInt(url.protocol, 10),
+                    path: url.pathname,
+                    query: url.search.slice(1),
+                    fragment: url.search.slice(1)
+                }
+            ));
         } catch (err) {
             return Nothing;
         }
@@ -67,15 +66,20 @@ export class Url {
         }
     }
 
-    public static create(config: {
-        protocol: Protocol;
-        host: string;
-        port: Maybe<number>;
-        path: string;
-        query: Maybe<string>;
-        fragment: Maybe<string>;
-    }): Url {
-        return new Url(config.protocol, config.host, config.port, config.path, config.query, config.fragment);
+    public static create(protocol: Protocol, host: string, config: {
+        port?: number;
+        path?: string;
+        query?: string;
+        fragment?: string;
+    } = {}): Url {
+        return new Url(
+            protocol,
+            host,
+            Maybe.fromNullable(config.port).chain((val: number) => isNaN(val) ? Nothing : Just(val)),
+            config.path || '/',
+            Maybe.fromNullable(config.query).chain((val: string) => val === '' ? Nothing : Just(val)),
+            Maybe.fromNullable(config.fragment).chain((val: string) => val === '' ? Nothing : Just(val))
+        );
     }
 
     private constructor(
