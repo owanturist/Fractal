@@ -39,6 +39,10 @@ export namespace Protocol {
 }
 
 export class Url {
+    public static Http = Http;
+
+    public static Https = Https;
+
     public static fromString(str: string): Maybe<Url> {
         try {
             const url = new URL(str);
