@@ -1,6 +1,6 @@
 {
   "name": "frctl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "This is an adaptation of Elm by TypeScrip ",
   "repository": {
     "type": "git",
@@ -25,13 +25,13 @@
     "src/Json/Encode.ts",
     "src/Platform/Cmd.ts",
     "src/Platform/Sub.ts",
-    "src/Platform.ts",
     "src/Basics.ts",
+    "src/Either.ts",
     "src/Http.ts",
     "src/Maybe.ts",
+    "src/Port.ts",
     "src/Process.ts",
     "src/RemoteData.ts",
-    "src/Router.ts",
     "src/Task.ts",
     "src/Time.ts"
   ]
