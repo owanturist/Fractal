@@ -1,15 +1,8 @@
 import {
-    WhenNever,
-    IsNever
-} from '../Basics';
-import {
     Maybe,
     Nothing,
     Just
 } from '../Maybe';
-import {
-    Url
-} from './';
 
 export type Returns<F> = {
     next: F extends (...args: Array<unknown>) => infer R ? Returns<R> : F;
@@ -44,9 +37,9 @@ const getFirstMatch = <T>(states: Array<State<T>>): Maybe<T> => {
     return getFirstMatch(states.slice(1));
 };
 
-const processPath = (path: string): Array<string> => path.replace(/(^\/|\/$)/g, '').split('/');
+export const processPath = (path: string): Array<string> => path.replace(/(^\/|\/$)/g, '').split('/');
 
-const processQuery = (query: string): Params => {
+export const processQuery = (query: string): Params => {
     const acc: {[ key: string ]: Array<string>} = {};
 
     for (const pair of query.split('&')) {
@@ -73,16 +66,20 @@ export abstract class Parser<A, B> {
 
     public static number: Parser<(num: number) => unknown, unknown>;
 
-    public static s(path: string): Parser<unknown, unknown> {
+    public static s(
+        // path: string
+    ): Parser<unknown, unknown> {
         throw new Error('');
     }
 
-    public static oneOf<A, B>(parsers: Array<Parser<A, B>>): Parser<A, B> {
+    public static oneOf<A, B>(
+        // parsers: Array<Parser<A, B>>
+    ): Parser<A, B> {
         throw new Error('');
     }
 
     public slash<C, D>(
-        parser: Parser<B extends unknown ? C : B, D>
+        // parser: Parser<B extends unknown ? C : B, D>
     ): Parser<Fad<A, Fad<B extends unknown ? C : B, D>>, D> {
         throw new Error('');
     }
@@ -92,7 +89,7 @@ export abstract class Parser<A, B> {
     // }
 
     public map<C>(
-        tagger: Fad<A, B extends unknown ? C : B>
+        // tagger: Fad<A, B extends unknown ? C : B>
     ): Parser<Fad<(val: B extends unknown ? C : B) => unknown, unknown>, unknown> {
         throw new Error('');
     }
@@ -111,55 +108,55 @@ type Fad<T, R> = T extends (val: infer A) => infer N
         : R
     ;
 
-export let tta: Fad<(q: string) => (p: number) => unknown, Route>;
-export let ttq: Fad<(val: Route) => unknown, unknown>;
+// export let tta: Fad<(q: string) => (p: number) => unknown, Route>;
+// export let ttq: Fad<(val: Route) => unknown, unknown>;
 // export let ttb: Fas<() => () => boolean>;
 // export let tti: Fas<(a: string) => () => boolean>;
 // export let ttx: Fas<() => (b: number) => boolean>;
 // export let ttc: Fas<() => (b: number) => () => boolean>;
 // export let ttk: Fas<() => (b: number) => () => (c: boolean) => (d: string) => () => boolean>;
 
-type Route
-    = { $: 'HOME' }
-    | { $: 'PROFILE' }
-    | { $: 'ARTICLE'; _0: number }
-    | { $: 'SEARCH'; _0: string; _1: number }
-    ;
+// type Route
+//     = { $: 'HOME' }
+//     | { $: 'PROFILE' }
+//     | { $: 'ARTICLE'; _0: number }
+//     | { $: 'SEARCH'; _0: string; _1: number }
+//     ;
 
-const Home: Route = { $: 'HOME' };
-const Profile: Route = { $: 'PROFILE' };
-const Article = (id: number): Route => ({ $: 'ARTICLE', _0: id });
-const Search = (q: string) => (p: number): Route => ({ $: 'SEARCH', _0: q, _1: p });
+// const Home: Route = { $: 'HOME' };
+// const Profile: Route = { $: 'PROFILE' };
+// const Article = (id: number): Route => ({ $: 'ARTICLE', _0: id });
+// const Search = (q: string) => (p: number): Route => ({ $: 'SEARCH', _0: q, _1: p });
 
-export const foo: Parser<(val: Route) => unknown, unknown> = Parser.oneOf([
-    Parser.top.map<Route>(Home),
-    Parser.s('profile').map(Profile),
-    Parser.s('article').slash(Parser.number).map(Article),
-    Parser.s('search').slash(Parser.string).slash(Parser.number).map(Search)
-]);
+// export const foo: Parser<(val: Route) => unknown, unknown> = Parser.oneOf([
+//     Parser.top.map<Route>(Home),
+//     Parser.s('profile').map(Profile),
+//     Parser.s('article').slash(Parser.number).map(Article),
+//     Parser.s('search').slash(Parser.string).slash(Parser.number).map(Search)
+// ]);
 
 
-export const search: Parser<(val: Route) => unknown, unknown> = Parser
-    .s('search')
-    .slash(Parser.string)
-    .slash(Parser.s('p'))
-    .slash(Parser.number)
-    .slash(Parser.s('p'))
-    .map(Search)
-    ;
+// export const search: Parser<(val: Route) => unknown, unknown> = Parser
+//     .s('search')
+//     .slash(Parser.string)
+//     .slash(Parser.s('p'))
+//     .slash(Parser.number)
+//     .slash(Parser.s('p'))
+//     .map(Search)
+//     ;
 
-export const article = Parser.s('profile').map(Profile);
-export const s = Parser.top.map(Home);
+// export const article = Parser.s('profile').map(Profile);
+// export const s = Parser.top.map(Home);
 
-export const asx = Parser.number.slash(Parser.s('ad')).slash(Parser.number).slash(Parser.string);
+// export const asx = Parser.number.slash(Parser.s('ad')).slash(Parser.number).slash(Parser.string);
 
-export const asd = Parser
-    .s('asd')
-    .slash(Parser.s('asd'))
-    .slash(Parser.string)
-    .slash(Parser.number)
-    .slash(Parser.string)
-    ;
+// export const asd = Parser
+//     .s('asd')
+//     .slash(Parser.s('asd'))
+//     .slash(Parser.string)
+//     .slash(Parser.number)
+//     .slash(Parser.string)
+//     ;
 
 // export const baz = Parser.s('article').slash(Parser.number).map(Article);
 

@@ -1,6 +1,6 @@
 {
   "name": "frctl",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "This is an adaptation of Elm by TypeScrip ",
   "repository": {
     "type": "git",
@@ -11,7 +11,7 @@
   "scripts": {
     "clean": "rm -rf ./dist",
     "prebuild": "npm run clean",
-    "build": "node_modules/typescript/bin/tsc -p tsconfig.dev.json",
+    "build": "node_modules/typescript/bin/tsc -p tsconfig.json",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
     "lint": "tslint --project tsconfig.json --config tslint.json"
   },
@@ -20,19 +20,13 @@
     "tslint": "^5.12.1",
     "typescript": "^3.3.3333"
   },
-  "files": [
-    "src/Json/Decode.ts",
-    "src/Json/Encode.ts",
-    "src/Platform/Cmd.ts",
-    "src/Platform/Sub.ts",
-    "src/Basics.ts",
-    "src/Either.ts",
-    "src/Http.ts",
-    "src/Maybe.ts",
-    "src/Port.ts",
-    "src/Process.ts",
-    "src/RemoteData.ts",
-    "src/Task.ts",
-    "src/Time.ts"
+  "npmName": "frctl",
+  "npmFileMap": [
+    {
+      "basePath": "/dist/src/",
+      "files": [
+        "*.js"
+      ]
+    }
   ]
 }

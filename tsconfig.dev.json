@@ -2,7 +2,7 @@
   "compilerOptions": {
 
     /* Basic Options */
-    "target": "es3",
+    "target": "es6",
     "module": "commonjs",
     "moduleResolution": "node",
     "declaration": false,
