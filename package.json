@@ -18,7 +18,6 @@
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
     "lint": "tslint --project tsconfig.json --config tslint.json",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run test",
     "preversion": "npm run test",
     "version": "git add -A src",
     "postversion": "git push && git push --tags"
