@@ -9,7 +9,7 @@
   "author": "Anton Ovechkin <owanturist@gmail.com>",
   "license": "MIT",
   "files": [
-    "dist/**/*"
+    "./**/*"
   ],
   "scripts": {
     "clean": "rm -rf ./dist",
@@ -17,7 +17,8 @@
     "build": "tsc -p tsconfig.prod.json",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
     "lint": "tslint --project tsconfig.json --config tslint.json",
-    "prepare": "npm run build",
+    "prepare": "npm run build && cp ./package.json ./dist/ && cd ./dist",
+    "postpublish": "cd ..",
     "preversion": "npm run test",
     "version": "git add -A src",
     "postversion": "git push && git push --tags"
