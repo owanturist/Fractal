@@ -8,12 +8,20 @@
   },
   "author": "Anton Ovechkin <owanturist@gmail.com>",
   "license": "MIT",
+  "files": [
+    "dist/**/*"
+  ],
   "scripts": {
     "clean": "rm -rf ./dist",
     "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.prod.json",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
-    "lint": "tslint --project tsconfig.json --config tslint.json"
+    "lint": "tslint --project tsconfig.json --config tslint.json",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run test",
+    "preversion": "npm run test",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
   },
   "devDependencies": {
     "ava": "^1.2.1",
