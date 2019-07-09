@@ -80,7 +80,7 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public static query(_name: string): SingleQuery<unknown> {
+    public static query(_name: string): Query<unknown> {
         throw new Error();
     }
 
@@ -96,15 +96,11 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public query(_name: string): SingleQuery<T> {
+    public query(_name: string): Query<T> {
         throw new Error();
     }
 
-    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<
-        T extends (arg: unknown) => unknown
-            ? FF<T, R>
-            : FF<(arg: T) => unknown, R>
-    > {
+    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<FF<T, R>> {
         throw new Error();
     }
 
@@ -137,7 +133,7 @@ abstract class Path<T> {
     }
 }
 
-abstract class SingleQuery<T> {
+abstract class Query<T> {
     public get string(): Parser<FF<T, Maybe<string>>> {
         throw new Error();
     }
@@ -150,7 +146,7 @@ abstract class SingleQuery<T> {
         throw new Error();
     }
 
-    public get list(): MultiQuery<T> {
+    public get list(): QueryList<T> {
         throw new Error();
     }
 
@@ -163,7 +159,7 @@ abstract class SingleQuery<T> {
     }
 }
 
-abstract class MultiQuery<T> {
+abstract class QueryList<T> {
     public get string(): Parser<FF<T, Array<string>>> {
         throw new Error();
     }
@@ -209,7 +205,7 @@ type FR<F, R> = F extends (arg0: infer A0) => infer F1
     ? (arg16: A16) => F17 extends (arg17: infer A17) => infer F18
     ? (arg17: A17) => F18 extends (arg18: infer A18) => infer F19
     ? (arg18: A18) => F19 extends (arg19: infer A19) => infer F20
-    ? (arg19: A19) => FR<F20, R>
+    ? (arg19: A19) => FR<F20, R> // it doesn't work properly but let's keep it here
     : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
 
 class Route {
@@ -270,10 +266,7 @@ export const test10 = Parser.oneOf([
     Parser.s('search').slash.string.slash.number.ap(Search),
     Parser.s('post').slash.string.slash.custom(str => str === '' ? Nothing : Just(new Date())).ap(Post),
     Parser.s('hi').slash.number.fragment(a => a.getOrElse('')).ap(Comment)
-]).fragment(a => a.cata({
-    Nothing: () => 1,
-    Just: str => parseInt(str, 10)
-})).ap(a => b => a).parse('' as any);
+]);
 
 export const test11 = Parser.s('base').slash.number.slash.oneOf([
     Parser.oneOf([
