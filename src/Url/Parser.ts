@@ -1,5 +1,6 @@
 import {
-} from 'ts-toolbelt';
+    Url
+} from './index';
 import {
     Maybe,
     Nothing,
@@ -107,7 +108,7 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public parse(): string {
+    public parse(_url: Url): Maybe<T> {
         throw new Error();
     }
 }
@@ -272,7 +273,7 @@ export const test10 = Parser.oneOf([
 ]).fragment(a => a.cata({
     Nothing: () => 1,
     Just: str => parseInt(str, 10)
-}));
+})).ap(a => b => a).parse('' as any);
 
 export const test11 = Parser.s('base').slash.number.slash.oneOf([
     Parser.oneOf([
