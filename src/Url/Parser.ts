@@ -54,12 +54,16 @@ export const processQuery = (query: string): Params => {
     return acc;
 };
 
-export abstract class Parser<T> {
-    public static string(): Parser<(value: string) => unknown> {
+export class Parser<T> {
+    public static get top(): Parser<unknown> {
         throw new Error();
     }
 
-    public static number(): Parser<(value: number) => unknown> {
+    public static get string(): Parser<(value: string) => unknown> {
+        throw new Error();
+    }
+
+    public static get number(): Parser<(value: number) => unknown> {
         throw new Error();
     }
 
@@ -71,25 +75,29 @@ export abstract class Parser<T> {
         throw new Error();
     }
 
-    public static top(): Parser<unknown> {
+    private constructor() {}
+
+    public ap<R>(
+        _tagger: FR<T, R>
+    ): Parser<R> {
         throw new Error();
     }
 
-    public abstract ap<R>(
-        tagger: FR<T, R>
-    ): Parser<R>;
+    public get slash(): Path<T> {
+        throw new Error();
+    }
 
-    public abstract slash(): Slash<T>;
-
-    public abstract parse(): string;
+    public parse(): string {
+        throw new Error();
+    }
 }
 
-abstract class Slash<T> {
-    public string(): Parser<FF<T, string>> {
+abstract class Path<T> {
+    public get string(): Parser<FF<T, string>> {
         throw new Error();
     }
 
-    public number(): Parser<FF<T, number>> {
+    public get number(): Parser<FF<T, number>> {
         throw new Error();
     }
 
@@ -117,9 +125,19 @@ type FR<F, R> = F extends (arg0: infer A0) => infer F1
     ? (arg5: A5) => F6 extends (arg6: infer A6) => infer F7
     ? (arg6: A6) => F7 extends (arg7: infer A7) => infer F8
     ? (arg7: A7) => F8 extends (arg8: infer A8) => infer F9
-    ? (arg8: A8) => F9 extends (arg9: infer A9) => unknown
-    ? (arg9: A9) => R
-    : R : R : R : R : R : R : R : R : R : R;
+    ? (arg8: A8) => F9 extends (arg9: infer A9) => infer F10
+    ? (arg9: A9) => F10 extends (arg10: infer A10) => infer F11
+    ? (arg10: A10) => F11 extends (arg11: infer A11) => infer F12
+    ? (arg11: A11) => F12 extends (arg12: infer A12) => infer F13
+    ? (arg12: A12) => F13 extends (arg13: infer A13) => infer F14
+    ? (arg13: A13) => F14 extends (arg14: infer A14) => infer F15
+    ? (arg14: A14) => F15 extends (arg15: infer A15) => infer F16
+    ? (arg15: A15) => F16 extends (arg16: infer A16) => infer F17
+    ? (arg16: A16) => F17 extends (arg17: infer A17) => infer F18
+    ? (arg17: A17) => F18 extends (arg18: infer A18) => infer F19
+    ? (arg18: A18) => F19 extends (arg19: infer A19) => infer F20
+    ? (arg19: A19) => FR<F20, R>
+    : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
 
 class Route {
     public foo() {
@@ -137,31 +155,31 @@ const Article = (_id: number): Route => new Route();
 const Comment = (_id: number) => (_p: string): Route => new Route();
 const Search = (_q: string) => (_p: number): Route => new Route();
 
-export const test1 = Parser.top().ap(Home);
-export const test2 = Parser.s('search').slash().number().slash().string().ap(Comment);
-export const test3 = Parser.s('foo').slash().number().slash().s('bar').ap(Article);
+export const test1 = Parser.top.ap(Home);
+export const test2 = Parser.s('search').slash.number.slash.string.ap(Comment);
+export const test3 = Parser.s('foo').slash.number.slash.s('bar').ap(Article);
 export const test4 = Parser.s('foo').ap(Home);
 export const test5 = Parser.s('foo')
-    .slash().string()
-    .slash().s('asd')
-    .slash().number()
+    .slash.string
+    .slash.s('asd')
+    .slash.number
     .ap(Search);
 
 export const test6 = Parser.s('foo');
 
 export const test10 = Parser.oneOf([
-    Parser.top().ap(Home),
+    Parser.top.ap(Home),
     Parser.s('profile').ap(Profile),
-    Parser.s('article').slash().number().ap(Article),
-    Parser.s('article').slash().number().slash().s('comment').slash().string().ap(Comment),
-    Parser.s('search').slash().string().slash().number().ap(Search)
+    Parser.s('article').slash.number.ap(Article),
+    Parser.s('article').slash.number.slash.s('comment').slash.string.ap(Comment),
+    Parser.s('search').slash.string.slash.number.ap(Search)
 ]);
 
-export const test11 = Parser.s('base').slash().number().slash().oneOf([
+export const test11 = Parser.s('base').slash.number.slash.oneOf([
     Parser.oneOf([
-        Parser.top().ap(Home)
+        Parser.top.ap(Home)
     ]),
-    Parser.top().ap(Profile)
+    Parser.top.ap(Profile)
 ]).ap(a => r => {
     return a > 2 ? r : Article(a);
 });
