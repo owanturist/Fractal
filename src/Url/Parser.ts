@@ -1,4 +1,7 @@
 import {
+    IsNever
+} from 'Basics';
+import {
     Url
 } from './index';
 import {
@@ -56,7 +59,7 @@ export const processQuery = (query: string): Params => {
 };
 
 export class Parser<T> {
-    public static get top(): Parser<unknown> {
+    public static get top(): Parser<never> {
         throw new Error();
     }
 
@@ -87,20 +90,22 @@ export class Parser<T> {
     private constructor() {}
 
     public ap<R>(
-        _tagger: FR<T, R>
+        _tagger: IsNever<T, R, FR<T, R>>
     ): Parser<R> {
         throw new Error();
     }
 
-    public get slash(): Path<T> {
+    public get slash(): IsNever<T, never, Path<T>> {
         throw new Error();
     }
 
-    public query(_name: string): Query<T> {
+    public query(_name: string): Query<IsNever<T, unknown, T>> {
         throw new Error();
     }
 
-    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<FF<T, R>> {
+    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<
+        IsNever<T, (arg: R) => unknown, FF<T, R>>
+    > {
         throw new Error();
     }
 
@@ -256,10 +261,12 @@ export const test51 = Parser
     .slash.string
     ;
 
-export const test6 = Parser.s('foo');
+export const test6 = Parser.top.slash;
 
 export const test10 = Parser.oneOf([
     Parser.top.ap(Home),
+    Parser.top.query('hi').number.ap(a => Article(a.getOrElse(0))),
+    Parser.top.fragment(a => parseInt(a.getOrElse(''), 10)).ap(Article),
     Parser.s('profile').ap(Profile),
     Parser.s('article').slash.number.ap(Article),
     Parser.s('article').slash.number.slash.s('comment').slash.string.ap(Comment),
