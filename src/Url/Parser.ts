@@ -1,15 +1,10 @@
 import {
+} from 'ts-toolbelt';
+import {
     Maybe,
     Nothing,
     Just
 } from '../Maybe';
-
-export type Returns<F> = {
-    next: F extends (...args: Array<unknown>) => infer R ? Returns<R> : F;
-    end: F;
-}[ F extends (...args: Array<unknown>) => unknown ? 'next' : 'end' ];
-
-export let kjk: Returns<(a: boolean) => (b: string) => number>;
 
 interface Params {
     readonly [ key: string ]: Array<string>;
@@ -40,7 +35,7 @@ const getFirstMatch = <T>(states: Array<State<T>>): Maybe<T> => {
 export const processPath = (path: string): Array<string> => path.replace(/(^\/|\/$)/g, '').split('/');
 
 export const processQuery = (query: string): Params => {
-    const acc: {[ key: string ]: Array<string>} = {};
+    const acc: { [key: string]: Array<string> } = {};
 
     for (const pair of query.split('&')) {
         const [ key, value ] = pair.split('=');
@@ -59,105 +54,114 @@ export const processQuery = (query: string): Params => {
     return acc;
 };
 
-export abstract class Parser<A, B> {
-    public static top: Parser<unknown, unknown>;
-
-    public static string: Parser<(str: string) => unknown, unknown>;
-
-    public static number: Parser<(num: number) => unknown, unknown>;
-
-    public static s(
-        // path: string
-    ): Parser<unknown, unknown> {
-        throw new Error('');
+export abstract class Parser<T> {
+    public static string(): Parser<(value: string) => unknown> {
+        throw new Error();
     }
 
-    public static oneOf<A, B>(
-        // parsers: Array<Parser<A, B>>
-    ): Parser<A, B> {
-        throw new Error('');
+    public static number(): Parser<(value: number) => unknown> {
+        throw new Error();
     }
 
-    public slash<C, D>(
-        // parser: Parser<B extends unknown ? C : B, D>
-    ): Parser<Fad<A, Fad<B extends unknown ? C : B, D>>, D> {
-        throw new Error('');
+    public static s(_path: string): Parser<unknown> {
+        throw new Error();
     }
 
-    // public query(name: string, parser: Parser<T>): Parser<T> {
-    //     throw new Error('');
-    // }
-
-    public map<C>(
-        // tagger: Fad<A, B extends unknown ? C : B>
-    ): Parser<Fad<(val: B extends unknown ? C : B) => unknown, unknown>, unknown> {
-        throw new Error('');
+    public static oneOf<T>(_parsers: Array<Parser<T>>): Parser<T> {
+        throw new Error();
     }
 
-    // public parse(url: Url): Maybe<T> {
-    //     throw new Error('');
-    // }
+    public static top(): Parser<unknown> {
+        throw new Error();
+    }
+
+    public abstract ap<R>(
+        tagger: T extends (...args: infer A) => unknown ? (...args: A) => R : R
+    ): Parser<R>;
+
+    public abstract slash(): Slash<T>;
+
+    public abstract parse(): string;
 }
 
-export abstract class Container<A, B> extends Parser<(value: A) => B, B> {}
+abstract class Slash<T> {
+    public string(): Parser<
+        (...args: T extends (...args: infer A) => unknown ? Append<A, string> : [ string ]) => unknown
+    > {
+        throw new Error();
+    }
 
-type Fad<T, R> = T extends (val: infer A) => infer N
-    ? (val: A) => Fad<N, R>
-    : T extends (val: infer A) => unknown
-        ? (val: A) => R
-        : R
+    public number(): Parser<
+        (...args: T extends (...args: infer A) => unknown ? Append<A, number> : [ number ]) => unknown
+    > {
+        throw new Error();
+    }
+
+    public s(_path: string): Parser<T> {
+        throw new Error();
+    }
+
+    public oneOf<R>(
+        _parsers: Array<Parser<T extends (...args: infer A) => unknown ? (...args: A) => R : R>>
+    ): Parser<R> {
+        throw new Error();
+    }
+}
+
+type Append<A extends Array<unknown>, T> = A extends [ infer A0 ]
+    ? A extends [ A0, infer A1 ]
+        ? A extends [ A0, A1, infer A2 ]
+            ? A extends [ A0, A1, A2, infer A3 ]
+                ? A extends [ A0, A1, A2, A3, infer A4 ]
+                    ? A extends [ A0, A1, A2, A3, A4, infer A5 ]
+                        ? A extends [ A0, A1, A2, A3, A4, A5, infer A6 ]
+                            ? [ A0, A1, A2, A3, A4, A5, A6, T ]
+                            : [ A0, A1, A2, A3, A4, A5, T ]
+                        : [ A0, A1, A2, A3, A4, T ]
+                    : [ A0, A1, A2, A3, T ]
+                : [ A0, A1, A2, T ]
+            : [ A0, A1, T ]
+        : [ A0, T ]
+    : [ T ]
     ;
 
-// export let tta: Fad<(q: string) => (p: number) => unknown, Route>;
-// export let ttq: Fad<(val: Route) => unknown, unknown>;
-// export let ttb: Fas<() => () => boolean>;
-// export let tti: Fas<(a: string) => () => boolean>;
-// export let ttx: Fas<() => (b: number) => boolean>;
-// export let ttc: Fas<() => (b: number) => () => boolean>;
-// export let ttk: Fas<() => (b: number) => () => (c: boolean) => (d: string) => () => boolean>;
+class Route {
+    public foo() {
+        throw new Error();
+    }
 
-// type Route
-//     = { $: 'HOME' }
-//     | { $: 'PROFILE' }
-//     | { $: 'ARTICLE'; _0: number }
-//     | { $: 'SEARCH'; _0: string; _1: number }
-//     ;
+    public bar() {
+        throw new Error();
+    }
+}
 
-// const Home: Route = { $: 'HOME' };
-// const Profile: Route = { $: 'PROFILE' };
-// const Article = (id: number): Route => ({ $: 'ARTICLE', _0: id });
-// const Search = (q: string) => (p: number): Route => ({ $: 'SEARCH', _0: q, _1: p });
+const Home: Route = new Route();
+const Profile: Route = new Route();
+const Article = (_id: number): Route => new Route();
+const Commnet = (_id: number, _p: string): Route => new Route();
+const Search = (_q: string, _p: number): Route => new Route();
 
-// export const foo: Parser<(val: Route) => unknown, unknown> = Parser.oneOf([
-//     Parser.top.map<Route>(Home),
-//     Parser.s('profile').map(Profile),
-//     Parser.s('article').slash(Parser.number).map(Article),
-//     Parser.s('search').slash(Parser.string).slash(Parser.number).map(Search)
-// ]);
+export const test1 = Parser.top().ap(Profile);
+export const test2 = Parser.s('search').slash().string().slash().number().ap(Search);
+export const test3 = Parser.s('foo').slash().number().slash().s('bar').ap(Article);
+export const test4 = Parser.s('foo').ap(Home);
+export const test5 = Parser.s('foo')
+    .slash().string()
+    .slash().s('asd')
+    .slash().number()
+    .ap(Search);
 
+export const test6 = Parser.s('foo');
 
-// export const search: Parser<(val: Route) => unknown, unknown> = Parser
-//     .s('search')
-//     .slash(Parser.string)
-//     .slash(Parser.s('p'))
-//     .slash(Parser.number)
-//     .slash(Parser.s('p'))
-//     .map(Search)
-//     ;
+export const test10 = Parser.oneOf([
+    Parser.top().ap(Home),
+    Parser.s('profile').ap(Profile),
+    Parser.s('article').slash().number().ap(Article),
+    Parser.s('article').slash().number().slash().s('comment').slash().string().ap(Commnet),
+    Parser.s('search').slash().string().slash().number().ap(Search)
+]);
 
-// export const article = Parser.s('profile').map(Profile);
-// export const s = Parser.top.map(Home);
-
-// export const asx = Parser.number.slash(Parser.s('ad')).slash(Parser.number).slash(Parser.string);
-
-// export const asd = Parser
-//     .s('asd')
-//     .slash(Parser.s('asd'))
-//     .slash(Parser.string)
-//     .slash(Parser.number)
-//     .slash(Parser.string)
-//     ;
-
-// export const baz = Parser.s('article').slash(Parser.number).map(Article);
-
-// export const baf = Parser.s('article').slash(Parser.number).map(Article).parse(Url.create(Url.Http, ''));
+export const test11 = Parser.s('base').slash().number().slash().oneOf([
+    Parser.top().ap(Article)
+    // Parser.string().ap(Commnet)
+]);

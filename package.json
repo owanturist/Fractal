@@ -26,5 +26,8 @@
     "ava": "^1.2.1",
     "tslint": "^5.12.1",
     "typescript": "^3.3.3333"
+  },
+  "dependencies": {
+    "ts-toolbelt": "^2.1.5"
   }
 }
