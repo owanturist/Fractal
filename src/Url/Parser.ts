@@ -79,7 +79,7 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public static query(_name: string): Single<unknown> {
+    public static query(_name: string): SingleQuery<unknown> {
         throw new Error();
     }
 
@@ -95,7 +95,7 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public query(_name: string): Single<T> {
+    public query(_name: string): SingleQuery<T> {
         throw new Error();
     }
 
@@ -136,7 +136,7 @@ abstract class Path<T> {
     }
 }
 
-abstract class Single<T> {
+abstract class SingleQuery<T> {
     public get string(): Parser<FF<T, Maybe<string>>> {
         throw new Error();
     }
@@ -153,7 +153,7 @@ abstract class Single<T> {
         throw new Error();
     }
 
-    public custom<R>(_parser: (str: Array<string>) => R): Parser<FF<T, R>> {
+    public custom<R>(_parser: (str: Maybe<string>) => R): Parser<FF<T, R>> {
         throw new Error();
     }
 
@@ -172,6 +172,10 @@ abstract class MultiQuery<T> {
     }
 
     public get boolean(): Parser<FF<T, Array<boolean>>> {
+        throw new Error();
+    }
+
+    public custom<R>(_parser: (str: Array<string>) => R): Parser<FF<T, R>> {
         throw new Error();
     }
 
@@ -235,10 +239,13 @@ export const test5 = Parser.s('foo')
     .ap(Search);
 
 export const test51 = Parser
+    .s('base')
+    .slash.number
     .query('q1').number
     .query('q2').boolean
     .query('q3').list.boolean
-    .query('q4').custom(val => val[0])
+    .query('q4').custom(val => val)
+    .query('q44').list.custom(val => val)
     .query('q4').enum([
         [ 'false', false ],
         [ 'true', true ]
@@ -247,6 +254,9 @@ export const test51 = Parser
         [ 'false', false ],
         [ 'true', true ]
     ])
+    .slash.number
+    .slash.s('hi')
+    .slash.string
     ;
 
 export const test6 = Parser.s('foo');
