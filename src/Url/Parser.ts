@@ -76,7 +76,7 @@ export abstract class Parser<T> {
     }
 
     public abstract ap<R>(
-        tagger: T extends (...args: infer A) => unknown ? (...args: A) => R : R
+        tagger: FR<T, R>
     ): Parser<R>;
 
     public abstract slash(): Slash<T>;
@@ -85,15 +85,11 @@ export abstract class Parser<T> {
 }
 
 abstract class Slash<T> {
-    public string(): Parser<
-        (...args: T extends (...args: infer A) => unknown ? Append<A, string> : [ string ]) => unknown
-    > {
+    public string(): Parser<FF<T, string>> {
         throw new Error();
     }
 
-    public number(): Parser<
-        (...args: T extends (...args: infer A) => unknown ? Append<A, number> : [ number ]) => unknown
-    > {
+    public number(): Parser<FF<T, number>> {
         throw new Error();
     }
 
@@ -102,28 +98,28 @@ abstract class Slash<T> {
     }
 
     public oneOf<R>(
-        _parsers: Array<Parser<T extends (...args: infer A) => unknown ? (...args: A) => R : R>>
-    ): Parser<R> {
+        _parsers: Array<Parser<R>>
+    ): Parser<FF<T, R>> {
         throw new Error();
     }
 }
 
-type Append<A extends Array<unknown>, T> = A extends [ infer A0 ]
-    ? A extends [ A0, infer A1 ]
-        ? A extends [ A0, A1, infer A2 ]
-            ? A extends [ A0, A1, A2, infer A3 ]
-                ? A extends [ A0, A1, A2, A3, infer A4 ]
-                    ? A extends [ A0, A1, A2, A3, A4, infer A5 ]
-                        ? A extends [ A0, A1, A2, A3, A4, A5, infer A6 ]
-                            ? [ A0, A1, A2, A3, A4, A5, A6, T ]
-                            : [ A0, A1, A2, A3, A4, A5, T ]
-                        : [ A0, A1, A2, A3, A4, T ]
-                    : [ A0, A1, A2, A3, T ]
-                : [ A0, A1, A2, T ]
-            : [ A0, A1, T ]
-        : [ A0, T ]
-    : [ T ]
-    ;
+type FF<F, R> = F extends (arg: infer A) => infer N
+    ? (arg: A) => FF<N, R>
+    : (arg: R) => unknown;
+
+type FR<F, R> = F extends (arg0: infer A0) => infer F1
+    ? (arg0: A0) => F1 extends (arg1: infer A1) => infer F2
+    ? (arg1: A1) => F2 extends (arg2: infer A2) => infer F3
+    ? (arg2: A2) => F3 extends (arg3: infer A3) => infer F4
+    ? (arg3: A3) => F4 extends (arg4: infer A4) => infer F5
+    ? (arg4: A4) => F5 extends (arg5: infer A5) => infer F6
+    ? (arg5: A5) => F6 extends (arg6: infer A6) => infer F7
+    ? (arg6: A6) => F7 extends (arg7: infer A7) => infer F8
+    ? (arg7: A7) => F8 extends (arg8: infer A8) => infer F9
+    ? (arg8: A8) => F9 extends (arg9: infer A9) => unknown
+    ? (arg9: A9) => R
+    : R : R : R : R : R : R : R : R : R : R;
 
 class Route {
     public foo() {
@@ -138,11 +134,11 @@ class Route {
 const Home: Route = new Route();
 const Profile: Route = new Route();
 const Article = (_id: number): Route => new Route();
-const Commnet = (_id: number, _p: string): Route => new Route();
-const Search = (_q: string, _p: number): Route => new Route();
+const Comment = (_id: number) => (_p: string): Route => new Route();
+const Search = (_q: string) => (_p: number): Route => new Route();
 
-export const test1 = Parser.top().ap(Profile);
-export const test2 = Parser.s('search').slash().string().slash().number().ap(Search);
+export const test1 = Parser.top().ap(Home);
+export const test2 = Parser.s('search').slash().number().slash().string().ap(Comment);
 export const test3 = Parser.s('foo').slash().number().slash().s('bar').ap(Article);
 export const test4 = Parser.s('foo').ap(Home);
 export const test5 = Parser.s('foo')
@@ -157,11 +153,15 @@ export const test10 = Parser.oneOf([
     Parser.top().ap(Home),
     Parser.s('profile').ap(Profile),
     Parser.s('article').slash().number().ap(Article),
-    Parser.s('article').slash().number().slash().s('comment').slash().string().ap(Commnet),
+    Parser.s('article').slash().number().slash().s('comment').slash().string().ap(Comment),
     Parser.s('search').slash().string().slash().number().ap(Search)
 ]);
 
 export const test11 = Parser.s('base').slash().number().slash().oneOf([
-    Parser.top().ap(Article)
-    // Parser.string().ap(Commnet)
-]);
+    Parser.oneOf([
+        Parser.top().ap(Home)
+    ]),
+    Parser.top().ap(Profile)
+]).ap(a => r => {
+    return a > 2 ? r : Article(a);
+});
