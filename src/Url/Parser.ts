@@ -67,6 +67,10 @@ export class Parser<T> {
         throw new Error();
     }
 
+    public static custom<T>(_parser: (str: string) => Maybe<T>): Parser<(value: T) => unknown> {
+        throw new Error();
+    }
+
     public static s(_path: string): Parser<unknown> {
         throw new Error();
     }
@@ -98,6 +102,10 @@ abstract class Path<T> {
     }
 
     public get number(): Parser<FF<T, number>> {
+        throw new Error();
+    }
+
+    public custom<R>(_parser: (str: string) => Maybe<R>): Parser<FF<T, R>> {
         throw new Error();
     }
 
@@ -154,6 +162,7 @@ const Profile: Route = new Route();
 const Article = (_id: number): Route => new Route();
 const Comment = (_id: number) => (_p: string): Route => new Route();
 const Search = (_q: string) => (_p: number): Route => new Route();
+const Post = (_q: string) => (_p: Date): Route => new Route();
 
 export const test1 = Parser.top.ap(Home);
 export const test2 = Parser.s('search').slash.number.slash.string.ap(Comment);
@@ -172,7 +181,8 @@ export const test10 = Parser.oneOf([
     Parser.s('profile').ap(Profile),
     Parser.s('article').slash.number.ap(Article),
     Parser.s('article').slash.number.slash.s('comment').slash.string.ap(Comment),
-    Parser.s('search').slash.string.slash.number.ap(Search)
+    Parser.s('search').slash.string.slash.number.ap(Search),
+    Parser.s('post').slash.string.slash.custom(str => str === '' ? Nothing : Just(new Date())).ap(Post)
 ]);
 
 export const test11 = Parser.s('base').slash.number.slash.oneOf([
