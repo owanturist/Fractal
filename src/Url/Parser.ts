@@ -91,6 +91,14 @@ export class Parser<T> {
         throw new Error();
     }
 
+    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<
+        T extends (arg: unknown) => unknown
+            ? FF<T, R>
+            : FF<(arg: T) => unknown, R>
+    > {
+        throw new Error();
+    }
+
     public parse(): string {
         throw new Error();
     }
@@ -182,8 +190,12 @@ export const test10 = Parser.oneOf([
     Parser.s('article').slash.number.ap(Article),
     Parser.s('article').slash.number.slash.s('comment').slash.string.ap(Comment),
     Parser.s('search').slash.string.slash.number.ap(Search),
-    Parser.s('post').slash.string.slash.custom(str => str === '' ? Nothing : Just(new Date())).ap(Post)
-]);
+    Parser.s('post').slash.string.slash.custom(str => str === '' ? Nothing : Just(new Date())).ap(Post),
+    Parser.s('hi').slash.number.fragment(a => a.getOrElse('')).ap(Comment)
+]).fragment(a => a.cata({
+    Nothing: () => 1,
+    Just: str => parseInt(str, 10)
+}));
 
 export const test11 = Parser.s('base').slash.number.slash.oneOf([
     Parser.oneOf([
