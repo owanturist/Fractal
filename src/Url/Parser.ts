@@ -79,6 +79,10 @@ export class Parser<T> {
         throw new Error();
     }
 
+    public static query(_name: string): Single<unknown> {
+        throw new Error();
+    }
+
     private constructor() {}
 
     public ap<R>(
@@ -88,6 +92,10 @@ export class Parser<T> {
     }
 
     public get slash(): Path<T> {
+        throw new Error();
+    }
+
+    public query(_name: string): Single<T> {
         throw new Error();
     }
 
@@ -124,6 +132,50 @@ abstract class Path<T> {
     public oneOf<R>(
         _parsers: Array<Parser<R>>
     ): Parser<FF<T, R>> {
+        throw new Error();
+    }
+}
+
+abstract class Single<T> {
+    public get string(): Parser<FF<T, Maybe<string>>> {
+        throw new Error();
+    }
+
+    public get number(): Parser<FF<T, Maybe<number>>> {
+        throw new Error();
+    }
+
+    public get boolean(): Parser<FF<T, Maybe<boolean>>> {
+        throw new Error();
+    }
+
+    public get list(): MultiQuery<T> {
+        throw new Error();
+    }
+
+    public custom<R>(_parser: (str: Array<string>) => R): Parser<FF<T, R>> {
+        throw new Error();
+    }
+
+    public enum<R>(_vairants: Array<[ string, R ]>): Parser<FF<T, Maybe<R>>> {
+        throw new Error();
+    }
+}
+
+abstract class MultiQuery<T> {
+    public get string(): Parser<FF<T, Array<string>>> {
+        throw new Error();
+    }
+
+    public get number(): Parser<FF<T, Array<number>>> {
+        throw new Error();
+    }
+
+    public get boolean(): Parser<FF<T, Array<boolean>>> {
+        throw new Error();
+    }
+
+    public enum<R>(_vairants: Array<[ string, R ]>): Parser<FF<T, Array<R>>> {
         throw new Error();
     }
 }
@@ -181,6 +233,21 @@ export const test5 = Parser.s('foo')
     .slash.s('asd')
     .slash.number
     .ap(Search);
+
+export const test51 = Parser
+    .query('q1').number
+    .query('q2').boolean
+    .query('q3').list.boolean
+    .query('q4').custom(val => val[0])
+    .query('q4').enum([
+        [ 'false', false ],
+        [ 'true', true ]
+    ])
+    .query('q5').list.enum([
+        [ 'false', false ],
+        [ 'true', true ]
+    ])
+    ;
 
 export const test6 = Parser.s('foo');
 
