@@ -15,28 +15,17 @@ interface Params {
 }
 
 interface State<T> {
-    readonly visited: Array<string>;
     readonly unvisited: Array<string>;
-    readonly params: Params;
-    readonly frag: Maybe<string>;
-    readonly value: T;
+    readonly queries: Params;
+    readonly fragment: Maybe<string>;
+    readonly value: Maybe<T>;
 }
 
-const getFirstMatch = <T>(states: Array<State<T>>): Maybe<T> => {
-    if (states.length === 0) {
-        return Nothing;
-    }
-
-    const state = states[0];
-
-    if (state.unvisited.length === 0) {
-        return Just(state.value);
-    }
-
-    return getFirstMatch(states.slice(1));
+export const processPath = (path: string): Array<string> => {
+    return path.replace(/(^\/|\/$)/g, '')
+        .split('/')
+        .filter(p => p !== '');
 };
-
-export const processPath = (path: string): Array<string> => path.replace(/(^\/|\/$)/g, '').split('/');
 
 export const processQuery = (query: string): Params => {
     const acc: { [key: string]: Array<string> } = {};
@@ -59,8 +48,10 @@ export const processQuery = (query: string): Params => {
 };
 
 class TopParser {
-    public ap<R>(_tagger: R): Parser<R> {
-        throw new Error();
+    public static SINGLETON: TopParser = new TopParser();
+
+    public ap<R>(tagger: R): Parser<R> {
+        return new ParserAp(ParserTop.SINGLETON, tagger);
     }
 
     public query(_name: string): Query<never> {
@@ -72,9 +63,9 @@ class TopParser {
     }
 }
 
-export class Parser<T> {
+export abstract class Parser<T> {
     public static get top(): TopParser {
-        throw new Error();
+        return TopParser.SINGLETON;
     }
 
     public static get string(): Parser<(value: string) => never> {
@@ -89,26 +80,24 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public static s(_path: string): Parser<never> {
-        throw new Error();
+    public static s(path: string): Parser<never> {
+        return new ParserS(ParserTop.SINGLETON, path);
     }
 
     public static oneOf<T>(_parsers: Array<Parser<T>>): Parser<T> {
         throw new Error();
     }
 
-    private constructor() {}
-
-    public ap<R>(_tagger: [ T ] extends [ never ] ? R : FR<T, R>): Parser<R> {
-        throw new Error();
+    public ap<R>(tagger: [ T ] extends [ never ] ? R : FR<T, R>): Parser<R> {
+        return new ParserAp(this, tagger);
     }
 
     public map<R>(_tagger: (value: T) => R): Parser<R> {
         throw new Error();
     }
 
-    public get slash(): Path<T> {
-        throw new Error();
+    public get slash(): Slash<T> {
+        return new Slash(this);
     }
 
     public query(_name: string): Query<T> {
@@ -119,12 +108,71 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public parse(_url: Url): Maybe<T> {
-        throw new Error();
+    public parse(url: Url): Maybe<T> {
+        return this.step({
+            unvisited: processPath(url.path),
+            queries: processQuery(url.query.getOrElse('')),
+            fragment: url.fragment,
+            value: Nothing
+        });
+    }
+
+    public abstract step(state: State<T>): Maybe<T>;
+}
+
+class ParserTop extends Parser<never> {
+    public static SINGLETON: Parser<never> = new ParserTop();
+
+    public step<T>(state: State<T>): Maybe<T> {
+        if (state.unvisited.length === 0) {
+            return state.value;
+        }
+
+        return Nothing;
     }
 }
 
-abstract class Path<T> {
+class ParserS<T> extends Parser<T> {
+    public constructor(
+        private readonly prev: Parser<T>,
+        private readonly path: string
+    ) {
+        super();
+    }
+
+    public step(state: State<T>): Maybe<T> {
+        return Maybe.fromNullable(state.unvisited[ state.unvisited.length - 1 ]).chain(
+            (path: string): Maybe<T> => this.path === path ? this.prev.step({
+                ...state,
+                unvisited: state.unvisited.slice(0, -1)
+            }) : Nothing
+        );
+    }
+}
+
+class ParserAp<T, R> extends Parser<R> {
+    public constructor(
+        private readonly prev: Parser<T>,
+        private readonly tagger: [ T ] extends [ never ] ? R : FR<T, R>
+    ) {
+        super();
+    }
+
+    public step(state: State<R>): Maybe<R> {
+        const foo: any = this.prev;
+
+        return foo.step({
+            ...state,
+            value: Just(this.tagger)
+        });
+    }
+}
+
+class Slash<T> {
+    public constructor(
+        private readonly prev: Parser<T>
+    ) {}
+
     public get string(): Parser<FF<T, string>> {
         throw new Error();
     }
@@ -137,8 +185,8 @@ abstract class Path<T> {
         throw new Error();
     }
 
-    public s(_path: string): Parser<T> {
-        throw new Error();
+    public s(path: string): Parser<T> {
+        return new ParserS(this.prev, path);
     }
 
     public oneOf<R>(_parsers: Array<Parser<R>>): Parser<FF<T, R>> {
@@ -221,6 +269,7 @@ type FR<F, R> = F extends (arg0: infer A0) => infer F1
     ? (arg19: A19) => FR<F20, R> // it doesn't work properly but let's keep it here
     : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
 
+/*
 class Route {
     public foo() {
         throw new Error();
@@ -294,3 +343,4 @@ export const test11 = Parser.s('base').slash.number.slash.oneOf([
 ]).ap(a => r => {
     return a > 2 ? r : Article(a);
 });
+*/

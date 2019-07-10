@@ -6,6 +6,9 @@ import {
     Nothing,
     Just
 } from '../Maybe';
+import {
+    Parser
+} from './Parser';
 
 export interface Protocol {
     isHttp(): boolean;
@@ -14,7 +17,7 @@ export interface Protocol {
     cata<R>(pattern: Protocol.Pattern<R>): R;
 }
 
-export const Http = new class implements Protocol {
+export const Http = new class Http implements Protocol {
     public isHttp(): boolean {
         return true;
     }
@@ -36,7 +39,7 @@ export const Http = new class implements Protocol {
     }
 }();
 
-export const Https = new class implements Protocol {
+export const Https = new class Https implements Protocol {
     public isHttp(): boolean {
         return false;
     }
@@ -211,6 +214,10 @@ export class Url {
             Nothing: () => this.withoutFragment(),
             Just: fragment => new Url(this.protocol, this.host, this.port, this.path, this.query, Just(fragment))
         });
+    }
+
+    public parse<T>(parser: Parser<T>): Maybe<T> {
+        return parser.parse(this);
     }
 
     public toString(): string {
