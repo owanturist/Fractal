@@ -21,32 +21,6 @@ interface State<T> {
     readonly value: Maybe<T>;
 }
 
-export const processPath = (path: string): Array<string> => {
-    return path.replace(/(^\/|\/$)/g, '')
-        .split('/')
-        .filter(p => p !== '');
-};
-
-export const processQuery = (query: string): Params => {
-    const acc: { [key: string]: Array<string> } = {};
-
-    for (const pair of query.split('&')) {
-        const [ key, value ] = pair.split('=');
-
-        if (key && value) {
-            const values = acc[ key ];
-
-            if (typeof values === 'undefined') {
-                acc[ key ] = [ value ];
-            } else {
-                values.push(value);
-            }
-        }
-    }
-
-    return acc;
-};
-
 class TopParser {
     public static SINGLETON: TopParser = new TopParser();
 
@@ -69,15 +43,15 @@ export abstract class Parser<T> {
     }
 
     public static get string(): Parser<(value: string) => never> {
-        throw new Error();
+        return ParserCustom.string(ParserTop.SINGLETON);
     }
 
     public static get number(): Parser<(value: number) => never> {
-        throw new Error();
+        return ParserCustom.number(ParserTop.SINGLETON);
     }
 
-    public static custom<T>(_parser: (str: string) => Maybe<T>): Parser<(value: T) => never> {
-        throw new Error();
+    public static custom<T>(converter: (str: string) => Maybe<T>): Parser<(value: T) => never> {
+        return new ParserCustom(ParserTop.SINGLETON, converter);
     }
 
     public static s(path: string): Parser<never> {
@@ -86,6 +60,36 @@ export abstract class Parser<T> {
 
     public static oneOf<T>(_parsers: Array<Parser<T>>): Parser<T> {
         throw new Error();
+    }
+
+    protected static visit(unvisited: Array<string>): Maybe<[ string, Array<string> ]> {
+        return Maybe.fromNullable(unvisited[ unvisited.length - 1 ]).map(path => [ path, unvisited.slice(0, -1) ]);
+    }
+
+    private static preparePath(path: string): Array<string> {
+        return path.replace(/(^\/|\/$)/g, '')
+            .split('/')
+            .filter(p => p !== '');
+    }
+
+    private static prepareQuery(query: string): Params {
+        const acc: { [key: string]: Array<string> } = {};
+
+        for (const pair of query.split('&')) {
+            const [ key, value ] = pair.split('=');
+
+            if (key && value) {
+                const values = acc[ key ];
+
+                if (typeof values === 'undefined') {
+                    acc[ key ] = [ value ];
+                } else {
+                    values.push(value);
+                }
+            }
+        }
+
+        return acc;
     }
 
     public ap<R>(tagger: [ T ] extends [ never ] ? R : FR<T, R>): Parser<R> {
@@ -110,8 +114,8 @@ export abstract class Parser<T> {
 
     public parse(url: Url): Maybe<T> {
         return this.step({
-            unvisited: processPath(url.path),
-            queries: processQuery(url.query.getOrElse('')),
+            unvisited: Parser.preparePath(url.path),
+            queries: Parser.prepareQuery(url.query.getOrElse('')),
             fragment: url.fragment,
             value: Nothing
         });
@@ -141,11 +145,41 @@ class ParserS<T> extends Parser<T> {
     }
 
     public step(state: State<T>): Maybe<T> {
-        return Maybe.fromNullable(state.unvisited[ state.unvisited.length - 1 ]).chain(
-            (path: string): Maybe<T> => this.path === path ? this.prev.step({
+        return Parser.visit(state.unvisited).chain(
+            ([ path, nextUnvisited ]) => this.path === path ? this.prev.step({
                 ...state,
-                unvisited: state.unvisited.slice(0, -1)
+                unvisited: nextUnvisited
             }) : Nothing
+        );
+    }
+}
+
+class ParserCustom<T, R> extends Parser<FF<T, R>> {
+    public static string<T>(prev: Parser<T>): Parser<FF<T, string>> {
+        return new ParserCustom(prev, Just);
+    }
+
+    public static number<T>(prev: Parser<T>): Parser<FF<T, number>> {
+        return new ParserCustom(prev, str => /^[0-9]+$/.test(str) ? Just(Number(str)) : Nothing);
+    }
+
+    public constructor(
+        private readonly prev: Parser<T>,
+        private readonly converter: (str: string) => Maybe<R>
+    ) {
+        super();
+    }
+
+    public step(state: State<FF<T, R>>): Maybe<FF<T, R>> {
+        const p: any = this.prev;
+        const v: any = state.value;
+
+        return Parser.visit(state.unvisited).chain(
+            ([ path, nextUnvisited ]) => this.converter(path).map(value => ({
+                ...state,
+                unvisited: nextUnvisited,
+                value: v.ap(Just(value))
+            })).map(s => p.step(s))
         );
     }
 }
@@ -159,9 +193,9 @@ class ParserAp<T, R> extends Parser<R> {
     }
 
     public step(state: State<R>): Maybe<R> {
-        const foo: any = this.prev;
+        const p: any = this.prev;
 
-        return foo.step({
+        return p.step({
             ...state,
             value: Just(this.tagger)
         });
@@ -174,15 +208,15 @@ class Slash<T> {
     ) {}
 
     public get string(): Parser<FF<T, string>> {
-        throw new Error();
+        return ParserCustom.string(this.prev);
     }
 
     public get number(): Parser<FF<T, number>> {
-        throw new Error();
+        return ParserCustom.number(this.prev);
     }
 
-    public custom<R>(_parser: (str: string) => Maybe<R>): Parser<FF<T, R>> {
-        throw new Error();
+    public custom<R>(converter: (str: string) => Maybe<R>): Parser<FF<T, R>> {
+        return new ParserCustom(this.prev, converter);
     }
 
     public s(path: string): Parser<T> {
