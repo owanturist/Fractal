@@ -63,11 +63,11 @@ class TopParser {
         throw new Error();
     }
 
-    public query(_name: string): Query<unknown> {
+    public query(_name: string): Query<never> {
         throw new Error();
     }
 
-    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<(arg: R) => unknown> {
+    public fragment<R>(_handler: (fr: Maybe<string>) => R): Parser<(arg: R) => never> {
         throw new Error();
     }
 }
@@ -77,15 +77,15 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public static get string(): Parser<(value: string) => unknown> {
+    public static get string(): Parser<(value: string) => never> {
         throw new Error();
     }
 
-    public static get number(): Parser<(value: number) => unknown> {
+    public static get number(): Parser<(value: number) => never> {
         throw new Error();
     }
 
-    public static custom<T>(_parser: (str: string) => Maybe<T>): Parser<(value: T) => unknown> {
+    public static custom<T>(_parser: (str: string) => Maybe<T>): Parser<(value: T) => never> {
         throw new Error();
     }
 
@@ -97,13 +97,13 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public static query(_name: string): Query<unknown> {
-        throw new Error();
-    }
-
     private constructor() {}
 
     public ap<R>(_tagger: [ T ] extends [ never ] ? R : FR<T, R>): Parser<R> {
+        throw new Error();
+    }
+
+    public map<R>(_tagger: (value: T) => R): Parser<R> {
         throw new Error();
     }
 
@@ -196,28 +196,28 @@ abstract class QueryList<T> {
 
 type FF<F, R> = WhenNever<F, unknown> extends (arg: infer A) => infer N
     ? (arg: A) => FF<N, R>
-    : (arg: R) => unknown;
+    : (arg: R) => never;
 
 type FR<F, R> = F extends (arg0: infer A0) => infer F1
-    ? (arg0: A0) => F1 extends (arg1: infer A1) => infer F2
-    ? (arg1: A1) => F2 extends (arg2: infer A2) => infer F3
-    ? (arg2: A2) => F3 extends (arg3: infer A3) => infer F4
-    ? (arg3: A3) => F4 extends (arg4: infer A4) => infer F5
-    ? (arg4: A4) => F5 extends (arg5: infer A5) => infer F6
-    ? (arg5: A5) => F6 extends (arg6: infer A6) => infer F7
-    ? (arg6: A6) => F7 extends (arg7: infer A7) => infer F8
-    ? (arg7: A7) => F8 extends (arg8: infer A8) => infer F9
-    ? (arg8: A8) => F9 extends (arg9: infer A9) => infer F10
-    ? (arg9: A9) => F10 extends (arg10: infer A10) => infer F11
-    ? (arg10: A10) => F11 extends (arg11: infer A11) => infer F12
-    ? (arg11: A11) => F12 extends (arg12: infer A12) => infer F13
-    ? (arg12: A12) => F13 extends (arg13: infer A13) => infer F14
-    ? (arg13: A13) => F14 extends (arg14: infer A14) => infer F15
-    ? (arg14: A14) => F15 extends (arg15: infer A15) => infer F16
-    ? (arg15: A15) => F16 extends (arg16: infer A16) => infer F17
-    ? (arg16: A16) => F17 extends (arg17: infer A17) => infer F18
-    ? (arg17: A17) => F18 extends (arg18: infer A18) => infer F19
-    ? (arg18: A18) => F19 extends (arg19: infer A19) => infer F20
+    ? (arg0: A0) => WhenNever<F1, unknown> extends (arg1: infer A1) => infer F2
+    ? (arg1: A1) => WhenNever<F2, unknown> extends (arg2: infer A2) => infer F3
+    ? (arg2: A2) => WhenNever<F3, unknown> extends (arg3: infer A3) => infer F4
+    ? (arg3: A3) => WhenNever<F4, unknown> extends (arg4: infer A4) => infer F5
+    ? (arg4: A4) => WhenNever<F5, unknown> extends (arg5: infer A5) => infer F6
+    ? (arg5: A5) => WhenNever<F6, unknown> extends (arg6: infer A6) => infer F7
+    ? (arg6: A6) => WhenNever<F7, unknown> extends (arg7: infer A7) => infer F8
+    ? (arg7: A7) => WhenNever<F8, unknown> extends (arg8: infer A8) => infer F9
+    ? (arg8: A8) => WhenNever<F9, unknown> extends (arg9: infer A9) => infer F10
+    ? (arg9: A9) => WhenNever<F10, unknown> extends (arg10: infer A10) => infer F11
+    ? (arg10: A10) => WhenNever<F11, unknown> extends (arg11: infer A11) => infer F12
+    ? (arg11: A11) => WhenNever<F12, unknown> extends (arg12: infer A12) => infer F13
+    ? (arg12: A12) => WhenNever<F13, unknown> extends (arg13: infer A13) => infer F14
+    ? (arg13: A13) => WhenNever<F14, unknown> extends (arg14: infer A14) => infer F15
+    ? (arg14: A14) => WhenNever<F15, unknown> extends (arg15: infer A15) => infer F16
+    ? (arg15: A15) => WhenNever<F16, unknown> extends (arg16: infer A16) => infer F17
+    ? (arg16: A16) => WhenNever<F17, unknown> extends (arg17: infer A17) => infer F18
+    ? (arg17: A17) => WhenNever<F18, unknown> extends (arg18: infer A18) => infer F19
+    ? (arg18: A18) => WhenNever<F19, unknown> extends (arg19: infer A19) => infer F20
     ? (arg19: A19) => FR<F20, R> // it doesn't work properly but let's keep it here
     : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
 
@@ -247,6 +247,11 @@ export const test5 = Parser.s('foo')
     .slash.s('asd')
     .slash.number
     .ap(Search);
+
+
+export const test50 = Parser.top.query('dsa').boolean.parse(1 as any as Url);
+
+export const test501 = Parser.number.slash.string.ap(Comment);
 
 export const test51 = Parser
     .s('base')
