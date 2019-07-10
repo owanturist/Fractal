@@ -7,11 +7,26 @@ import {
     Just
 } from '../Maybe';
 
-export abstract class Protocol {
-    public abstract cata<R>(pattern: Protocol.Pattern<R>): R;
+export interface Protocol {
+    isHttp(): boolean;
+    isHttps(): boolean;
+    isEqual(another: Protocol): boolean;
+    cata<R>(pattern: Protocol.Pattern<R>): R;
 }
 
-export const Http = new class extends Protocol {
+export const Http = new class implements Protocol {
+    public isHttp(): boolean {
+        return true;
+    }
+
+    public isHttps(): boolean {
+        return false;
+    }
+
+    public isEqual(another: Protocol): boolean {
+        return another.isHttp();
+    }
+
     public cata<R>(pattern: Protocol.Pattern<R>): R {
         if (typeof pattern.Http === 'function') {
             return pattern.Http();
@@ -21,7 +36,19 @@ export const Http = new class extends Protocol {
     }
 }();
 
-export const Https = new class extends Protocol {
+export const Https = new class implements Protocol {
+    public isHttp(): boolean {
+        return false;
+    }
+
+    public isHttps(): boolean {
+        return true;
+    }
+
+    public isEqual(another: Protocol): boolean {
+        return another.isHttps();
+    }
+
     public cata<R>(pattern: Protocol.Pattern<R>): R {
         if (typeof pattern.Https === 'function') {
             return pattern.Https();
@@ -38,6 +65,12 @@ export namespace Protocol {
     }>;
 }
 
+const trimMaybeString = (str: string): Maybe<string> => {
+    const trimmed = str.trim();
+
+    return trimmed === '' ? Nothing : Just(trimmed);
+};
+
 export class Url {
     public static Http = Http;
 
@@ -47,7 +80,7 @@ export class Url {
         try {
             const url = new URL(str);
 
-            return Just(Url.create(
+            return Just(Url.cons(
                 url.protocol === 'http:' ? Http : Https,
                 url.host,
                 {
@@ -70,7 +103,7 @@ export class Url {
         }
     }
 
-    public static create(protocol: Protocol, host: string, config: {
+    public static cons(protocol: Protocol, host: string, config: {
         port?: number;
         path?: string;
         query?: string;
@@ -79,11 +112,27 @@ export class Url {
         return new Url(
             protocol,
             host,
-            Maybe.fromNullable(config.port).chain((val: number) => isNaN(val) ? Nothing : Just(val)),
-            config.path || '/',
-            Maybe.fromNullable(config.query).chain((val: string) => val === '' ? Nothing : Just(val)),
-            Maybe.fromNullable(config.fragment).chain((val: string) => val === '' ? Nothing : Just(val))
+            Url.preparePort(config.port),
+            Url.preparePath(config.path),
+            Url.prepareQuery(config.query),
+            Url.prepareFragment(config.fragment)
         );
+    }
+
+    private static preparePort(port?: number): Maybe<number> {
+        return Maybe.fromNullable(port).chain((val: number) => isNaN(val) ? Nothing : Just(val));
+    }
+
+    private static preparePath(path?: string): string {
+        return Maybe.fromNullable(path).chain(trimMaybeString).getOrElse('/');
+    }
+
+    private static prepareQuery(query?: string): Maybe<string> {
+        return Maybe.fromNullable(query).chain(trimMaybeString);
+    }
+
+    private static prepareFragment(fragment?: string): Maybe<string> {
+        return Maybe.fromNullable(fragment).chain(trimMaybeString);
     }
 
     private constructor(
@@ -94,6 +143,75 @@ export class Url {
         public readonly query: Maybe<string>,
         public readonly fragment: Maybe<string>
     ) {}
+
+    public withProtocol(nextProtocol: Protocol): Url {
+        if (this.protocol.isEqual(nextProtocol)) {
+            return this;
+        }
+
+        return new Url(nextProtocol, this.host, this.port, this.path, this.query, this.fragment);
+    }
+
+    public withHost(nextHost: string): Url {
+        if (this.host === nextHost) {
+            return this;
+        }
+
+        return new Url(this.protocol, nextHost, this.port, this.path, this.query, this.fragment);
+    }
+
+    public withoutPort(): Url {
+        if (this.port.isNothing()) {
+            return this;
+        }
+
+        return new Url(this.protocol, this.host, Nothing, this.path, this.query, this.fragment);
+    }
+
+    public withPort(nextPort: number): Url {
+        return Url.preparePort(nextPort).cata({
+            Nothing: () => this.withoutPort(),
+            Just: port => new Url(this.protocol, this.host, Just(port), this.path, this.query, this.fragment)
+        });
+    }
+
+    public withoutPath(): Url {
+        return this.withPath('');
+    }
+
+    public withPath(nextPath: string): Url {
+        return new Url(this.protocol, this.host, this.port, Url.preparePath(nextPath), this.query, this.fragment);
+    }
+
+    public withoutQuery(): Url {
+        if (this.query.isNothing()) {
+            return this;
+        }
+
+        return new Url(this.protocol, this.host, this.port, this.path, Nothing, this.fragment);
+    }
+
+    public withQuery(nextQuery: string): Url {
+        return Url.prepareQuery(nextQuery).cata({
+            Nothing: () => this.withoutQuery(),
+            Just: query => new Url(this.protocol, this.host, this.port, this.path, Just(query), this.fragment)
+        });
+    }
+
+    public withoutFragment(): Url {
+        if (this.fragment.isNothing()) {
+            return this;
+        }
+
+        return new Url(this.protocol, this.host, this.port, this.path, this.query, Nothing);
+    }
+
+    public withFragment(nextFragment: string): Url {
+        return Url.prepareFragment(nextFragment).cata({
+            Nothing: () => this.withoutFragment(),
+            Just: fragment => new Url(this.protocol, this.host, this.port, this.path, this.query, Just(fragment))
+        });
+    }
 
     public toString(): string {
         return [
