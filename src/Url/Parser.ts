@@ -1,4 +1,7 @@
 import {
+    WhenNever
+} from 'Basics';
+import {
     Url
 } from './index';
 import {
@@ -86,7 +89,7 @@ export class Parser<T> {
         throw new Error();
     }
 
-    public static s(_path: string): Parser<unknown> {
+    public static s(_path: string): Parser<never> {
         throw new Error();
     }
 
@@ -100,7 +103,7 @@ export class Parser<T> {
 
     private constructor() {}
 
-    public ap<R>(_tagger: FR<T, R>): Parser<R> {
+    public ap<R>(_tagger: [ T ] extends [ never ] ? R : FR<T, R>): Parser<R> {
         throw new Error();
     }
 
@@ -191,7 +194,7 @@ abstract class QueryList<T> {
     }
 }
 
-type FF<F, R> = F extends (arg: infer A) => infer N
+type FF<F, R> = WhenNever<F, unknown> extends (arg: infer A) => infer N
     ? (arg: A) => FF<N, R>
     : (arg: R) => unknown;
 
@@ -265,8 +268,6 @@ export const test51 = Parser
     .slash.s('hi')
     .slash.string
     ;
-
-export const test6 = Parser.top;
 
 export const test10 = Parser.oneOf([
     Parser.top.ap(Home),
