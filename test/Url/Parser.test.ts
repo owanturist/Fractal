@@ -50,7 +50,7 @@ test('Parser.top', t => {
 test('Parser.s', t => {
     t.deepEqual(
         URL.withPath('/').parse(
-            Parser.s('profile').ap(new ToProfile())
+            Parser.s('profile').map(new ToProfile())
         ),
         Nothing,
         'empty path is not matched'
@@ -58,7 +58,7 @@ test('Parser.s', t => {
 
     t.deepEqual(
         URL.withPath('/some/').parse(
-            Parser.s('profile').ap(new ToProfile())
+            Parser.s('profile').map(new ToProfile())
         ),
         Nothing,
         'different single path is not matched'
@@ -66,7 +66,7 @@ test('Parser.s', t => {
 
     t.deepEqual(
         URL.withPath('/some/profile/').parse(
-            Parser.s('profile').ap(new ToProfile())
+            Parser.s('profile').map(new ToProfile())
         ),
         Nothing,
         'extra before'
@@ -74,7 +74,7 @@ test('Parser.s', t => {
 
     t.deepEqual(
         URL.withPath('/profile/some/').parse(
-            Parser.s('profile').ap(new ToProfile())
+            Parser.s('profile').map(new ToProfile())
         ),
         Nothing,
         'extra after'
@@ -82,7 +82,7 @@ test('Parser.s', t => {
 
     t.deepEqual(
         URL.withPath('/some/profile/thing/').parse(
-            Parser.s('profile').ap(new ToProfile())
+            Parser.s('profile').map(new ToProfile())
         ),
         Nothing,
         'extra around'
@@ -90,7 +90,7 @@ test('Parser.s', t => {
 
     t.deepEqual(
         URL.withPath('/profile/').parse(
-            Parser.s('profile').ap(new ToProfile())
+            Parser.s('profile').map(new ToProfile())
         ),
         Just(new ToProfile()),
         'exact single path is matched'

@@ -216,7 +216,7 @@ export class Url {
         });
     }
 
-    public parse<T>(parser: Parser<T>): Maybe<T> {
+    public parse<T>(parser: Parser<(value: T) => unknown>): Maybe<T> {
         return parser.parse(this);
     }
 
