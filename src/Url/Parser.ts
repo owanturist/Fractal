@@ -28,63 +28,23 @@ const mapState = <T, R>(fn: (value: T) => R, { unvisited, queries, fragment, val
 });
 
 const last = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ arr.length - 1 ]);
-const init = <T>(arr: Array<T>): Array<T> => arr.slice(0, -1);
-
-
-export interface Slash<T> {
-    string: Chainable<FF<T, (value: string) => unknown>>;
-    number: Chainable<FF<T, (value: number) => unknown>>;
-    s(path: string): Chainable<T>;
-    custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>>;
-    oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>>;
-}
-
-class SlashImpl<T> implements Slash<T> {
-    public constructor(private readonly parser: Parser<T>) {}
-
-    public get string(): Chainable<FF<T, (value: string) => unknown>> {
-        throw new Error();
-    }
-
-    public get number(): Chainable<FF<T, (value: number) => unknown>> {
-        throw new Error();
-    }
-
-    public s(path: string): Chainable<T> {
-        return new ChainableImpl(({ unvisited, queries, fragment, value }) => last(unvisited).chain(
-            str => str === path ? ChainableImpl.next(this.parser, {
-                unvisited: init(unvisited),
-                queries,
-                fragment,
-                value
-            }) : Nothing
-        ));
-    }
-
-    public custom<R>(_converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
-        throw new Error();
-    }
-
-    public oneOf<R>(_parsers: Array<Parser<R>>): Chainable<FF<T, R>> {
-        throw new Error();
-    }
-}
+const initial = <T>(arr: Array<T>): Array<T> => arr.slice(0, -1);
 
 export class Parser<T> {
     public static top: Parser<unknown> = new Parser(
         state => state.unvisited.length === 0 ? Just(state) : Nothing
     );
 
-    public static string(): Chainable<(value: string) => unknown> {
-        throw new Error();
+    public static get string(): Chainable<(value: string) => unknown> {
+        return new SlashImpl(Parser.top).string;
     }
 
     public static get number(): Chainable<(value: number) => unknown> {
-        throw new Error();
+        return new SlashImpl(Parser.top).number;
     }
 
-    public static custom<T>(_converter: (str: string) => Maybe<T>): Chainable<(value: T) => unknown> {
-        throw new Error();
+    public static custom<T>(converter: (str: string) => Maybe<T>): Chainable<(value: T) => unknown> {
+        return new SlashImpl(Parser.top).custom(converter);
     }
 
     public static s<T>(path: string): Chainable<T> {
@@ -121,7 +81,7 @@ export class Parser<T> {
         return acc;
     }
 
-    protected static next<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
+    protected static prev<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
         return parser.fn(state);
     }
 
@@ -153,8 +113,8 @@ export interface Chainable<T> extends Parser<T> {
 }
 
 class ChainableImpl<T> extends Parser<T> implements Chainable<T>  {
-    public static next<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
-        return super.next(parser, state);
+    public static prev<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
+        return super.prev(parser, state);
     }
 
     public constructor(fn: (state: State<T>) => Maybe<State<unknown>>) {
@@ -163,6 +123,52 @@ class ChainableImpl<T> extends Parser<T> implements Chainable<T>  {
 
     public get slash(): Slash<T> {
         return new SlashImpl(this);
+    }
+}
+
+export interface Slash<T> {
+    string: Chainable<FF<T, (value: string) => unknown>>;
+    number: Chainable<FF<T, (value: number) => unknown>>;
+    s(path: string): Chainable<T>;
+    custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>>;
+    oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>>;
+}
+
+class SlashImpl<T> implements Slash<T> {
+    public constructor(private readonly parser: Parser<T>) {}
+
+    public get string(): Chainable<FF<T, (value: string) => unknown>> {
+        return this.custom(Just);
+    }
+
+    public get number(): Chainable<FF<T, (value: number) => unknown>> {
+        return this.custom(str => /^[0-9]+$/.test(str) ? Just(Number(str)) : Nothing);
+    }
+
+    public s(path: string): Chainable<T> {
+        return new ChainableImpl(({ unvisited, queries, fragment, value }) => last(unvisited).chain(
+            str => str === path ? ChainableImpl.prev(this.parser, {
+                unvisited: initial(unvisited),
+                queries,
+                fragment,
+                value
+            }) : Nothing
+        ));
+    }
+
+    public custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
+        return new ChainableImpl(({ unvisited, queries, fragment, value }) => {
+            return last(unvisited).chain(converter).chain(converted => ChainableImpl.prev(this.parser, {
+                unvisited: initial(unvisited),
+                queries,
+                fragment,
+                value: value(converted)
+            }));
+        });
+    }
+
+    public oneOf<R>(_parsers: Array<Parser<R>>): Chainable<FF<T, R>> {
+        throw new Error();
     }
 }
 
