@@ -1,6 +1,7 @@
 import test from 'ava';
 
 import {
+    Maybe,
     Nothing,
     Just
 } from '../../src/Maybe';
@@ -11,7 +12,7 @@ import {
     Parser
 } from '../../src/Url/Parser';
 
-const URL = Url.cons(Url.Https, 'google.com');
+const URL = Url.cons(Url.Https, 'fake.com');
 
 // interface Route {
 //     toPath(): string;
@@ -61,7 +62,7 @@ test('Parser.top', t => {
 
 test('Parser.s', t => {
     t.deepEqual(
-        Parser.s('profile').map(0).parse(
+        Parser.s('single').map(0).parse(
             URL.withPath('/')
         ),
         Nothing,
@@ -69,207 +70,205 @@ test('Parser.s', t => {
     );
 
     t.deepEqual(
-        Parser.s('profile').map(0).parse(
-            URL.withPath('/some/')
+        Parser.s('single').map(0).parse(
+            URL.withPath('/path/')
         ),
         Nothing,
         'different single path is not matched'
     );
 
     t.deepEqual(
-        Parser.s('profile').map(0).parse(
-            URL.withPath('/before/profile/')
+        Parser.s('single').map(0).parse(
+            URL.withPath('/before/single/')
         ),
         Nothing,
         'extra before is not matched'
     );
 
     t.deepEqual(
-        Parser.s('profile').map(0).parse(
-            URL.withPath('/profile/after/')
+        Parser.s('single').map(0).parse(
+            URL.withPath('/single/after/')
         ),
         Nothing,
         'extra after is not matched'
     );
 
     t.deepEqual(
-        Parser.s('profile').map(0).parse(
-            URL.withPath('/before/profile/after/')
+        Parser.s('single').map(0).parse(
+            URL.withPath('/before/single/after/')
         ),
         Nothing,
         'extra around is not matched'
     );
 
     t.deepEqual(
-        Parser.s('profile').map(0).parse(
-            URL.withPath('/profile/')
+        Parser.s('single').map(0).parse(
+            URL.withPath('/single/')
         ),
         Just(0),
         'exact single path is matched'
     );
 
     t.deepEqual(
-        Parser.s('some').slash.s('profile').map(0).parse(
-            URL.withPath('/some/between/profile')
+        Parser.s('first').slash.s('second').map(0).parse(
+            URL.withPath('/first/between/second')
         ),
         Nothing,
         'extra between is not matched'
     );
 
     t.deepEqual(
-        Parser.s('some').slash.s('profile').map(0).parse(
-            URL.withPath('/some/profile/')
+        Parser.s('first').slash.s('second').map(0).parse(
+            URL.withPath('/first/second/')
         ),
         Just(0),
         'exact multiple path is matched'
     );
 
     t.deepEqual(
-        Parser.s('some').slash.s('profile').slash.s('thing').map(0).parse(
-            URL.withPath('/some/profile/thing/')
+        Parser.s('first').slash.s('second').slash.s('third').map(0).parse(
+            URL.withPath('/first/second/third/')
         ),
         Just(0),
         'exact long path is matched'
     );
 });
 
-test('Parser.string', t => {
-    const single = (first: string) => ({ first });
-    const double = (first: string) => (second: string) => ({ first, second });
-    const tripple = (first: string) => (second: string) => (third: string) => ({ first, second, third });
+test('Parser.custom', t => {
+    const toDate = (str: string): Maybe<Date> => {
+        const date = new Date(str);
+
+        return isNaN(date.getTime()) ? Nothing : Just(date);
+    };
+
+    const single = (first: Date) => ({ first });
+    const double = (first: Date) => (second: Date) => ({ first, second });
+    const tripple = (first: Date) => (second: Date) => (third: Date) => ({ first, second, third });
 
     t.deepEqual(
-        Parser.string.map(single).parse(
+        Parser.custom(toDate).map(single).parse(
             URL.withPath('/')
         ),
         Nothing,
-        'empty path is not matched'
+        'empty single path is not matched'
     );
 
     t.deepEqual(
-        Parser.string.map(single).parse(
-            URL.withPath('/before/article-title/')
+        Parser.custom(toDate).map(single).parse(
+            URL.withPath('/02-33-2019/')
         ),
         Nothing,
-        'extra before is not matched'
+        'invalid single is not matched'
     );
 
     t.deepEqual(
-        Parser.string.map(single).parse(
-            URL.withPath('/article-title/after/')
+        Parser.custom(toDate).map(single).parse(
+            URL.withPath('/09-10-2019/')
         ),
-        Nothing,
-        'extra after is not matched'
+        Just(single(new Date('09-10-2019'))),
+        'single is matched'
     );
 
     t.deepEqual(
-        Parser.string.map(single).parse(
-            URL.withPath('/before/article-title/after/')
+        Parser.s('before').slash.custom(toDate).map(single).parse(
+            URL.withPath('/before/03-23-2019/')
         ),
-        Nothing,
-        'extra around is not matched'
+        Just(single(new Date('03-23-2019'))),
+        'single with path before is matched'
     );
 
     t.deepEqual(
-        Parser.string.map(single).parse(
-            URL.withPath('/article-title/')
+        Parser.custom(toDate).slash.s('after').map(single).parse(
+            URL.withPath('/10-02-2018/after/')
         ),
-        Just(single('article-title')),
-        'exact single string is matched'
+        Just(single(new Date('10-02-2018'))),
+        'single with path after is matched'
     );
 
     t.deepEqual(
-        Parser.s('some').slash.string.map(single).parse(
-            URL.withPath('/some/article-title/')
+        Parser.s('before').slash.custom(toDate).slash.s('after').map(single).parse(
+            URL.withPath('/before/12-31-2020/after/')
         ),
-        Just(single('article-title')),
-        'exact single string with path before is matched'
+        Just(single(new Date('12-31-2020'))),
+        'single with path around is matched'
     );
 
     t.deepEqual(
-        Parser.string.slash.s('thing').map(single).parse(
-            URL.withPath('/article-title/thing/')
-        ),
-        Just(single('article-title')),
-        'exact single string with path after is matched'
-    );
-
-    t.deepEqual(
-        Parser.s('some').slash.string.slash.s('thing').map(single).parse(
-            URL.withPath('/some/article-title/thing/')
-        ),
-        Just(single('article-title')),
-        'exact single string with path around is matched'
-    );
-
-    t.deepEqual(
-        Parser.string.slash.string.map(double).parse(
+        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
             URL.withPath('/some/')
         ),
         Nothing,
-        'too short for double is not matched'
+        'short invalid double is not matched'
     );
 
     t.deepEqual(
-        Parser.string.slash.string.map(double).parse(
-            URL.withPath('/some/between/article/')
+        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+            URL.withPath('/12-31-2020/')
         ),
         Nothing,
-        'extra between are not matched'
+        'short valid double is not matched'
     );
 
     t.deepEqual(
-        Parser.string.slash.string.map(double).parse(
-            URL.withPath('/some/article/')
-        ),
-        Just(double('some')('article')),
-        'exact double strings are matched'
-    );
-
-    t.deepEqual(
-        Parser.string.slash.s('between').slash.string.map(double).parse(
-            URL.withPath('/some/wrong/article/')
+        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+            URL.withPath('/10-01-2013/between/10-01-2014/')
         ),
         Nothing,
-        'different between are not matched'
+        'extra between double is not matched'
     );
 
     t.deepEqual(
-        Parser.string.slash.s('between').slash.string.map(double).parse(
-            URL.withPath('/some/between/article/')
+        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+            URL.withPath('/10-01-2013/10-01-2020/')
         ),
-        Just(double('some')('article')),
-        'exact double strings with path between are matched'
+        Just(double(new Date('10-01-2013'))(new Date('10-01-2020'))),
+        'double is matched'
     );
 
     t.deepEqual(
-        Parser.string.slash.string.slash.string.map(tripple).parse(
-            URL.withPath('/first/second/')
+        Parser.custom(toDate).slash.s('between').slash.custom(toDate).map(double).parse(
+            URL.withPath('/10-01-2013/wrong/10-01-2020/')
         ),
         Nothing,
-        'too short for tripple is not matched'
+        'different between is not matched'
     );
 
     t.deepEqual(
-        Parser.string.slash.string.slash.string.map(tripple).parse(
-            URL.withPath('/first/second/third/')
+        Parser.custom(toDate).slash.s('between').slash.custom(toDate).map(double).parse(
+            URL.withPath('/10-01-2013/between/10-01-2020/')
         ),
-        Just(tripple('first')('second')('third')),
-        'exact tripple strings are matched'
+        Just(double(new Date('10-01-2013'))(new Date('10-01-2020'))),
+        'double with path between is matched'
     );
 
     t.deepEqual(
-        Parser.s('1')
-        .slash.string
-        .slash.s('2')
-        .slash.string
-        .slash.s('3')
-        .slash.string
-        .slash.s('4')
+        Parser.custom(toDate).slash.custom(toDate).slash.custom(toDate).map(tripple).parse(
+            URL.withPath('/10-01-2013/10-01-2020/')
+        ),
+        Nothing,
+        'short tripple is not matched'
+    );
+
+    t.deepEqual(
+        Parser.custom(toDate).slash.custom(toDate).slash.custom(toDate).map(tripple).parse(
+            URL.withPath('/10-01-2013/10-01-2020/10-01-2027/')
+        ),
+        Just(tripple(new Date('10-01-2013'))(new Date('10-01-2020'))(new Date('10-01-2027'))),
+        'tripple is matched'
+    );
+
+    t.deepEqual(
+        Parser.s('first')
+        .slash.custom(toDate)
+        .slash.s('second')
+        .slash.custom(toDate)
+        .slash.s('third')
+        .slash.custom(toDate)
+        .slash.s('fourth')
         .map(tripple).parse(
-            URL.withPath('/1/first/2/second/3/third/4/')
+            URL.withPath('/first/10-01-2013/second/10-01-2020/third/10-01-2027/fourth/')
         ),
-        Just(tripple('first')('second')('third')),
-        'exact tripple strings with paths between and around are matched'
+        Just(tripple(new Date('10-01-2013'))(new Date('10-01-2020'))(new Date('10-01-2027'))),
+        'tripple with paths between and around is matched'
     );
 });
