@@ -136,7 +136,7 @@ test('Parser.s', t => {
 test('Parser.string', t => {
     const single = (first: string) => ({ first });
     const double = (first: string) => (second: string) => ({ first, second });
-    // const tripple = (first: string, second: string, third: string) => ({ first, second, third });
+    const tripple = (first: string) => (second: string) => (third: string) => ({ first, second, third });
 
     t.deepEqual(
         Parser.string.map(single).parse(
@@ -204,6 +204,14 @@ test('Parser.string', t => {
 
     t.deepEqual(
         Parser.string.slash.string.map(double).parse(
+            URL.withPath('/some/')
+        ),
+        Nothing,
+        'too short for double is not matched'
+    );
+
+    t.deepEqual(
+        Parser.string.slash.string.map(double).parse(
             URL.withPath('/some/between/article/')
         ),
         Nothing,
@@ -232,5 +240,36 @@ test('Parser.string', t => {
         ),
         Just(double('some')('article')),
         'exact double strings with path between are matched'
+    );
+
+    t.deepEqual(
+        Parser.string.slash.string.slash.string.map(tripple).parse(
+            URL.withPath('/first/second/')
+        ),
+        Nothing,
+        'too short for tripple is not matched'
+    );
+
+    t.deepEqual(
+        Parser.string.slash.string.slash.string.map(tripple).parse(
+            URL.withPath('/first/second/third/')
+        ),
+        Just(tripple('first')('second')('third')),
+        'exact tripple strings are matched'
+    );
+
+    t.deepEqual(
+        Parser.s('1')
+        .slash.string
+        .slash.s('2')
+        .slash.string
+        .slash.s('3')
+        .slash.string
+        .slash.s('4')
+        .map(tripple).parse(
+            URL.withPath('/1/first/2/second/3/third/4/')
+        ),
+        Just(tripple('first')('second')('third')),
+        'exact tripple strings with paths between and around are matched'
     );
 });

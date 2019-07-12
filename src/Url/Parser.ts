@@ -27,13 +27,11 @@ const mapState = <T, R>(fn: (value: T) => R, { unvisited, queries, fragment, val
     value: fn(value)
 });
 
-const last = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ arr.length - 1 ]);
-const initial = <T>(arr: Array<T>): Array<T> => arr.slice(0, -1);
+const first = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ 0 ]);
+const rest = <T>(arr: Array<T>): Array<T> => arr.slice(1);
 
 export class Parser<T> {
-    public static top: Parser<unknown> = new Parser(
-        state => state.unvisited.length === 0 ? Just(state) : Nothing
-    );
+    public static top: Parser<unknown> = new Parser(Just);
 
     public static get string(): Chainable<(value: string) => unknown> {
         return new SlashImpl(Parser.top).string;
@@ -90,12 +88,14 @@ export class Parser<T> {
     ) {}
 
     public map<R>(tagger: FN<T, R>): Parser<(value: R) => unknown> {
-        return new Parser(({ unvisited, queries, fragment, value }) => this.fn({
-            unvisited,
-            queries,
-            fragment,
-            value: tagger as unknown as T
-        }).map((state: State<R>): State<unknown> => mapState(value, state)));
+        return new Parser(({ unvisited, queries, fragment, value }: any): Maybe<State<T>> => {
+            return this.fn({
+                unvisited,
+                queries,
+                fragment,
+                value: tagger as unknown as T
+            }).map((state: any): any => mapState(value, state));
+        });
     }
 
     public parse<R extends FA<T>>(url: Url): Maybe<R> {
@@ -104,7 +104,7 @@ export class Parser<T> {
             queries: Parser.prepareQuery(url.query.getOrElse('')),
             fragment: url.fragment,
             value: identity as unknown as T
-        }).map((state: State<R>): R => state.value);
+        }).chain(({ unvisited, value }: State<R>): Maybe<R> => unvisited.length === 0 ? Just(value) : Nothing);
     }
 }
 
@@ -146,24 +146,28 @@ class SlashImpl<T> implements Slash<T> {
     }
 
     public s(path: string): Chainable<T> {
-        return new ChainableImpl(({ unvisited, queries, fragment, value }) => last(unvisited).chain(
-            str => str === path ? ChainableImpl.prev(this.parser, {
-                unvisited: initial(unvisited),
-                queries,
-                fragment,
-                value
-            }) : Nothing
-        ));
+        return new ChainableImpl((state: any): any => {
+            return ChainableImpl.prev(this.parser, state).chain(({ unvisited, queries, fragment, value }: any): any => {
+                return first(unvisited).chain((str): any => str === path ? Just({
+                    unvisited: rest(unvisited),
+                    queries,
+                    fragment,
+                    value
+                }) : Nothing);
+            });
+        });
     }
 
     public custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
-        return new ChainableImpl(({ unvisited, queries, fragment, value }) => {
-            return last(unvisited).chain(converter).chain(converted => ChainableImpl.prev(this.parser, {
-                unvisited: initial(unvisited),
-                queries,
-                fragment,
-                value: value(converted)
-            }));
+        return new ChainableImpl((state: any) => {
+            return ChainableImpl.prev(this.parser, state).chain(({ unvisited, queries, fragment, value }: any): any => {
+                return first(unvisited).chain(converter).map((converted): any => ({
+                    unvisited: rest(unvisited),
+                    queries,
+                    fragment,
+                    value: value(converted)
+                }));
+            });
         });
     }
 
