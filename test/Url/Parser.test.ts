@@ -272,3 +272,75 @@ test('Parser.custom', t => {
         'tripple with paths between and around is matched'
     );
 });
+
+test('Parser.string', t => {
+    const single = (first: string) => ({ first });
+
+    t.deepEqual(
+        Parser.string.map(single).parse(
+            URL.withPath('/')
+        ),
+        Nothing,
+        'empty path is not matched'
+    );
+
+    t.deepEqual(
+        Parser.string.map(single).parse(
+            URL.withPath('/first/')
+        ),
+        Just(single('first')),
+        'root string is matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').slash.string.map(single).parse(
+            URL.withPath('/before/first/')
+        ),
+        Just(single('first')),
+        'string with path before is matched'
+    );
+});
+
+test('Parser.number', t => {
+    const single = (first: number) => ({ first });
+
+    t.deepEqual(
+        Parser.number.map(single).parse(
+            URL.withPath('/')
+        ),
+        Nothing,
+        'empty path is not matched'
+    );
+
+    t.deepEqual(
+        Parser.number.map(single).parse(
+            URL.withPath('/string/')
+        ),
+        Nothing,
+        'string is not matched'
+    );
+
+    t.deepEqual(
+        Parser.number.map(single).parse(
+            URL.withPath('/1.3/')
+        ),
+        Nothing,
+        'float is not matched'
+    );
+
+    t.deepEqual(
+        Parser.number.map(single).parse(
+            URL.withPath('/314/')
+        ),
+        Just(single(314)),
+        'root number is matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').slash.number.map(single).parse(
+            URL.withPath('/before/42/')
+        ),
+        Just(single(42)),
+        'number with path before is matched'
+    );
+});
