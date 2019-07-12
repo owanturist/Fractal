@@ -18,9 +18,21 @@ interface State<T> {
     readonly value: T;
 }
 
-export abstract class Parser<T> {
+const identity = <T>(value: T): T => value;
+
+const mapState = <T, R>(fn: (value: T) => R, { unvisited, queries, fragment, value }: State<T>): State<R> => ({
+    unvisited,
+    queries,
+    fragment,
+    value: fn(value)
+});
+
+const last = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ arr.length - 1 ]);
+const init = <T>(arr: Array<T>): Array<T> => arr.slice(0, -1);
+
+export class Parser<T> {
     public static get top(): Parser<unknown> {
-        throw new Error();
+        return new Parser(state => state.unvisited.length === 0 ? Just(state) : Nothing);
     }
 
     public static get string(): Chainable<(value: string) => unknown> {
@@ -35,19 +47,17 @@ export abstract class Parser<T> {
         throw new Error();
     }
 
-    public static s(_path: string): Chainable<unknown> {
-        throw new Error();
+    public static s<T>(path: string): Chainable<T> {
+        return new ChainableImpl((state: State<T>): Maybe<State<T>> => last(state.unvisited).chain(
+            str => str === path && state.unvisited.length === 1 ? Just(state) : Nothing
+        ));
     }
 
     public static oneOf<T>(_parsers: Array<Parser<T>>): Chainable<T> {
         throw new Error();
     }
 
-    protected static visit(unvisited: Array<string>): Maybe<[ string, Array<string> ]> {
-        return Maybe.fromNullable(unvisited[ unvisited.length - 1 ]).map(path => [ path, unvisited.slice(0, -1) ]);
-    }
-
-    protected static preparePath(path: string): Array<string> {
+    protected static prepareUnvisited(path: string): Array<string> {
         return path.replace(/(^\/|\/$)/g, '')
             .split('/')
             .filter(p => p !== '');
@@ -73,21 +83,61 @@ export abstract class Parser<T> {
         return acc;
     }
 
-    public map<R>(_tagger: FA<T, R>): Parser<(value: R) => unknown> {
-        throw new Error();
+    protected static next<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
+        return parser.fn(state);
     }
 
-    public abstract parse(_url: Url): Maybe<T extends (value: infer A) => unknown ? A : unknown>;
-}
+    protected constructor(
+        private readonly fn: (state: State<T>) => Maybe<State<unknown>>
+    ) {}
 
-abstract class Chainable<A> extends Parser<A> {
-    public get slash(): Slash<A> {
-        throw new Error();
+    public map<R>(tagger: FN<T, R>): Parser<(value: R) => unknown> {
+        return new Parser(({ unvisited, queries, fragment, value }) => this.fn({
+            unvisited,
+            queries,
+            fragment,
+            value: tagger as unknown as T
+        }).map((state: State<R>): State<unknown> => mapState(value, state)));
+    }
+
+    public parse<R extends FA<T>>(url: Url): Maybe<R> {
+        return this.fn({
+            unvisited: Parser.prepareUnvisited(url.path),
+            queries: Parser.prepareQuery(url.query.getOrElse('')),
+            fragment: url.fragment,
+            value: identity as unknown as T
+        }).map((state: State<R>): R => state.value);
     }
 }
 
-class Slash<T> {
-    public st?: State<never>;
+export interface Chainable<T> extends Parser<T> {
+    slash: Slash<T>;
+}
+
+class ChainableImpl<T> extends Parser<T> implements Chainable<T>  {
+    public static next<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
+        return super.next(parser, state);
+    }
+
+    public constructor(fn: (state: State<T>) => Maybe<State<unknown>>) {
+        super(fn);
+    }
+
+    public get slash(): Slash<T> {
+        return new SlashImpl(this);
+    }
+}
+
+export interface Slash<T> {
+    string: Chainable<FF<T, (value: string) => unknown>>;
+    number: Chainable<FF<T, (value: number) => unknown>>;
+    s(path: string): Chainable<T>;
+    custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>>;
+    oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>>;
+}
+
+class SlashImpl<T> implements Slash<T> {
+    public constructor(private readonly parser: Parser<T>) {}
 
     public get string(): Chainable<FF<T, (value: string) => unknown>> {
         throw new Error();
@@ -97,8 +147,15 @@ class Slash<T> {
         throw new Error();
     }
 
-    public s(_path: string): Chainable<T> {
-        throw new Error();
+    public s(path: string): Chainable<T> {
+        return new ChainableImpl(({ unvisited, queries, fragment, value }) => last(unvisited).chain(
+            str => str === path ? ChainableImpl.next(this.parser, {
+                unvisited: init(unvisited),
+                queries,
+                fragment,
+                value
+            }) : Nothing
+        ));
     }
 
     public custom<R>(_converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
@@ -110,11 +167,13 @@ class Slash<T> {
     }
 }
 
-type FF<F, R> = F extends (arg: infer A) => infer N
-    ? (arg: A) => FF<N, R>
+type FA<F> = F extends (value: infer A) => unknown ? A : unknown;
+
+type FF<F, R> = F extends (value: infer A) => infer N
+    ? (value: A) => FF<N, R>
     : R;
 
-type FA<F, R> = F extends (arg0: infer A0) => infer F1
+type FN<F, R> = F extends (arg0: infer A0) => infer F1
     ? (arg0: A0) => F1 extends (arg1: infer A1) => infer F2
     ? (arg1: A1) => F2 extends (arg2: infer A2) => infer F3
     ? (arg2: A2) => F3 extends (arg3: infer A3) => infer F4
@@ -134,10 +193,10 @@ type FA<F, R> = F extends (arg0: infer A0) => infer F1
     ? (arg16: A16) => F17 extends (arg17: infer A17) => infer F18
     ? (arg17: A17) => F18 extends (arg18: infer A18) => infer F19
     ? (arg18: A18) => F19 extends (arg19: infer A19) => infer F20
-    ? (arg19: A19) => FA<F20, R> // it doesn't work properly but let's keep it here
+    ? (arg19: A19) => FN<F20, R> // it doesn't work properly but let's keep it here
     : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
-
 /*
+
 class Route {
     public foo() {
         throw new Error();
@@ -177,7 +236,7 @@ export const test1n5 = Parser.s('post')
 export const test1n6 = Parser.s('hi').slash.number.slash.oneOf([
     Parser.top.map(Home),
     Parser.number.map(Article)
-]).parse(1 as any);
+]);
 
 export const test2n1 = Parser.oneOf([
     Parser.top.map(Home),
