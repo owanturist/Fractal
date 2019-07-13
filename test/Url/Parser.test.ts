@@ -40,7 +40,7 @@ const parseNonNegative = (str: string): Maybe<number> => {
 
 test('Parser.top', t => {
     t.deepEqual(
-        Parser.top.map(0).parse(
+        Parser.root.map(0).parse(
             URL.withPath('/profile')
         ),
         Nothing,
@@ -48,7 +48,7 @@ test('Parser.top', t => {
     );
 
     t.deepEqual(
-        Parser.top.map(0).parse(
+        Parser.root.map(0).parse(
             URL.withPath('/')
         ),
         Just(0),
@@ -356,7 +356,7 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.oneOf([
-            Parser.top.map(0)
+            Parser.root.map(0)
         ]).parse(
             URL.withPath('/')
         ),
@@ -376,7 +376,7 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.oneOf([
-            Parser.top.map(0),
+            Parser.root.map(0),
             Parser.s('first').map(1)
         ]).parse(
             URL.withPath('/')
@@ -387,8 +387,8 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.oneOf([
-            Parser.top.map(0),
-            Parser.top.map(1)
+            Parser.root.map(0),
+            Parser.root.map(1)
         ]).parse(
             URL.withPath('/')
         ),
@@ -398,7 +398,7 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.oneOf([
-            Parser.top.map(0),
+            Parser.root.map(0),
             Parser.s('first').map(1),
             Parser.s('first').slash.s('second').map(2),
             Parser.s('second').map(3)
@@ -411,7 +411,7 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.s('before').slash.oneOf([
-            Parser.top.map(0),
+            Parser.root.map(0),
             Parser.s('first').map(1),
             Parser.s('first').slash.s('second').map(2),
             Parser.s('second').map(3)
@@ -424,7 +424,7 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.oneOf([
-            Parser.top.map(0),
+            Parser.root.map(0),
             Parser.s('first').map(1),
             Parser.s('first').slash.s('second').map(2),
             Parser.s('second').map(3)
@@ -437,7 +437,7 @@ test('Parser.oneOf', t => {
 
     t.deepEqual(
         Parser.s('before').slash.oneOf([
-            Parser.top.map(0),
+            Parser.root.map(0),
             Parser.s('first').map(1),
             Parser.s('first').slash.s('second').map(2),
             Parser.s('second').map(3)
@@ -514,7 +514,7 @@ test('Parser.oneOf real example', t => {
     }
 
     const parser = Parser.oneOf([
-        Parser.top.map(ToHome.inst),
+        Parser.root.map(ToHome.inst),
         Parser.s('profile').map(ToProfile.inst),
         Parser.s('article').slash.string.map(ToArticle.cons),
         Parser.s('events').slash.oneOf([

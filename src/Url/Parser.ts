@@ -101,32 +101,36 @@ type FN<F, R> = F extends (arg0: infer A0) => infer F1
     : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
 
 export abstract class Parser<A, B> {
-    public static get top(): Parser<unknown, unknown> {
-        return ParserTop.inst;
+    public static get root(): Parser<unknown, unknown> {
+        return ParserRoot.inst;
     }
 
-    public static s(path: string): Chainable<unknown, unknown> {
-        return new SlashImpl(Parser.top).s(path);
+    public static s(path: string): Parser<unknown, unknown> {
+        return new SlashImpl(Parser.root).s(path);
     }
 
-    public static custom<A>(converter: (path: string) => Maybe<A>): Chainable<(str: A) => unknown, unknown> {
-        return new SlashImpl(Parser.top).custom(converter);
+    public static custom<A>(converter: (path: string) => Maybe<A>): Parser<(str: A) => unknown, unknown> {
+        return new SlashImpl(Parser.root).custom(converter);
     }
 
-    public static get string(): Chainable<(str: string) => unknown, unknown> {
-        return new SlashImpl(Parser.top).string;
+    public static get string(): Parser<(str: string) => unknown, unknown> {
+        return new SlashImpl(Parser.root).string;
     }
 
-    public static get number(): Chainable<(num: number) => unknown, unknown> {
-        return new SlashImpl(Parser.top).number;
+    public static get number(): Parser<(num: number) => unknown, unknown> {
+        return new SlashImpl(Parser.root).number;
     }
 
-    public static oneOf<A, B>(parsers: Array<Parser<A, B>>): Chainable<A, B> {
-        return new SlashImpl(Parser.top).oneOf(parsers);
+    public static oneOf<A, B>(parsers: Array<Parser<A, B>>): Parser<A, B> {
+        return new SlashImpl(Parser.root).oneOf(parsers);
     }
 
     public map<B_ extends B, C>(tagger: FN<A, B_>): Parser<(value: B_) => C, C> {
         return new ParserMap(this as unknown as Parser<FN<A, B_>, B_>, tagger);
+    }
+
+    public get slash(): Slash<A, B> {
+        return new SlashImpl(this);
     }
 
     public query(_key: string): Query<A, B> {
@@ -153,25 +157,15 @@ export abstract class Parser<A, B> {
     public abstract dive(state: State<A>): Array<State<B>>;
 }
 
-export interface Chainable<A, B> extends Parser<A, B> {
-    slash: Slash<A, B>;
-}
-
-abstract class ChainableImpl<A, B> extends Parser<A, B> implements Chainable<A, B> {
-    public get slash(): Slash<A, B> {
-        return new SlashImpl(this);
-    }
-}
-
-class ParserTop<A> extends Parser<A, A> {
-    public static readonly inst: Parser<unknown, unknown> = new ParserTop();
+class ParserRoot<A> extends Parser<A, A> {
+    public static readonly inst: Parser<unknown, unknown> = new ParserRoot();
 
     public dive(state: State<A>): Array<State<A>> {
         return [ state ];
     }
 }
 
-class ParserS<A, B> extends ChainableImpl<A, B> {
+class ParserS<A, B> extends Parser<A, B> {
     public constructor(
         private readonly path: string,
         private readonly prev: Parser<A, B>
@@ -196,7 +190,7 @@ class ParserS<A, B> extends ChainableImpl<A, B> {
     }
 }
 
-class ParserCustom<A, B, C> extends ChainableImpl<FF<A, (value: B) => C>, C> {
+class ParserCustom<A, B, C> extends Parser<FF<A, (value: B) => C>, C> {
     public constructor(
         private readonly converter: (path: string) => Maybe<B>,
         private readonly prev: Parser<FF<A, (value: B) => C>, (value: B) => C>
@@ -221,7 +215,7 @@ class ParserCustom<A, B, C> extends ChainableImpl<FF<A, (value: B) => C>, C> {
     }
 }
 
-class ParserOneOf<A, B, C> extends ChainableImpl<FF<A, B>, C> {
+class ParserOneOf<A, B, C> extends Parser<FF<A, B>, C> {
     public constructor(
         private readonly parsers: Array<Parser<B, C>>,
         private readonly prev: Parser<FF<A, B>, B>
@@ -240,7 +234,7 @@ class ParserOneOf<A, B, C> extends ChainableImpl<FF<A, B>, C> {
     }
 }
 
-class ParserMap<A, B, C> extends ChainableImpl<(value: B) => C, C> {
+class ParserMap<A, B, C> extends Parser<(value: B) => C, C> {
     public constructor(
         private readonly prev: Parser<FN<A, B>, B>,
         private readonly tagger: FN<A, B>
@@ -259,11 +253,11 @@ class ParserMap<A, B, C> extends ChainableImpl<(value: B) => C, C> {
 }
 
 export interface Slash<A, B> {
-    string: Chainable<FF<A, (value: string) => B>, B>;
-    number: Chainable<FF<A, (value: number) => B>, B>;
-    s(path: string): Chainable<A, B>;
-    custom<B_ extends B, C>(converter: (str: string) => Maybe<B_>): Chainable<FF<A, (value: B_) => C>, C>;
-    oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Chainable<FF<A, B_>, C>;
+    string: Parser<FF<A, (value: string) => B>, B>;
+    number: Parser<FF<A, (value: number) => B>, B>;
+    s(path: string): Parser<A, B>;
+    custom<B_ extends B, C>(converter: (str: string) => Maybe<B_>): Parser<FF<A, (value: B_) => C>, C>;
+    oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Parser<FF<A, B_>, C>;
 }
 
 class SlashImpl<A, B> implements Slash<A, B> {
@@ -271,26 +265,26 @@ class SlashImpl<A, B> implements Slash<A, B> {
         private readonly parser: Parser<A, B>
     ) {}
 
-    public s(path: string): Chainable<A, B> {
+    public s(path: string): Parser<A, B> {
         return new ParserS(path, this.parser);
     }
 
-    public get string(): Chainable<FF<A, (value: string) => B>, B> {
+    public get string(): Parser<FF<A, (value: string) => B>, B> {
         return this.custom(Just);
     }
 
-    public get number(): Chainable<FF<A, (value: number) => B>, B> {
+    public get number(): Parser<FF<A, (value: number) => B>, B> {
         return this.custom(parseInt);
     }
 
-    public custom<C, D>(converter: (str: string) => Maybe<C>): Chainable<FF<A, (value: C) => D>, D> {
+    public custom<C, D>(converter: (str: string) => Maybe<C>): Parser<FF<A, (value: C) => D>, D> {
         return new ParserCustom(
             converter,
             this.parser as unknown as Parser<FF<A, (value: C) => D>, (value: C) => D>
         );
     }
 
-    public oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Chainable<FF<A, B_>, C> {
+    public oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Parser<FF<A, B_>, C> {
         return new ParserOneOf(
             parsers,
             this.parser as unknown as Parser<FF<A, B_>, B_>
@@ -299,18 +293,18 @@ class SlashImpl<A, B> implements Slash<A, B> {
 }
 
 export interface Query<A, B> {
-    string: Chainable<FF<A, (value: Maybe<string>) => B>, B>;
-    number: Chainable<FF<A, (value: Maybe<number>) => B>, B>;
-    boolean: Chainable<FF<A, (value: Maybe<boolean>) => B>, B>;
+    string: Parser<FF<A, (value: Maybe<string>) => B>, B>;
+    number: Parser<FF<A, (value: Maybe<number>) => B>, B>;
+    boolean: Parser<FF<A, (value: Maybe<boolean>) => B>, B>;
     list: QueryList<A, B>;
-    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Chainable<FF<A, (value: Maybe<B_>) => C>, C>;
-    custom<B_ extends B, C>(converter: (str: Maybe<string>) => B_): Chainable<FF<A, (value: B_) => C>, C>;
+    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Parser<FF<A, (value: Maybe<B_>) => C>, C>;
+    custom<B_ extends B, C>(converter: (str: Maybe<string>) => B_): Parser<FF<A, (value: B_) => C>, C>;
 }
 
 export interface QueryList<A, B> {
-    string: Chainable<FF<A, (value: Array<string>) => B>, B>;
-    number: Chainable<FF<A, (value: Array<number>) => B>, B>;
-    boolean: Chainable<FF<A, (value: Array<boolean>) => B>, B>;
-    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Chainable<FF<A, (value: Array<B_>) => C>, C>;
-    custom<B_ extends B, C>(converter: (str: Array<string>) => B_): Chainable<FF<A, (value: B_) => C>, C>;
+    string: Parser<FF<A, (value: Array<string>) => B>, B>;
+    number: Parser<FF<A, (value: Array<number>) => B>, B>;
+    boolean: Parser<FF<A, (value: Array<boolean>) => B>, B>;
+    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Parser<FF<A, (value: Array<B_>) => C>, C>;
+    custom<B_ extends B, C>(converter: (str: Array<string>) => B_): Parser<FF<A, (value: B_) => C>, C>;
 }
