@@ -14,33 +14,29 @@ import {
 
 const URL = Url.cons(Url.Https, 'fake.com');
 
-// interface Route {
-//     toPath(): string;
-// }
+const toDate = (str: string): Maybe<Date> => {
+    const date = new Date(str);
 
-// class ToHome implements Route {
-//     public toPath(): string {
-//         return '/';
-//     }
-// }
+    return isNaN(date.getTime()) ? Nothing : Just(date);
+};
 
-// class ToProfile implements Route {
-//     public toPath(): string {
-//         return '/profile';
-//     }
-// }
+const dateToString = (date: Date): string => {
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
 
-// class ToArticle implements Route {
-//     public static cons(title: string): Route {
-//         return new ToArticle(title);
-//     }
+    return `${month}-${day}-${year}`;
+};
 
-//     private constructor(private readonly title: string) {}
+const toNonNegative = (str: string): Maybe<number> => {
+    if (!/^[0-9]+$/.test(str)) {
+        return Nothing;
+    }
 
-//     public toPath(): string {
-//         return `/article/${this.title}`;
-//     }
-// }
+    const num = Number(str);
+
+    return num < 0 ? Nothing : Just(num);
+};
 
 test('Parser.top', t => {
     t.deepEqual(
@@ -135,12 +131,6 @@ test('Parser.s', t => {
 });
 
 test('Parser.custom', t => {
-    const toDate = (str: string): Maybe<Date> => {
-        const date = new Date(str);
-
-        return isNaN(date.getTime()) ? Nothing : Just(date);
-    };
-
     const single = (first: Date) => ({ first });
     const double = (first: Date) => (second: Date) => ({ first, second });
     const tripple = (first: Date) => (second: Date) => (third: Date) => ({ first, second, third });
@@ -456,5 +446,134 @@ test('Parser.oneOf', t => {
         ),
         Just(2),
         'match composed path with around'
+    );
+});
+
+test('Parser.oneOf real example', t => {
+    interface Route {
+        toPath(): string;
+    }
+
+    class ToHome implements Route {
+        public static readonly inst: Route = new ToHome();
+
+        private constructor() {}
+
+        public toPath(): string {
+            return '/';
+        }
+    }
+
+    class ToProfile implements Route {
+        public static readonly inst: Route = new ToProfile();
+
+        private constructor() {}
+
+        public toPath(): string {
+            return '/profile';
+        }
+    }
+
+    class ToArticle implements Route {
+        public static cons(title: string): Route {
+            return new ToArticle(title);
+        }
+
+        private constructor(private readonly title: string) {}
+
+        public toPath(): string {
+            return `/article/${this.title}`;
+        }
+    }
+
+    class ToEvents implements Route {
+        public static cons(date: Date): Route {
+            return new ToEvents(date);
+        }
+
+        private constructor(private readonly date: Date) {}
+
+        public toPath(): string {
+            return `/events/${dateToString(this.date)}`;
+        }
+    }
+
+    class ToEvent implements Route {
+        public static cons = (date: Date) => (index: number): Route => {
+            return new ToEvent(date, index);
+        }
+
+        private constructor(
+            private readonly date: Date,
+            private readonly index: number
+        ) {}
+
+        public toPath(): string {
+            return `/events/${dateToString(this.date)}/${this.index}`;
+        }
+    }
+
+    const parser = Parser.oneOf([
+        Parser.top.map(ToHome.inst),
+        Parser.s('profile').map(ToProfile.inst),
+        Parser.s('article').slash.string.map(ToArticle.cons),
+        Parser.s('events').slash.oneOf([
+            Parser.custom(toDate).map(ToEvents.cons),
+            Parser.custom(toDate).slash.custom(toNonNegative).map(ToEvent.cons)
+        ])
+    ]);
+
+    t.deepEqual(
+        URL.withPath('/unknown/').parse(parser),
+        Nothing,
+        '/unknown/ path is not matched'
+    );
+
+    t.deepEqual(
+        URL.withPath('/').parse(parser),
+        Just(ToHome.inst),
+        '/ path is matched ToHome'
+    );
+
+    t.deepEqual(
+        URL.withPath('/profile/').parse(parser),
+        Just(ToProfile.inst),
+        '/profile/ path is matched ToProfile'
+    );
+
+    t.deepEqual(
+        URL.withPath('/article/article-id/').parse(parser),
+        Just(ToArticle.cons('article-id')),
+        '/article/{article-id}/ path is matched ToArticle'
+    );
+
+    t.deepEqual(
+        URL.withPath('/events/invalid-date/').parse(parser),
+        Nothing,
+        '/events/invalid-date/ path is not matched'
+    );
+
+    t.deepEqual(
+        URL.withPath('/events/10-02-2013/').parse(parser),
+        Just(ToEvents.cons(new Date('10-02-2013'))),
+        '/events/10-02-2013/ path is matched ToEvents'
+    );
+
+    t.deepEqual(
+        URL.withPath('/events/invalid-date/1/').parse(parser),
+        Nothing,
+        '/events/invalid-date/1/ path is not matched'
+    );
+
+    t.deepEqual(
+        URL.withPath('/events/10-02-2013/-1/').parse(parser),
+        Nothing,
+        '/events/10-02-2013/-1/ path is not matched'
+    );
+
+    t.deepEqual(
+        URL.withPath('/events/10-02-2013/123/').parse(parser),
+        Just(ToEvent.cons(new Date('10-02-2013'))(123)),
+        '/events/10-02-2013/123/ path is matched ToEvent'
     );
 });
