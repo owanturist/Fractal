@@ -18,6 +18,13 @@ interface State<T> {
     readonly value: T;
 }
 
+const mapState = <T, R>(fn: (value: T) => R, { unvisited, queries, fragment, value }: State<T>): State<R> => ({
+    unvisited,
+    queries,
+    fragment,
+    value: fn(value)
+});
+
 const identity = <T>(value: T): T => value;
 
 const first = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ 0 ]);
@@ -210,12 +217,14 @@ class ParserS<A, B> extends ChainableImpl<A, B> {
 
     public dive(state: State<A>): Array<State<B>> {
         return concatMap(
-            (state: State<B>) => first(state.unvisited).cata({
+            ({ unvisited, queries, fragment, value }) => first(unvisited).cata({
                 Nothing: () => [],
 
                 Just: path => this.path === path ? [{
-                    ...state,
-                    unvisited: rest(state.unvisited)
+                    unvisited: rest(unvisited),
+                    queries,
+                    fragment,
+                    value
                 }] : []
             }),
             this.prev.dive(state)
@@ -233,13 +242,14 @@ class ParserCustom<A, B, C> extends ChainableImpl<FF<A, (value: B) => C>, C> {
 
     public dive(state: State<FF<A, (value: B) => C>>): Array<State<C>> {
         return concatMap(
-            state => first(state.unvisited).chain(this.converter).cata({
+            ({ unvisited, queries, fragment, value }) => first(unvisited).chain(this.converter).cata({
                 Nothing: () => [],
 
-                Just: value => [{
-                    ...state,
-                    unvisited: rest(state.unvisited),
-                    value: state.value(value)
+                Just: converted => [{
+                    unvisited: rest(unvisited),
+                    queries,
+                    fragment,
+                    value: value(converted)
                 }]
             }),
             this.prev.dive(state)
@@ -257,8 +267,8 @@ class ParserOneOf<A, B, C> extends ChainableImpl<FF<A, B>, C> {
 
     public dive(state: State<FF<A, B>>): Array<State<C>> {
         return concatMap(
-            state => concatMap(
-                parser => parser.dive(state),
+            nextState => concatMap(
+                parser => parser.dive(nextState),
                 this.parsers
             ),
             this.prev.dive(state)
@@ -280,6 +290,6 @@ class ParserMap<A, B, C> extends ChainableImpl<(value: B) => C, C> {
             queries,
             fragment,
             value: this.tagger
-        }).map(state => ({ ...state, value: value(state.value)}));
+        }).map(state => mapState(value, state));
     }
 }
