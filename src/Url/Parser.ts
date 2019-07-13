@@ -104,13 +104,13 @@ export class Parser<T> {
     ) {}
 
     public map<R>(tagger: FN<T, R>): Parser<(value: R) => unknown> {
-        return new Parser(({ unvisited, queries, fragment, value }: any): Array<State<T>> => {
+        return new Parser(({ unvisited, queries, fragment, value }: State<(value: R) => T>): Array<State<T>> => {
             return this.fn({
                 unvisited,
                 queries,
                 fragment,
                 value: tagger as unknown as T
-            }).map((state: any): any => mapState(value, state));
+            }).map((state: State<R>): State<T> => mapState(value, state));
         });
     }
 
@@ -170,36 +170,42 @@ class SlashImpl<T> implements Slash<T> {
     }
 
     public s(path: string): Chainable<T> {
-        return this.next(({ unvisited, queries, fragment, value }: any): any => {
-            return first(unvisited).map((str): any => str === path ? [{
+        return this.next(({ unvisited, queries, fragment, value }: State<T>) => first(unvisited).cata({
+            Nothing: () => [],
+
+            Just: str => str !== path ? [] : [{
                 unvisited: rest(unvisited),
                 queries,
                 fragment,
                 value
-            }] : []).getOrElse([]);
-        });
+            }]
+        }));
     }
 
     public custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
-        return this.next(({ unvisited, queries, fragment, value }: any): any => {
-            return first(unvisited).chain(converter).map((converted): any => [{
-                unvisited: rest(unvisited),
-                queries,
-                fragment,
-                value: value(converted)
-            }]).getOrElse([]);
-        });
+        return this.next(({ unvisited, queries, fragment, value }) => {
+            return first(unvisited).chain(converter).cata({
+                Nothing: () => [],
+
+                Just: (converted: any): any => [{
+                    unvisited: rest(unvisited),
+                    queries,
+                    fragment,
+                    value: (value as any)(converted)
+                }]
+            });
+        }) as any;
     }
 
     public oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>> {
-        return this.next((ns: any) => concatMap(
-            parser => ChainableImpl.dive(parser, ns),
+        return this.next(state => concatMap(
+            (parser): any => ChainableImpl.dive(parser, state),
             parsers
-        ));
+        )) as any;
     }
 
-    private next<R>(fn: (state: State<R>) => Array<State<unknown>>): Chainable<R> {
-        return new ChainableImpl((state: any) => {
+    private next<R>(fn: (state: State<R>) => Array<State<T>>): Chainable<T> {
+        return new ChainableImpl(state => {
             return concatMap(fn, ChainableImpl.dive(this.parser, state));
         });
     }
