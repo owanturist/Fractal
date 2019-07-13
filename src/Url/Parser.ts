@@ -7,13 +7,6 @@ import {
     Just
 } from '../Maybe';
 
-export const debug = <T>(msg: string) => <R>(value: T & R) => {
-    // tslint:disable-next-line:no-console
-    console.log(msg, value);
-
-    return value;
-};
-
 interface Params {
     readonly [ key: string ]: Array<string>;
 }
@@ -27,15 +20,10 @@ interface State<T> {
 
 const identity = <T>(value: T): T => value;
 
-const mapState = <T, R>(fn: (value: T) => R, { unvisited, queries, fragment, value }: State<T>): State<R> => ({
-    unvisited,
-    queries,
-    fragment,
-    value: fn(value)
-});
-
 const first = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ 0 ]);
+
 const rest = <T>(arr: Array<T>): Array<T> => arr.slice(1);
+
 const concatMap = <T, R>(fn: (value: T) => Array<R>, arr: Array<T>): Array<R> => {
     const acc: Array<R> = [];
 
@@ -46,172 +34,37 @@ const concatMap = <T, R>(fn: (value: T) => Array<R>, arr: Array<T>): Array<R> =>
     return acc;
 };
 
-export class Parser<T> {
-    public static top: Parser<unknown> = new Parser(state => [ state ]);
+const parseInt = (str: string): Maybe<number> => {
+    return /^[0-9]+$/.test(str) ? Just(Number(str)) : Nothing;
+};
 
-    public static get string(): Chainable<(value: string) => unknown> {
-        return new SlashImpl(Parser.top).string;
-    }
+const prepareUnvisited = (path: string): Array<string> => {
+    return path.replace(/(^\/|\/$)/g, '')
+        .split('/')
+        .filter(p => p !== '');
+};
 
-    public static get number(): Chainable<(value: number) => unknown> {
-        return new SlashImpl(Parser.top).number;
-    }
+const prepareQuery = (query: string): Params => {
+    const acc: { [key: string]: Array<string> } = {};
 
-    public static custom<T>(converter: (str: string) => Maybe<T>): Chainable<(value: T) => unknown> {
-        return new SlashImpl(Parser.top).custom(converter);
-    }
+    for (const pair of query.split('&')) {
+        const [ key, value ] = pair.split('=');
 
-    public static s<T>(path: string): Chainable<T> {
-        return new SlashImpl<T>(Parser.top).s(path);
-    }
+        if (key && value) {
+            const values = acc[ key ];
 
-    public static oneOf<T>(parsers: Array<Parser<T>>): Chainable<T> {
-        return new SlashImpl(Parser.top).oneOf(parsers);
-    }
-
-    protected static prepareUnvisited(path: string): Array<string> {
-        return path.replace(/(^\/|\/$)/g, '')
-            .split('/')
-            .filter(p => p !== '');
-    }
-
-    protected static prepareQuery(query: string): Params {
-        const acc: { [key: string]: Array<string> } = {};
-
-        for (const pair of query.split('&')) {
-            const [ key, value ] = pair.split('=');
-
-            if (key && value) {
-                const values = acc[ key ];
-
-                if (typeof values === 'undefined') {
-                    acc[ key ] = [ value ];
-                } else {
-                    values.push(value);
-                }
+            if (typeof values === 'undefined') {
+                acc[ key ] = [ value ];
+            } else {
+                values.push(value);
             }
         }
-
-        return acc;
     }
 
-    protected static dive<T>(parser: Parser<T>, state: State<T>): Array<State<unknown>> {
-        return parser.fn(state);
-    }
+    return acc;
+};
 
-    protected constructor(
-        private readonly fn: (state: State<T>) => Array<State<unknown>>
-    ) {}
-
-    public map<R>(tagger: FN<T, R>): Parser<(value: R) => unknown> {
-        return new Parser(({ unvisited, queries, fragment, value }: State<(value: R) => T>): Array<State<T>> => {
-            return this.fn({
-                unvisited,
-                queries,
-                fragment,
-                value: tagger as unknown as T
-            }).map((state: State<R>): State<T> => mapState(value, state));
-        });
-    }
-
-    public parse<R extends FA<T>>(url: Url): Maybe<R> {
-        const states = this.fn({
-            unvisited: Parser.prepareUnvisited(url.path),
-            queries: Parser.prepareQuery(url.query.getOrElse('')),
-            fragment: url.fragment,
-            value: identity as unknown as T
-        });
-
-        for (const state of states) {
-            if (state.unvisited.length === 0) {
-                return Just(state.value as R);
-            }
-        }
-
-        return Nothing;
-    }
-}
-
-export interface Chainable<T> extends Parser<T> {
-    slash: Slash<T>;
-}
-
-class ChainableImpl<T> extends Parser<T> implements Chainable<T>  {
-    public static dive<T>(parser: Parser<T>, state: State<T>): Array<State<unknown>> {
-        return super.dive(parser, state);
-    }
-
-    public constructor(fn: (state: State<T>) => Array<State<unknown>>) {
-        super(fn);
-    }
-
-    public get slash(): Slash<T> {
-        return new SlashImpl(this);
-    }
-}
-
-export interface Slash<T> {
-    string: Chainable<FF<T, (value: string) => unknown>>;
-    number: Chainable<FF<T, (value: number) => unknown>>;
-    s(path: string): Chainable<T>;
-    custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>>;
-    oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>>;
-}
-
-class SlashImpl<T> implements Slash<T> {
-    public constructor(private readonly parser: Parser<T>) {}
-
-    public get string(): Chainable<FF<T, (value: string) => unknown>> {
-        return this.custom(Just);
-    }
-
-    public get number(): Chainable<FF<T, (value: number) => unknown>> {
-        return this.custom(str => /^[0-9]+$/.test(str) ? Just(Number(str)) : Nothing);
-    }
-
-    public s(path: string): Chainable<T> {
-        return this.next(({ unvisited, queries, fragment, value }: State<T>) => first(unvisited).cata({
-            Nothing: () => [],
-
-            Just: str => str !== path ? [] : [{
-                unvisited: rest(unvisited),
-                queries,
-                fragment,
-                value
-            }]
-        }));
-    }
-
-    public custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
-        return this.next(({ unvisited, queries, fragment, value }) => {
-            return first(unvisited).chain(converter).cata({
-                Nothing: () => [],
-
-                Just: (converted: any): any => [{
-                    unvisited: rest(unvisited),
-                    queries,
-                    fragment,
-                    value: (value as any)(converted)
-                }]
-            });
-        }) as any;
-    }
-
-    public oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>> {
-        return this.next(state => concatMap(
-            (parser): any => ChainableImpl.dive(parser, state),
-            parsers
-        )) as any;
-    }
-
-    private next<R>(fn: (state: State<R>) => Array<State<T>>): Chainable<T> {
-        return new ChainableImpl(state => {
-            return concatMap(fn, ChainableImpl.dive(this.parser, state));
-        });
-    }
-}
-
-type FA<F> = F extends (value: infer A) => unknown ? A : unknown;
+type FA<F, R> = F extends (value: infer A) => R ? A : R;
 
 type FF<F, R> = F extends (value: infer A) => infer N
     ? (value: A) => FF<N, R>
@@ -239,116 +92,194 @@ type FN<F, R> = F extends (arg0: infer A0) => infer F1
     ? (arg18: A18) => F19 extends (arg19: infer A19) => infer F20
     ? (arg19: A19) => FN<F20, R> // it doesn't work properly but let's keep it here
     : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R : R;
-/*
 
-class Route {
-    public foo() {
-        throw new Error();
+export abstract class Parser<A, B> {
+    public static get top(): Parser<unknown, unknown> {
+        return ParserTop.inst;
     }
 
-    public bar() {
-        throw new Error();
+    public static s(path: string): Chainable<unknown, unknown> {
+        return new SlashImpl(Parser.top).s(path);
+    }
+
+    public static custom<A>(converter: (path: string) => Maybe<A>): Chainable<(str: A) => unknown, unknown> {
+        return new SlashImpl(Parser.top).custom(converter);
+    }
+
+    public static get string(): Chainable<(str: string) => unknown, unknown> {
+        return new SlashImpl(Parser.top).string;
+    }
+
+    public static get number(): Chainable<(num: number) => unknown, unknown> {
+        return new SlashImpl(Parser.top).number;
+    }
+
+    public static oneOf<A, B>(parsers: Array<Parser<A, B>>): Chainable<A, B> {
+        return new SlashImpl(Parser.top).oneOf(parsers);
+    }
+
+    public map<B_ extends B, C>(tagger: FN<A, B_>): Parser<(value: B_) => C, C> {
+        return new ParserMap(this as unknown as Parser<FN<A, B_>, B_>, tagger);
+    }
+
+    public parse(url: Url): Maybe<FA<A, B>> {
+        const states = this.dive({
+            unvisited: prepareUnvisited(url.path),
+            queries: prepareQuery(url.query.getOrElse('')),
+            fragment: url.fragment,
+            value: identity as unknown as A
+        });
+
+        for (const state of states) {
+            if (state.unvisited.length === 0) {
+                return Just(state.value as FA<A, B>);
+            }
+        }
+
+        return Nothing;
+    }
+
+    public abstract dive(state: State<A>): Array<State<B>>;
+}
+
+export interface Slash<A, B> {
+    string: Chainable<FF<A, (value: string) => B>, B>;
+    number: Chainable<FF<A, (value: number) => B>, B>;
+    s(path: string): Chainable<A, B>;
+    custom<B_ extends B, C>(converter: (str: string) => Maybe<B_>): Chainable<FF<A, (value: B_) => C>, C>;
+    oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Chainable<FF<A, B_>, C>;
+}
+
+class SlashImpl<A, B> implements Slash<A, B> {
+    public constructor(
+        private readonly parser: Parser<A, B>
+    ) {}
+
+    public s(path: string): Chainable<A, B> {
+        return new ParserS(path, this.parser);
+    }
+
+    public get string(): Chainable<FF<A, (value: string) => B>, B> {
+        return this.custom(Just);
+    }
+
+    public get number(): Chainable<FF<A, (value: number) => B>, B> {
+        return this.custom(parseInt);
+    }
+
+    public custom<C, D>(converter: (str: string) => Maybe<C>): Chainable<FF<A, (value: C) => D>, D> {
+        return new ParserCustom(
+            converter,
+            this.parser as unknown as Parser<FF<A, (value: C) => D>, (value: C) => D>
+        );
+    }
+
+    public oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Chainable<FF<A, B_>, C> {
+        return new ParserOneOf(
+            parsers,
+            this.parser as unknown as Parser<FF<A, B_>, B_>
+        );
     }
 }
 
-const Home: Route = new Route();
-const Profile: Route = new Route();
-const Article = (_id: number): Route => new Route();
-const Comment = (_id: number) => (_p: string): Route => new Route();
-const Search = (_q: string) => (_p: number): Route => new Route();
-const Post = (_q: string) => (_p: Date): Route => new Route();
+export interface Chainable<A, B> extends Parser<A, B> {
+    slash: Slash<A, B>;
+}
 
-const toDate = (str: string): Maybe<Date> => str === '' ? Nothing : Just(new Date(str));
+abstract class ChainableImpl<A, B> extends Parser<A, B> implements Chainable<A, B> {
+    public get slash(): Slash<A, B> {
+        return new SlashImpl(this);
+    }
+}
 
-export const test1n1 = Parser.top.map(Home);
+class ParserTop<A> extends Parser<A, A> {
+    public static readonly inst: Parser<unknown, unknown> = new ParserTop();
 
-export const test1n2 = Parser.s('article').slash.number.map(Article);
+    public dive(state: State<A>): Array<State<A>> {
+        return [ state ];
+    }
+}
 
-export const test1n3 = Parser.s('article')
-    .slash.number
-    .slash.s('comment')
-    .slash.string
-    .map(Comment);
+class ParserS<A, B> extends ChainableImpl<A, B> {
+    public constructor(
+        private readonly path: string,
+        private readonly prev: Parser<A, B>
+    ) {
+        super();
+    }
 
-export const test1n4 = Parser.custom(toDate);
+    public dive(state: State<A>): Array<State<B>> {
+        return concatMap(
+            (state: State<B>) => first(state.unvisited).cata({
+                Nothing: () => [],
 
-export const test1n5 = Parser.s('post')
-    .slash.string
-    .slash.custom(toDate)
-    .map(Post);
+                Just: path => this.path === path ? [{
+                    ...state,
+                    unvisited: rest(state.unvisited)
+                }] : []
+            }),
+            this.prev.dive(state)
+        );
+    }
+}
 
-export const test1n6 = Parser.s('hi').slash.number.slash.oneOf([
-    Parser.top.map(Home),
-    Parser.number.map(Article)
-]);
+class ParserCustom<A, B, C> extends ChainableImpl<FF<A, (value: B) => C>, C> {
+    public constructor(
+        private readonly converter: (path: string) => Maybe<B>,
+        private readonly prev: Parser<FF<A, (value: B) => C>, (value: B) => C>
+    ) {
+        super();
+    }
 
-export const test2n1 = Parser.oneOf([
-    Parser.top.map(Home),
-    Parser.s('profile').map(Profile),
-    Parser.s('article').slash.number.map(Article),
-    Parser.s('article').slash.number.slash.string.map(Comment),
-    Parser.s('search').slash.string.slash.number.map(Search),
-    test1n5
-]);
+    public dive(state: State<FF<A, (value: B) => C>>): Array<State<C>> {
+        return concatMap(
+            state => first(state.unvisited).chain(this.converter).cata({
+                Nothing: () => [],
 
-export const test3n1 = Parser.number.slash.string.parse(1 as any);
+                Just: value => [{
+                    ...state,
+                    unvisited: rest(state.unvisited),
+                    value: state.value(value)
+                }]
+            }),
+            this.prev.dive(state)
+        );
+    }
+}
 
-export const test3n2 = test2n1.parse(1 as any);
+class ParserOneOf<A, B, C> extends ChainableImpl<FF<A, B>, C> {
+    public constructor(
+        private readonly parsers: Array<Parser<B, C>>,
+        private readonly prev: Parser<FF<A, B>, B>
+    ) {
+        super();
+    }
 
-export const test1 = Parser.top.map(Home);
-export const test2 = Parser.s('search').slash.number.slash.string.map(Comment);
-export const test3 = Parser.s('foo').slash.number.slash.s('bar').map(Article);
-export const test4 = Parser.s('foo').map(Home);
-export const test5 = Parser.s('foo')
-    .slash.string
-    .slash.s('asd')
-    .slash.number
-    .map(Search);
+    public dive(state: State<FF<A, B>>): Array<State<C>> {
+        return concatMap(
+            state => concatMap(
+                parser => parser.dive(state),
+                this.parsers
+            ),
+            this.prev.dive(state)
+        );
+    }
+}
 
+class ParserMap<A, B, C> extends ChainableImpl<(value: B) => C, C> {
+    public constructor(
+        private readonly prev: Parser<FN<A, B>, B>,
+        private readonly tagger: FN<A, B>
+    ) {
+        super();
+    }
 
-export const test50 = Parser.top.query('dsa').boolean.parse(1 as any as Url);
-
-export const test501 = Parser.number.slash.string.map(Comment);
-
-export const test51 = Parser
-    .s('base')
-    .slash.number
-    .query('q1').number
-    .query('q2').boolean
-    .query('q3').list.boolean
-    .query('q4').custom(val => val)
-    .query('q44').list.custom(val => val)
-    .query('q4').enum([
-        [ 'false', false ],
-        [ 'true', true ]
-    ])
-    .query('q5').list.enum([
-        [ 'false', false ],
-        [ 'true', true ]
-    ])
-    .slash.number
-    .slash.s('hi')
-    .slash.string
-    ;
-
-export const test10 = Parser.oneOf([
-    Parser.top.map(Home),
-    Parser.top.query('hi').number.map(a => Article(a.getOrElse(0))),
-    Parser.top.fragment(a => parseInt(a.getOrElse(''), 10)).map(Article),
-    Parser.s('profile').map(Profile),
-    Parser.s('article').slash.number.map(Article),
-    Parser.s('article').slash.number.slash.s('comment').slash.string.map(Comment),
-    Parser.s('search').slash.string.slash.number.map(Search),
-    Parser.s('post').slash.string.slash.custom(str => str === '' ? Nothing : Just(new Date())).map(Post),
-    Parser.s('hi').slash.number.fragment(a => a.getOrElse('')).map(Comment)
-]);
-
-export const test11 = Parser.s('base').slash.number.slash.oneOf([
-    Parser.oneOf([
-        Parser.top.map(Home)
-    ]),
-    Parser.top.map(Profile)
-]).map(a => r => {
-    return a > 2 ? r : Article(a);
-});
-*/
+    public dive({ unvisited, queries, fragment, value }: State<(value: B) => C>): Array<State<C>> {
+        return this.prev.dive({
+            unvisited,
+            queries,
+            fragment,
+            value: this.tagger
+        }).map(state => ({ ...state, value: value(state.value)}));
+    }
+}
