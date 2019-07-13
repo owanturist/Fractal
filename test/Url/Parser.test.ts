@@ -14,13 +14,13 @@ import {
 
 const URL = Url.cons(Url.Https, 'fake.com');
 
-const toDate = (str: string): Maybe<Date> => {
+const parseDate = (str: string): Maybe<Date> => {
     const date = new Date(str);
 
     return isNaN(date.getTime()) ? Nothing : Just(date);
 };
 
-const dateToString = (date: Date): string => {
+const serializeDate = (date: Date): string => {
     const day = date.getDate();
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
@@ -28,7 +28,7 @@ const dateToString = (date: Date): string => {
     return `${month}-${day}-${year}`;
 };
 
-const toNonNegative = (str: string): Maybe<number> => {
+const parseNonNegative = (str: string): Maybe<number> => {
     if (!/^[0-9]+$/.test(str)) {
         return Nothing;
     }
@@ -136,7 +136,7 @@ test('Parser.custom', t => {
     const tripple = (first: Date) => (second: Date) => (third: Date) => ({ first, second, third });
 
     t.deepEqual(
-        Parser.custom(toDate).map(single).parse(
+        Parser.custom(parseDate).map(single).parse(
             URL.withPath('/')
         ),
         Nothing,
@@ -144,7 +144,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).map(single).parse(
+        Parser.custom(parseDate).map(single).parse(
             URL.withPath('/02-33-2019/')
         ),
         Nothing,
@@ -152,7 +152,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).map(single).parse(
+        Parser.custom(parseDate).map(single).parse(
             URL.withPath('/09-10-2019/')
         ),
         Just(single(new Date('09-10-2019'))),
@@ -160,7 +160,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.s('before').slash.custom(toDate).map(single).parse(
+        Parser.s('before').slash.custom(parseDate).map(single).parse(
             URL.withPath('/before/03-23-2019/')
         ),
         Just(single(new Date('03-23-2019'))),
@@ -168,7 +168,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.s('after').map(single).parse(
+        Parser.custom(parseDate).slash.s('after').map(single).parse(
             URL.withPath('/10-02-2018/after/')
         ),
         Just(single(new Date('10-02-2018'))),
@@ -176,7 +176,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.s('before').slash.custom(toDate).slash.s('after').map(single).parse(
+        Parser.s('before').slash.custom(parseDate).slash.s('after').map(single).parse(
             URL.withPath('/before/12-31-2020/after/')
         ),
         Just(single(new Date('12-31-2020'))),
@@ -184,7 +184,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+        Parser.custom(parseDate).slash.custom(parseDate).map(double).parse(
             URL.withPath('/some/')
         ),
         Nothing,
@@ -192,7 +192,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+        Parser.custom(parseDate).slash.custom(parseDate).map(double).parse(
             URL.withPath('/12-31-2020/')
         ),
         Nothing,
@@ -200,7 +200,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+        Parser.custom(parseDate).slash.custom(parseDate).map(double).parse(
             URL.withPath('/10-01-2013/between/10-01-2014/')
         ),
         Nothing,
@@ -208,7 +208,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.custom(toDate).map(double).parse(
+        Parser.custom(parseDate).slash.custom(parseDate).map(double).parse(
             URL.withPath('/10-01-2013/10-01-2020/')
         ),
         Just(double(new Date('10-01-2013'))(new Date('10-01-2020'))),
@@ -216,7 +216,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.s('between').slash.custom(toDate).map(double).parse(
+        Parser.custom(parseDate).slash.s('between').slash.custom(parseDate).map(double).parse(
             URL.withPath('/10-01-2013/wrong/10-01-2020/')
         ),
         Nothing,
@@ -224,7 +224,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.s('between').slash.custom(toDate).map(double).parse(
+        Parser.custom(parseDate).slash.s('between').slash.custom(parseDate).map(double).parse(
             URL.withPath('/10-01-2013/between/10-01-2020/')
         ),
         Just(double(new Date('10-01-2013'))(new Date('10-01-2020'))),
@@ -232,7 +232,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.custom(toDate).slash.custom(toDate).map(tripple).parse(
+        Parser.custom(parseDate).slash.custom(parseDate).slash.custom(parseDate).map(tripple).parse(
             URL.withPath('/10-01-2013/10-01-2020/')
         ),
         Nothing,
@@ -240,7 +240,7 @@ test('Parser.custom', t => {
     );
 
     t.deepEqual(
-        Parser.custom(toDate).slash.custom(toDate).slash.custom(toDate).map(tripple).parse(
+        Parser.custom(parseDate).slash.custom(parseDate).slash.custom(parseDate).map(tripple).parse(
             URL.withPath('/10-01-2013/10-01-2020/10-01-2027/')
         ),
         Just(tripple(new Date('10-01-2013'))(new Date('10-01-2020'))(new Date('10-01-2027'))),
@@ -249,11 +249,11 @@ test('Parser.custom', t => {
 
     t.deepEqual(
         Parser.s('first')
-        .slash.custom(toDate)
+        .slash.custom(parseDate)
         .slash.s('second')
-        .slash.custom(toDate)
+        .slash.custom(parseDate)
         .slash.s('third')
-        .slash.custom(toDate)
+        .slash.custom(parseDate)
         .slash.s('fourth')
         .map(tripple).parse(
             URL.withPath('/first/10-01-2013/second/10-01-2020/third/10-01-2027/fourth/')
@@ -494,7 +494,7 @@ test('Parser.oneOf real example', t => {
         private constructor(private readonly date: Date) {}
 
         public toPath(): string {
-            return `/events/${dateToString(this.date)}`;
+            return `/events/${serializeDate(this.date)}`;
         }
     }
 
@@ -509,7 +509,7 @@ test('Parser.oneOf real example', t => {
         ) {}
 
         public toPath(): string {
-            return `/events/${dateToString(this.date)}/${this.index}`;
+            return `/events/${serializeDate(this.date)}/${this.index}`;
         }
     }
 
@@ -518,8 +518,8 @@ test('Parser.oneOf real example', t => {
         Parser.s('profile').map(ToProfile.inst),
         Parser.s('article').slash.string.map(ToArticle.cons),
         Parser.s('events').slash.oneOf([
-            Parser.custom(toDate).map(ToEvents.cons),
-            Parser.custom(toDate).slash.custom(toNonNegative).map(ToEvent.cons)
+            Parser.custom(parseDate).map(ToEvents.cons),
+            Parser.custom(parseDate).slash.custom(parseNonNegative).map(ToEvent.cons)
         ])
     ]);
 

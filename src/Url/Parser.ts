@@ -129,6 +129,10 @@ export abstract class Parser<A, B> {
         return new ParserMap(this as unknown as Parser<FN<A, B_>, B_>, tagger);
     }
 
+    public query(_key: string): Query<A, B> {
+        throw new Error();
+    }
+
     public parse(url: Url): Maybe<FA<A, B>> {
         const states = this.dive({
             unvisited: prepareUnvisited(url.path),
@@ -292,4 +296,21 @@ class SlashImpl<A, B> implements Slash<A, B> {
             this.parser as unknown as Parser<FF<A, B_>, B_>
         );
     }
+}
+
+export interface Query<A, B> {
+    string: Chainable<FF<A, (value: Maybe<string>) => B>, B>;
+    number: Chainable<FF<A, (value: Maybe<number>) => B>, B>;
+    boolean: Chainable<FF<A, (value: Maybe<boolean>) => B>, B>;
+    list: QueryList<A, B>;
+    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Chainable<FF<A, (value: Maybe<B_>) => C>, C>;
+    custom<B_ extends B, C>(converter: (str: Maybe<string>) => B_): Chainable<FF<A, (value: B_) => C>, C>;
+}
+
+export interface QueryList<A, B> {
+    string: Chainable<FF<A, (value: Array<string>) => B>, B>;
+    number: Chainable<FF<A, (value: Array<number>) => B>, B>;
+    boolean: Chainable<FF<A, (value: Array<boolean>) => B>, B>;
+    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Chainable<FF<A, (value: Array<B_>) => C>, C>;
+    custom<B_ extends B, C>(converter: (str: Array<string>) => B_): Chainable<FF<A, (value: B_) => C>, C>;
 }
