@@ -288,7 +288,7 @@ test('Parser.custom', t => {
 });
 
 test('Parser.string', t => {
-    const single = (first: string) => ({ first });
+    const single = (_1: string) => ({ _1 });
 
     t.deepEqual(
         Parser.string.map(single).parse(
@@ -302,7 +302,9 @@ test('Parser.string', t => {
         Parser.string.map(single).parse(
             URL.withPath('/first/')
         ),
-        Just(single('first')),
+        Just({
+            _1: 'first'
+        }),
         'root string is matched'
     );
 
@@ -310,13 +312,15 @@ test('Parser.string', t => {
         Parser.s('before').slash.string.map(single).parse(
             URL.withPath('/before/first/')
         ),
-        Just(single('first')),
+        Just({
+            _1: 'first'
+        }),
         'string with path before is matched'
     );
 });
 
 test('Parser.number', t => {
-    const single = (first: number) => ({ first });
+    const single = (_1: number) => ({ _1 });
 
     t.deepEqual(
         Parser.number.map(single).parse(
@@ -346,7 +350,9 @@ test('Parser.number', t => {
         Parser.number.map(single).parse(
             URL.withPath('/314/')
         ),
-        Just(single(314)),
+        Just({
+            _1: 314
+        }),
         'root number is matched'
     );
 
@@ -354,7 +360,9 @@ test('Parser.number', t => {
         Parser.s('before').slash.number.map(single).parse(
             URL.withPath('/before/42/')
         ),
-        Just(single(42)),
+        Just({
+            _1: 42
+        }),
         'number with path before is matched'
     );
 });
