@@ -7,13 +7,13 @@ import {
     Just
 } from '../Maybe';
 
-interface Params {
+interface Queries {
     readonly [ key: string ]: Array<string>;
 }
 
 interface State<T> {
     readonly unvisited: Array<string>;
-    readonly queries: Params;
+    readonly queries: Queries;
     readonly fragment: Maybe<string>;
     readonly value: T;
 }
@@ -30,6 +30,20 @@ const identity = <T>(value: T): T => value;
 const first = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ 0 ]);
 
 const rest = <T>(arr: Array<T>): Array<T> => arr.slice(1);
+
+const getQueries = (key: string, params: Queries): Array<string> => params[ key ] || [];
+
+const omitQueries = (key: string, {[ key ]: _, ...params }: Queries): Queries => params;
+
+const buildDict = <T>(variants: Array<[ string, T ]>): { readonly [ key: string ]: T } => {
+    const acc: {[ key: string ]: T } = {};
+
+    for (const [ key, value ] of variants) {
+        acc[ key ] = value;
+    }
+
+    return acc;
+};
 
 const concatMap = <T, R>(fn: (value: T) => Array<R>, arr: Array<T>): Array<R> => {
     const acc: Array<R> = [];
@@ -51,7 +65,7 @@ const prepareUnvisited = (path: string): Array<string> => {
         .filter(p => p !== '');
 };
 
-const prepareQuery = (query: string): Params => {
+const prepareQuery = (query: string): Queries => {
     const acc: { [key: string]: Array<string> } = {};
 
     for (const pair of query.split('&')) {
@@ -102,7 +116,7 @@ type FN<F, R> = F extends (arg0: infer A0) => infer F1
 
 export abstract class Parser<A, B> {
     public static get root(): Parser<unknown, unknown> {
-        return ParserRoot.inst;
+        return RootParser.inst;
     }
 
     public static s(path: string): Parser<unknown, unknown> {
@@ -126,15 +140,15 @@ export abstract class Parser<A, B> {
     }
 
     public map<B_ extends B, C>(tagger: FN<A, B_>): Parser<(value: B_) => C, C> {
-        return new ParserMap(this as unknown as Parser<FN<A, B_>, B_>, tagger);
+        return new MapParser(this as unknown as Parser<FN<A, B_>, B_>, tagger);
     }
 
     public get slash(): Slash<A, B> {
         return new SlashImpl(this);
     }
 
-    public query(_key: string): Query<A, B> {
-        throw new Error();
+    public query(key: string): Query<A, B> {
+        return new QueryImpl(key, this);
     }
 
     public parse(url: Url): Maybe<FA<A, B>> {
@@ -157,15 +171,15 @@ export abstract class Parser<A, B> {
     public abstract dive(state: State<A>): Array<State<B>>;
 }
 
-class ParserRoot<A> extends Parser<A, A> {
-    public static readonly inst: Parser<unknown, unknown> = new ParserRoot();
+class RootParser<A> extends Parser<A, A> {
+    public static readonly inst: Parser<unknown, unknown> = new RootParser();
 
     public dive(state: State<A>): Array<State<A>> {
         return [ state ];
     }
 }
 
-class ParserS<A, B> extends Parser<A, B> {
+class SParser<A, B> extends Parser<A, B> {
     public constructor(
         private readonly path: string,
         private readonly prev: Parser<A, B>
@@ -190,7 +204,7 @@ class ParserS<A, B> extends Parser<A, B> {
     }
 }
 
-class ParserCustom<A, B, C> extends Parser<FF<A, (value: B) => C>, C> {
+class CustomParser<A, B, C> extends Parser<FF<A, (value: B) => C>, C> {
     public constructor(
         private readonly converter: (path: string) => Maybe<B>,
         private readonly prev: Parser<FF<A, (value: B) => C>, (value: B) => C>
@@ -215,7 +229,29 @@ class ParserCustom<A, B, C> extends Parser<FF<A, (value: B) => C>, C> {
     }
 }
 
-class ParserOneOf<A, B, C> extends Parser<FF<A, B>, C> {
+class QueryParser<A, B, C> extends Parser<FF<A, (values: B) => C>, C> {
+    public constructor(
+        private readonly converter: (values: Array<string>) => B,
+        private readonly key: string,
+        private readonly prev: Parser<FF<A, (value: B) => C>, (value: B) => C>
+    ) {
+        super();
+    }
+
+    public dive(state: State<FF<A, (value: B) => C>>): Array<State<C>> {
+        return concatMap(
+            ({ unvisited, queries, fragment, value }) => [{
+                unvisited,
+                queries: omitQueries(this.key, queries),
+                fragment,
+                value: value(this.converter(getQueries(this.key, queries)))
+            }],
+            this.prev.dive(state)
+        );
+    }
+}
+
+class OneOfParser<A, B, C> extends Parser<FF<A, B>, C> {
     public constructor(
         private readonly parsers: Array<Parser<B, C>>,
         private readonly prev: Parser<FF<A, B>, B>
@@ -234,7 +270,7 @@ class ParserOneOf<A, B, C> extends Parser<FF<A, B>, C> {
     }
 }
 
-class ParserMap<A, B, C> extends Parser<(value: B) => C, C> {
+class MapParser<A, B, C> extends Parser<(value: B) => C, C> {
     public constructor(
         private readonly prev: Parser<FN<A, B>, B>,
         private readonly tagger: FN<A, B>
@@ -266,7 +302,7 @@ class SlashImpl<A, B> implements Slash<A, B> {
     ) {}
 
     public s(path: string): Parser<A, B> {
-        return new ParserS(path, this.parser);
+        return new SParser(path, this.parser);
     }
 
     public get string(): Parser<FF<A, (value: string) => B>, B> {
@@ -278,14 +314,14 @@ class SlashImpl<A, B> implements Slash<A, B> {
     }
 
     public custom<C, D>(converter: (str: string) => Maybe<C>): Parser<FF<A, (value: C) => D>, D> {
-        return new ParserCustom(
+        return new CustomParser(
             converter,
             this.parser as unknown as Parser<FF<A, (value: C) => D>, (value: C) => D>
         );
     }
 
     public oneOf<B_ extends B, C>(parsers: Array<Parser<B_, C>>): Parser<FF<A, B_>, C> {
-        return new ParserOneOf(
+        return new OneOfParser(
             parsers,
             this.parser as unknown as Parser<FF<A, B_>, B_>
         );
@@ -298,13 +334,95 @@ export interface Query<A, B> {
     boolean: Parser<FF<A, (value: Maybe<boolean>) => B>, B>;
     list: QueryList<A, B>;
     enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Parser<FF<A, (value: Maybe<B_>) => C>, C>;
-    custom<B_ extends B, C>(converter: (str: Maybe<string>) => B_): Parser<FF<A, (value: B_) => C>, C>;
+    custom<B_ extends B, C>(converter: (values: Maybe<string>) => B_): Parser<FF<A, (value: B_) => C>, C>;
+}
+
+class QueryImpl<A, B> implements Query<A, B> {
+    public constructor(
+        private readonly key: string,
+        private readonly parser: Parser<A, B>
+    ) {}
+
+    public get string(): Parser<FF<A, (value: Maybe<string>) => B>, B> {
+        return this.custom(identity);
+    }
+
+    public get number(): Parser<FF<A, (value: Maybe<number>) => B>, B> {
+        return this.custom(value => value.chain(parseInt));
+    }
+
+    public get boolean(): Parser<FF<A, (value: Maybe<boolean>) => B>, B> {
+        return this.enum([
+            [ 'false', false ],
+            [ 'true', true ]
+        ]);
+    }
+
+    public get list(): QueryList<A, B> {
+        return new QueryListImpl(this.key, this.parser);
+    }
+
+    public enum<C, D>(variants: Array<[ string, C ]>): Parser<FF<A, (value: Maybe<C>) => D>, D> {
+        const dict = buildDict(variants);
+
+        return this.custom(value => value.chain(key => Maybe.fromNullable(dict[ key ])));
+    }
+
+    public custom<C, D>(converter: (value: Maybe<string>) => C): Parser<FF<A, (value: C) => D>, D> {
+        return new QueryParser(
+            values => converter(values.length === 1 ? Just(values[ 0 ]) : Nothing),
+            this.key,
+            this.parser as unknown as Parser<FF<A, (value: C) => D>, (value: C) => D>
+        );
+    }
 }
 
 export interface QueryList<A, B> {
-    string: Parser<FF<A, (value: Array<string>) => B>, B>;
-    number: Parser<FF<A, (value: Array<number>) => B>, B>;
-    boolean: Parser<FF<A, (value: Array<boolean>) => B>, B>;
-    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Parser<FF<A, (value: Array<B_>) => C>, C>;
-    custom<B_ extends B, C>(converter: (str: Array<string>) => B_): Parser<FF<A, (value: B_) => C>, C>;
+    string: Parser<FF<A, (values: Array<string>) => B>, B>;
+    number: Parser<FF<A, (values: Array<number>) => B>, B>;
+    boolean: Parser<FF<A, (values: Array<boolean>) => B>, B>;
+    enum<B_ extends B, C>(variants: Array<[ string, B_ ]>): Parser<FF<A, (values: Array<B_>) => C>, C>;
+    custom<B_ extends B, C>(converter: (values: Array<string>) => B_): Parser<FF<A, (value: B_) => C>, C>;
+}
+
+class QueryListImpl<A, B> implements QueryList<A, B> {
+    public constructor(
+        private readonly key: string,
+        private readonly parser: Parser<A, B>
+    ) {}
+
+    public get string(): Parser<FF<A, (values: Array<string>) => B>, B> {
+        return this.custom(identity);
+    }
+
+    public get number(): Parser<FF<A, (values: Array<number>) => B>, B> {
+        return this.custom(values => {
+            return Maybe.sequence(values.map(parseInt)).getOrElse([]);
+        });
+    }
+
+    public get boolean(): Parser<FF<A, (values: Array<boolean>) => B>, B> {
+        return this.enum([
+            [ 'false', false ],
+            [ 'true', true ]
+        ]);
+    }
+
+    public enum<C, D>(variants: Array<[ string, C ]>): Parser<FF<A, (value: Array<C>) => D>, D> {
+        const dict = buildDict(variants);
+
+        return this.custom(values => {
+            return Maybe.sequence(
+                values.map(key => Maybe.fromNullable(dict[ key ]))
+            ).getOrElse([]);
+        });
+    }
+
+    public custom<C, D>(converter: (values: Array<string>) => C): Parser<FF<A, (value: C) => D>, D> {
+        return new QueryParser(
+            converter,
+            this.key,
+            this.parser as unknown as Parser<FF<A, (value: C) => D>, (value: C) => D>
+        );
+    }
 }
