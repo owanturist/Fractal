@@ -647,6 +647,100 @@ test('Parser.Query.custom', t => {
     );
 });
 
+test('Parser.Query.string', t => {
+    const single = (_1: Maybe<string>) => ({ _1 });
+
+    t.deepEqual(
+        Parser.root.query('q').string.map(single).parse(
+            URL.withPath('/')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('q').string.map(single).parse(
+            URL.withPath('/').withQuery('q=search&q=something')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'multiple query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('q').string.map(single).parse(
+            URL.withPath('/').withQuery('q=search')
+        ),
+        Nothing,
+        'not exact path with single query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('q').string.map(single).parse(
+            URL.withPath('/before/').withQuery('q=search')
+        ),
+        Just({
+            _1: Just('search')
+        }),
+        'exact path with single query is matched'
+    );
+});
+
+test('Parser.Query.number', t => {
+    const single = (_1: Maybe<number>) => ({ _1 });
+
+    t.deepEqual(
+        Parser.root.query('n').number.map(single).parse(
+            URL.withPath('/')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('n').number.map(single).parse(
+            URL.withPath('/').withQuery('n=1&n=23')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'multiple query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('n').number.map(single).parse(
+            URL.withPath('/').withQuery('q=31')
+        ),
+        Nothing,
+        'not exact path with single query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('n').number.map(single).parse(
+            URL.withPath('/before/').withQuery('n=null')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'path with single invalid query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('n').number.map(single).parse(
+            URL.withPath('/before/').withQuery('n=42')
+        ),
+        Just({
+            _1: Just(42)
+        }),
+        'exact path with single query is matched'
+    );
+});
+
 test('Real example', t => {
     interface Route {
         toPath(): string;
