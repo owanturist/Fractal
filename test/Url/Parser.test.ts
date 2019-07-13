@@ -20,6 +20,8 @@ const parseDate = (str: string): Maybe<Date> => {
     return isNaN(date.getTime()) ? Nothing : Just(date);
 };
 
+const parseDateQuery = (val: Maybe<string>): Maybe<Date> => val.chain(parseDate);
+
 const serializeDate = (date: Date): string => {
     const day = date.getDate();
     const month = date.getMonth() + 1;
@@ -131,9 +133,9 @@ test('Parser.s', t => {
 });
 
 test('Parser.custom', t => {
-    const single = (first: Date) => ({ first });
-    const double = (first: Date) => (second: Date) => ({ first, second });
-    const tripple = (first: Date) => (second: Date) => (third: Date) => ({ first, second, third });
+    const single = (_1: Date) => ({ _1 });
+    const double = (_1: Date) => (_2: Date) => ({ _1, _2 });
+    const tripple = (_1: Date) => (_2: Date) => (_3: Date) => ({ _1, _2, _3 });
 
     t.deepEqual(
         Parser.custom(parseDate).map(single).parse(
@@ -155,7 +157,9 @@ test('Parser.custom', t => {
         Parser.custom(parseDate).map(single).parse(
             URL.withPath('/09-10-2019/')
         ),
-        Just(single(new Date('09-10-2019'))),
+        Just({
+            _1: new Date('09-10-2019')
+        }),
         'single is matched'
     );
 
@@ -163,7 +167,9 @@ test('Parser.custom', t => {
         Parser.s('before').slash.custom(parseDate).map(single).parse(
             URL.withPath('/before/03-23-2019/')
         ),
-        Just(single(new Date('03-23-2019'))),
+        Just({
+            _1: new Date('03-23-2019')
+        }),
         'single with path before is matched'
     );
 
@@ -171,7 +177,9 @@ test('Parser.custom', t => {
         Parser.custom(parseDate).slash.s('after').map(single).parse(
             URL.withPath('/10-02-2018/after/')
         ),
-        Just(single(new Date('10-02-2018'))),
+        Just({
+            _1: new Date('10-02-2018')
+        }),
         'single with path after is matched'
     );
 
@@ -179,7 +187,9 @@ test('Parser.custom', t => {
         Parser.s('before').slash.custom(parseDate).slash.s('after').map(single).parse(
             URL.withPath('/before/12-31-2020/after/')
         ),
-        Just(single(new Date('12-31-2020'))),
+        Just({
+            _1: new Date('12-31-2020')
+        }),
         'single with path around is matched'
     );
 
@@ -211,7 +221,10 @@ test('Parser.custom', t => {
         Parser.custom(parseDate).slash.custom(parseDate).map(double).parse(
             URL.withPath('/10-01-2013/10-01-2020/')
         ),
-        Just(double(new Date('10-01-2013'))(new Date('10-01-2020'))),
+        Just({
+            _1: new Date('10-01-2013'),
+            _2: new Date('10-01-2020')
+        }),
         'double is matched'
     );
 
@@ -227,7 +240,10 @@ test('Parser.custom', t => {
         Parser.custom(parseDate).slash.s('between').slash.custom(parseDate).map(double).parse(
             URL.withPath('/10-01-2013/between/10-01-2020/')
         ),
-        Just(double(new Date('10-01-2013'))(new Date('10-01-2020'))),
+        Just({
+            _1: new Date('10-01-2013'),
+            _2: new Date('10-01-2020')
+        }),
         'double with path between is matched'
     );
 
@@ -243,7 +259,11 @@ test('Parser.custom', t => {
         Parser.custom(parseDate).slash.custom(parseDate).slash.custom(parseDate).map(tripple).parse(
             URL.withPath('/10-01-2013/10-01-2020/10-01-2027/')
         ),
-        Just(tripple(new Date('10-01-2013'))(new Date('10-01-2020'))(new Date('10-01-2027'))),
+        Just({
+            _1: new Date('10-01-2013'),
+            _2: new Date('10-01-2020'),
+            _3: new Date('10-01-2027')
+        }),
         'tripple is matched'
     );
 
@@ -258,7 +278,11 @@ test('Parser.custom', t => {
         .map(tripple).parse(
             URL.withPath('/first/10-01-2013/second/10-01-2020/third/10-01-2027/fourth/')
         ),
-        Just(tripple(new Date('10-01-2013'))(new Date('10-01-2020'))(new Date('10-01-2027'))),
+        Just({
+            _1: new Date('10-01-2013'),
+            _2: new Date('10-01-2020'),
+            _3: new Date('10-01-2027')
+        }),
         'tripple with paths between and around is matched'
     );
 });
@@ -449,7 +473,173 @@ test('Parser.oneOf', t => {
     );
 });
 
-test('Parser.oneOf real example', t => {
+test('Parser.Query.custom', t => {
+    const single = (_1: Maybe<Date>) => ({ _1 });
+    const double = (_1: Maybe<Date>) => (_2: Maybe<Date>) => ({ _1, _2 });
+    const tripple = (_1: Maybe<Date>) => (_2: Maybe<Date>) => (_3: Maybe<Date>) => ({ _1, _2, _3 });
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty query string is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/').withQuery('to=10-02-2014')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/').withQuery('from=10-33-2014')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'single invalid requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/').withQuery('from=10-02-2014&from=09-01-2013')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'multiple valid requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/').withQuery('from=10-02-2014')
+        ),
+        Just({
+            _1: Just(new Date('10-02-2014'))
+        }),
+        'single valid requested query is matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/').withQuery('q=event&from=10-02-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: Just(new Date('10-02-2014'))
+        }),
+        'single valid requested query from multiple is matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before')
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/').withQuery('from=10-02-2014')
+        ),
+        Nothing,
+        'different before single valid requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before')
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/before/').withQuery('from=10-33-2014')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'exact before single invalid requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before')
+        .query('from').custom(parseDateQuery)
+        .map(single).parse(
+            URL.withPath('/before/').withQuery('from=10-20-2014')
+        ),
+        Just({
+            _1: Just(new Date('10-20-2014'))
+        }),
+        'exact before single valid requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .query('from').custom(parseDateQuery)
+        .map(double).parse(
+            URL.withPath('/').withQuery('q=event&from=10-02-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: Just(new Date('10-02-2014')),
+            _2: Nothing
+        }),
+        'second valid matching is not applying'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').custom(parseDateQuery)
+        .query('to').custom(parseDateQuery)
+        .query('current').custom(parseDateQuery)
+        .map(tripple).parse(
+            URL.withPath('/').withQuery('q=event&from=10-02-2014&current=10-08-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: Just(new Date('10-02-2014')),
+            _2: Just(new Date('10-02-2015')),
+            _3: Just(new Date('10-08-2014'))
+        }),
+        'tripple valid queries'
+    );
+
+    t.deepEqual(
+        Parser.s('root')
+        .query('from').custom(parseDateQuery)
+        .slash.s('id')
+        .slash.number
+        .query('to').custom(parseDateQuery)
+        .query('current').custom(parseDateQuery)
+        .slash.s('name')
+        .slash.string
+        .map(_1 => _2 => _3 => _4 => _5 => ({ _1, _2, _3, _4, _5 }))
+        .parse(
+            URL.withPath('/root/id/1/name/ivan/')
+                .withQuery('q=event&from=10-02-2014&current=10-08-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: Just(new Date('10-02-2014')),
+            _2: 1,
+            _3: Just(new Date('10-02-2015')),
+            _4: Just(new Date('10-08-2014')),
+            _5: 'ivan'
+        }),
+        'tripple valid queries mixed with paths and matchers'
+    );
+});
+
+test('Real example', t => {
     interface Route {
         toPath(): string;
     }
