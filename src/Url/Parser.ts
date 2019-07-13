@@ -7,6 +7,13 @@ import {
     Just
 } from '../Maybe';
 
+export const debug = <T>(msg: string) => <R>(value: T & R) => {
+    // tslint:disable-next-line:no-console
+    console.log(msg, value);
+
+    return value;
+};
+
 interface Params {
     readonly [ key: string ]: Array<string>;
 }
@@ -29,9 +36,18 @@ const mapState = <T, R>(fn: (value: T) => R, { unvisited, queries, fragment, val
 
 const first = <T>(arr: Array<T>): Maybe<T> => Maybe.fromNullable(arr[ 0 ]);
 const rest = <T>(arr: Array<T>): Array<T> => arr.slice(1);
+const concatMap = <T, R>(fn: (value: T) => Array<R>, arr: Array<T>): Array<R> => {
+    const acc: Array<R> = [];
+
+    for (const value of arr) {
+        acc.push(...fn(value));
+    }
+
+    return acc;
+};
 
 export class Parser<T> {
-    public static top: Parser<unknown> = new Parser(Just);
+    public static top: Parser<unknown> = new Parser(state => [ state ]);
 
     public static get string(): Chainable<(value: string) => unknown> {
         return new SlashImpl(Parser.top).string;
@@ -49,8 +65,8 @@ export class Parser<T> {
         return new SlashImpl<T>(Parser.top).s(path);
     }
 
-    public static oneOf<T>(_parsers: Array<Parser<T>>): Chainable<T> {
-        throw new Error();
+    public static oneOf<T>(parsers: Array<Parser<T>>): Chainable<T> {
+        return new SlashImpl(Parser.top).oneOf(parsers);
     }
 
     protected static prepareUnvisited(path: string): Array<string> {
@@ -79,16 +95,16 @@ export class Parser<T> {
         return acc;
     }
 
-    protected static prev<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
+    protected static dive<T>(parser: Parser<T>, state: State<T>): Array<State<unknown>> {
         return parser.fn(state);
     }
 
     protected constructor(
-        private readonly fn: (state: State<T>) => Maybe<State<unknown>>
+        private readonly fn: (state: State<T>) => Array<State<unknown>>
     ) {}
 
     public map<R>(tagger: FN<T, R>): Parser<(value: R) => unknown> {
-        return new Parser(({ unvisited, queries, fragment, value }: any): Maybe<State<T>> => {
+        return new Parser(({ unvisited, queries, fragment, value }: any): Array<State<T>> => {
             return this.fn({
                 unvisited,
                 queries,
@@ -99,12 +115,20 @@ export class Parser<T> {
     }
 
     public parse<R extends FA<T>>(url: Url): Maybe<R> {
-        return this.fn({
+        const states = this.fn({
             unvisited: Parser.prepareUnvisited(url.path),
             queries: Parser.prepareQuery(url.query.getOrElse('')),
             fragment: url.fragment,
             value: identity as unknown as T
-        }).chain(({ unvisited, value }: State<R>): Maybe<R> => unvisited.length === 0 ? Just(value) : Nothing);
+        });
+
+        for (const state of states) {
+            if (state.unvisited.length === 0) {
+                return Just(state.value as R);
+            }
+        }
+
+        return Nothing;
     }
 }
 
@@ -113,11 +137,11 @@ export interface Chainable<T> extends Parser<T> {
 }
 
 class ChainableImpl<T> extends Parser<T> implements Chainable<T>  {
-    public static prev<T>(parser: Parser<T>, state: State<T>): Maybe<State<unknown>> {
-        return super.prev(parser, state);
+    public static dive<T>(parser: Parser<T>, state: State<T>): Array<State<unknown>> {
+        return super.dive(parser, state);
     }
 
-    public constructor(fn: (state: State<T>) => Maybe<State<unknown>>) {
+    public constructor(fn: (state: State<T>) => Array<State<unknown>>) {
         super(fn);
     }
 
@@ -147,32 +171,46 @@ class SlashImpl<T> implements Slash<T> {
 
     public s(path: string): Chainable<T> {
         return new ChainableImpl((state: any): any => {
-            return ChainableImpl.prev(this.parser, state).chain(({ unvisited, queries, fragment, value }: any): any => {
-                return first(unvisited).chain((str): any => str === path ? Just({
-                    unvisited: rest(unvisited),
-                    queries,
-                    fragment,
-                    value
-                }) : Nothing);
-            });
+            return concatMap(
+                ({ unvisited, queries, fragment, value }: any): any => {
+                    return first(unvisited).map((str): any => str === path ? [{
+                        unvisited: rest(unvisited),
+                        queries,
+                        fragment,
+                        value
+                    }] : []).getOrElse([]);
+                },
+                ChainableImpl.dive(this.parser, state)
+            );
         });
     }
 
     public custom<R>(converter: (str: string) => Maybe<R>): Chainable<FF<T, (value: R) => unknown>> {
         return new ChainableImpl((state: any) => {
-            return ChainableImpl.prev(this.parser, state).chain(({ unvisited, queries, fragment, value }: any): any => {
-                return first(unvisited).chain(converter).map((converted): any => ({
-                    unvisited: rest(unvisited),
-                    queries,
-                    fragment,
-                    value: value(converted)
-                }));
-            });
+            return concatMap(
+                ({ unvisited, queries, fragment, value }: any): any => {
+                    return first(unvisited).chain(converter).map((converted): any => [{
+                        unvisited: rest(unvisited),
+                        queries,
+                        fragment,
+                        value: value(converted)
+                    }]).getOrElse([]);
+                },
+                ChainableImpl.dive(this.parser, state)
+            );
         });
     }
 
-    public oneOf<R>(_parsers: Array<Parser<R>>): Chainable<FF<T, R>> {
-        throw new Error();
+    public oneOf<R>(parsers: Array<Parser<R>>): Chainable<FF<T, R>> {
+        return new ChainableImpl((state: any): any => {
+            return concatMap(
+                (ns: any) => concatMap(
+                    parser => ChainableImpl.dive(parser, ns),
+                    parsers
+                ),
+                ChainableImpl.dive(this.parser, state)
+            );
+        });
     }
 }
 

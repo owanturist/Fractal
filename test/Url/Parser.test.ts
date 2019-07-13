@@ -344,3 +344,117 @@ test('Parser.number', t => {
         'number with path before is matched'
     );
 });
+
+test('Parser.oneOf', t => {
+    t.deepEqual(
+        Parser.oneOf([]).parse(
+            URL.withPath('/')
+        ),
+        Nothing,
+        'match nothing for empty parsers'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.s('first').map(1)
+        ]).parse(
+            URL.withPath('/')
+        ),
+        Nothing,
+        'match nothing for single path'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.top.map(0)
+        ]).parse(
+            URL.withPath('/')
+        ),
+        Just(0),
+        'match for single top'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.s('first').map(1)
+        ]).parse(
+            URL.withPath('/first/')
+        ),
+        Just(1),
+        'match for single path'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.top.map(0),
+            Parser.s('first').map(1)
+        ]).parse(
+            URL.withPath('/')
+        ),
+        Just(0),
+        'match top parser'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.top.map(0),
+            Parser.top.map(1)
+        ]).parse(
+            URL.withPath('/')
+        ),
+        Just(0),
+        'match the first matched parser'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.top.map(0),
+            Parser.s('first').map(1),
+            Parser.s('first').slash.s('second').map(2),
+            Parser.s('second').map(3)
+        ]).parse(
+            URL.withPath('/first/second/')
+        ),
+        Just(2),
+        'match composed path'
+    );
+
+    t.deepEqual(
+        Parser.s('before').slash.oneOf([
+            Parser.top.map(0),
+            Parser.s('first').map(1),
+            Parser.s('first').slash.s('second').map(2),
+            Parser.s('second').map(3)
+        ]).parse(
+            URL.withPath('/before/first/')
+        ),
+        Just(1),
+        'match composed path with before'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.top.map(0),
+            Parser.s('first').map(1),
+            Parser.s('first').slash.s('second').map(2),
+            Parser.s('second').map(3)
+        ]).slash.s('after').parse(
+            URL.withPath('/second/after/')
+        ),
+        Just(3),
+        'match composed path with after'
+    );
+
+    t.deepEqual(
+        Parser.s('before').slash.oneOf([
+            Parser.top.map(0),
+            Parser.s('first').map(1),
+            Parser.s('first').slash.s('second').map(2),
+            Parser.s('second').map(3)
+        ]).slash.s('after').parse(
+            URL.withPath('/before/first/second/after/')
+        ),
+        Just(2),
+        'match composed path with around'
+    );
+});
