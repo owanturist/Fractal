@@ -852,7 +852,7 @@ test('Parser.Query.boolean', t => {
 
     t.deepEqual(
         Parser.root.query('checked').boolean.map(single).parse(
-            URL.withQuery('checked=true&checked=false')
+            URL.withQuery('checked=false&checked=true')
         ),
         Just({
             _1: Nothing
@@ -1238,6 +1238,72 @@ test('Parser.Query.list.enum', t => {
             _1: [ new Date('02-02-2012') ]
         }),
         'latest valid single variant is matched as single array'
+    );
+});
+
+test('Parser.Query.list.boolean', t => {
+    t.deepEqual(
+        Parser.root.query('checked').list.boolean.map(single).parse(
+            URL
+        ),
+        Just({
+            _1: []
+        }),
+        'empty query string is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').list.boolean.map(single).parse(
+            URL.withQuery('checked=notbool')
+        ),
+        Just({
+            _1: []
+        }),
+        'invalid single query is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').list.boolean.map(single).parse(
+            URL.withQuery('checked=false&checked=true')
+        ),
+        Just({
+            _1: [ false, true ]
+        }),
+        'valid multiple queries are matched as multiple array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').list.boolean.map(single).parse(
+            URL.withQuery('checked=false')
+        ),
+        Just({
+            _1: [ false ]
+        }),
+        'valid single false is matched as single array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').list.boolean.map(single).parse(
+            URL.withQuery('checked=true')
+        ),
+        Just({
+            _1: [ true ]
+        }),
+        'valid single true is matched as single array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('checked').list.boolean
+        .query('disabled').list.boolean
+        .map(double).parse(
+            URL.withQuery('checked=true&disabled=false')
+        ),
+        Just({
+            _1: [ true ],
+            _2: [ false ]
+        }),
+        'valid double single queries are matched as double singleton arrays'
     );
 });
 
