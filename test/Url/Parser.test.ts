@@ -791,6 +791,20 @@ test('Parser.Query.enum', t => {
             [ 'second', new Date('02-02-2002') ],
             [ 'third', new Date('03-03-2003') ]
         ]).map(single).parse(
+            URL.withQuery('start=zero')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'single invalid variant is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
             URL.withQuery('start=second')
         ),
         Just({
@@ -1181,6 +1195,20 @@ test('Parser.Query.list.enum', t => {
             _1: [ new Date('02-02-2002'), new Date('01-01-2001') ]
         }),
         'multiple valid variants are matched as multiple array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').list.enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withQuery('start=zero')
+        ),
+        Just({
+            _1: []
+        }),
+        'single invalid variant is matched as empty array'
     );
 
     t.deepEqual(
