@@ -1144,6 +1144,75 @@ test('Parser.Query.list.number', t => {
     );
 });
 
+test('Parser.Query.list.enum', t => {
+    t.deepEqual(
+        Parser.root.query('start').list.enum([]).map(single).parse(
+            URL.withQuery('start=second')
+        ),
+        Just({
+            _1: []
+        }),
+        'empty variants is matched as empty list'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').list.enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL
+        ),
+        Just({
+            _1: []
+        }),
+        'empty query is matched as empty list'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').list.enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withQuery('start=second&start=first')
+        ),
+        Just({
+            _1: [ new Date('02-02-2002'), new Date('01-01-2001') ]
+        }),
+        'multiple valid variants are matched as multiple array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').list.enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withQuery('start=second')
+        ),
+        Just({
+            _1: [ new Date('02-02-2002') ]
+        }),
+        'single valid variant is matched as singleton array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').list.enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'second', new Date('02-02-2012') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withQuery('start=second')
+        ),
+        Just({
+            _1: [ new Date('02-02-2012') ]
+        }),
+        'latest valid single variant is matched as single array'
+    );
+});
+
 test('Real example', t => {
     interface Route {
         toPath(): string;
