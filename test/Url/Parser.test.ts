@@ -623,6 +623,19 @@ test('Parser.Query.custom', t => {
     );
 
     t.deepEqual(
+        Parser.oneOf([
+            Parser.root.query('from').custom(parseDateQuery).map(single),
+            Parser.s('before').query('from').custom(parseDateQuery).map(single)
+        ]).parse(
+            URL.withPath('/before/').withQuery('from=10-02-2014')
+        ),
+        Just({
+            _1: Just(new Date('10-02-2014'))
+        }),
+        'does not omit not passed query'
+    );
+
+    t.deepEqual(
         Parser.s('root')
         .query('from').custom(parseDateQuery)
         .slash.s('id')
@@ -738,6 +751,77 @@ test('Parser.Query.number', t => {
             _1: Just(42)
         }),
         'exact path with single query is matched'
+    );
+});
+
+test('Parser.Query.enum', t => {
+    const single = (_1: Maybe<Date>) => ({ _1 });
+
+    t.deepEqual(
+        Parser.root.query('start').enum([]).map(single).parse(
+            URL.withPath('/').withQuery('start=second')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty variants is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withPath('/')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withPath('/').withQuery('start=second&start=first')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'multiple valid variants are not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withPath('/').withQuery('start=second')
+        ),
+        Just({
+            _1: Just(new Date('02-02-2002'))
+        }),
+        'single valid variant is matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('start').enum([
+            [ 'first', new Date('01-01-2001') ],
+            [ 'second', new Date('02-02-2002') ],
+            [ 'second', new Date('02-02-2012') ],
+            [ 'third', new Date('03-03-2003') ]
+        ]).map(single).parse(
+            URL.withPath('/').withQuery('start=second')
+        ),
+        Just({
+            _1: Just(new Date('02-02-2012'))
+        }),
+        'latest valid single variant is matched'
     );
 });
 
