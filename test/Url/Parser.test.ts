@@ -51,7 +51,7 @@ test('Parser.top', t => {
 
     t.deepEqual(
         Parser.root.map(0).parse(
-            URL.withPath('/')
+            URL
         ),
         Just(0),
         'empty path is matched'
@@ -61,7 +61,7 @@ test('Parser.top', t => {
 test('Parser.s', t => {
     t.deepEqual(
         Parser.s('single').map(0).parse(
-            URL.withPath('/')
+            URL
         ),
         Nothing,
         'empty path is not matched'
@@ -139,7 +139,7 @@ test('Parser.custom', t => {
 
     t.deepEqual(
         Parser.custom(parseDate).map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Nothing,
         'empty single path is not matched'
@@ -292,7 +292,7 @@ test('Parser.string', t => {
 
     t.deepEqual(
         Parser.string.map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Nothing,
         'empty path is not matched'
@@ -324,7 +324,7 @@ test('Parser.number', t => {
 
     t.deepEqual(
         Parser.number.map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Nothing,
         'empty path is not matched'
@@ -370,7 +370,7 @@ test('Parser.number', t => {
 test('Parser.oneOf', t => {
     t.deepEqual(
         Parser.oneOf([]).parse(
-            URL.withPath('/')
+            URL
         ),
         Nothing,
         'match nothing for empty parsers'
@@ -380,7 +380,7 @@ test('Parser.oneOf', t => {
         Parser.oneOf([
             Parser.s('first').map(1)
         ]).parse(
-            URL.withPath('/')
+            URL
         ),
         Nothing,
         'match nothing for single path'
@@ -390,7 +390,7 @@ test('Parser.oneOf', t => {
         Parser.oneOf([
             Parser.root.map(0)
         ]).parse(
-            URL.withPath('/')
+            URL
         ),
         Just(0),
         'match for single top'
@@ -411,7 +411,7 @@ test('Parser.oneOf', t => {
             Parser.root.map(0),
             Parser.s('first').map(1)
         ]).parse(
-            URL.withPath('/')
+            URL
         ),
         Just(0),
         'match top parser'
@@ -422,7 +422,7 @@ test('Parser.oneOf', t => {
             Parser.root.map(0),
             Parser.root.map(1)
         ]).parse(
-            URL.withPath('/')
+            URL
         ),
         Just(0),
         'match the first matched parser'
@@ -490,7 +490,7 @@ test('Parser.Query.custom', t => {
         Parser.root
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Just({
             _1: Nothing
@@ -502,7 +502,7 @@ test('Parser.Query.custom', t => {
         Parser.root
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/').withQuery('to=10-02-2014')
+            URL.withQuery('to=10-02-2014')
         ),
         Just({
             _1: Nothing
@@ -514,7 +514,7 @@ test('Parser.Query.custom', t => {
         Parser.root
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/').withQuery('from=10-33-2014')
+            URL.withQuery('from=10-33-2014')
         ),
         Just({
             _1: Nothing
@@ -526,7 +526,7 @@ test('Parser.Query.custom', t => {
         Parser.root
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/').withQuery('from=10-02-2014&from=09-01-2013')
+            URL.withQuery('from=10-02-2014&from=09-01-2013')
         ),
         Just({
             _1: Nothing
@@ -538,7 +538,7 @@ test('Parser.Query.custom', t => {
         Parser.root
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/').withQuery('from=10-02-2014')
+            URL.withQuery('from=10-02-2014')
         ),
         Just({
             _1: Just(new Date('10-02-2014'))
@@ -550,7 +550,7 @@ test('Parser.Query.custom', t => {
         Parser.root
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/').withQuery('q=event&from=10-02-2014&to=10-02-2015')
+            URL.withQuery('q=event&from=10-02-2014&to=10-02-2015')
         ),
         Just({
             _1: Just(new Date('10-02-2014'))
@@ -562,7 +562,7 @@ test('Parser.Query.custom', t => {
         Parser.s('before')
         .query('from').custom(parseDateQuery)
         .map(single).parse(
-            URL.withPath('/').withQuery('from=10-02-2014')
+            URL.withQuery('from=10-02-2014')
         ),
         Nothing,
         'different before single valid requested query is not matched'
@@ -597,7 +597,7 @@ test('Parser.Query.custom', t => {
         .query('from').custom(parseDateQuery)
         .query('from').custom(parseDateQuery)
         .map(double).parse(
-            URL.withPath('/').withQuery('q=event&from=10-02-2014&to=10-02-2015')
+            URL.withQuery('q=event&from=10-02-2014&to=10-02-2015')
         ),
         Just({
             _1: Just(new Date('10-02-2014')),
@@ -612,7 +612,7 @@ test('Parser.Query.custom', t => {
         .query('to').custom(parseDateQuery)
         .query('current').custom(parseDateQuery)
         .map(tripple).parse(
-            URL.withPath('/').withQuery('q=event&from=10-02-2014&current=10-08-2014&to=10-02-2015')
+            URL.withQuery('q=event&from=10-02-2014&current=10-08-2014&to=10-02-2015')
         ),
         Just({
             _1: Just(new Date('10-02-2014')),
@@ -665,7 +665,7 @@ test('Parser.Query.string', t => {
 
     t.deepEqual(
         Parser.root.query('q').string.map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Just({
             _1: Nothing
@@ -675,7 +675,7 @@ test('Parser.Query.string', t => {
 
     t.deepEqual(
         Parser.root.query('q').string.map(single).parse(
-            URL.withPath('/').withQuery('q=search&q=something')
+            URL.withQuery('q=search&q=something')
         ),
         Just({
             _1: Nothing
@@ -685,7 +685,7 @@ test('Parser.Query.string', t => {
 
     t.deepEqual(
         Parser.s('before').query('q').string.map(single).parse(
-            URL.withPath('/').withQuery('q=search')
+            URL.withQuery('q=search')
         ),
         Nothing,
         'not exact path with single query is not matched'
@@ -707,7 +707,7 @@ test('Parser.Query.number', t => {
 
     t.deepEqual(
         Parser.root.query('n').number.map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Just({
             _1: Nothing
@@ -717,7 +717,7 @@ test('Parser.Query.number', t => {
 
     t.deepEqual(
         Parser.root.query('n').number.map(single).parse(
-            URL.withPath('/').withQuery('n=1&n=23')
+            URL.withQuery('n=1&n=23')
         ),
         Just({
             _1: Nothing
@@ -727,7 +727,7 @@ test('Parser.Query.number', t => {
 
     t.deepEqual(
         Parser.s('before').query('n').number.map(single).parse(
-            URL.withPath('/').withQuery('q=31')
+            URL.withQuery('q=31')
         ),
         Nothing,
         'not exact path with single query is not matched'
@@ -759,7 +759,7 @@ test('Parser.Query.enum', t => {
 
     t.deepEqual(
         Parser.root.query('start').enum([]).map(single).parse(
-            URL.withPath('/').withQuery('start=second')
+            URL.withQuery('start=second')
         ),
         Just({
             _1: Nothing
@@ -773,7 +773,7 @@ test('Parser.Query.enum', t => {
             [ 'second', new Date('02-02-2002') ],
             [ 'third', new Date('03-03-2003') ]
         ]).map(single).parse(
-            URL.withPath('/')
+            URL
         ),
         Just({
             _1: Nothing
@@ -787,7 +787,7 @@ test('Parser.Query.enum', t => {
             [ 'second', new Date('02-02-2002') ],
             [ 'third', new Date('03-03-2003') ]
         ]).map(single).parse(
-            URL.withPath('/').withQuery('start=second&start=first')
+            URL.withQuery('start=second&start=first')
         ),
         Just({
             _1: Nothing
@@ -801,7 +801,7 @@ test('Parser.Query.enum', t => {
             [ 'second', new Date('02-02-2002') ],
             [ 'third', new Date('03-03-2003') ]
         ]).map(single).parse(
-            URL.withPath('/').withQuery('start=second')
+            URL.withQuery('start=second')
         ),
         Just({
             _1: Just(new Date('02-02-2002'))
@@ -816,12 +816,81 @@ test('Parser.Query.enum', t => {
             [ 'second', new Date('02-02-2012') ],
             [ 'third', new Date('03-03-2003') ]
         ]).map(single).parse(
-            URL.withPath('/').withQuery('start=second')
+            URL.withQuery('start=second')
         ),
         Just({
             _1: Just(new Date('02-02-2012'))
         }),
         'latest valid single variant is matched'
+    );
+});
+
+test('Parser.Query.boolean', t => {
+    const single = (_1: Maybe<boolean>) => ({ _1 });
+    const double = (_1: Maybe<boolean>) => (_2: Maybe<boolean>) => ({ _1, _2 });
+
+    t.deepEqual(
+        Parser.root.query('checked').boolean.map(single).parse(
+            URL
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'empty query string is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').boolean.map(single).parse(
+            URL.withQuery('checked=notbool')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'invalid single query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').boolean.map(single).parse(
+            URL.withQuery('checked=true&checked=false')
+        ),
+        Just({
+            _1: Nothing
+        }),
+        'valid multiple queries are not matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').boolean.map(single).parse(
+            URL.withQuery('checked=false')
+        ),
+        Just({
+            _1: Just(false)
+        }),
+        'valid false is matched'
+    );
+
+    t.deepEqual(
+        Parser.root.query('checked').boolean.map(single).parse(
+            URL.withQuery('checked=true')
+        ),
+        Just({
+            _1: Just(true)
+        }),
+        'valid true is matched'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('checked').boolean
+        .query('disabled').boolean
+        .map(double).parse(
+            URL.withQuery('checked=true&disabled=false')
+        ),
+        Just({
+            _1: Just(true),
+            _2: Just(false)
+        }),
+        'valid double queries are matched'
     );
 });
 
@@ -906,7 +975,7 @@ test('Real example', t => {
     );
 
     t.deepEqual(
-        URL.withPath('/').parse(parser),
+        URL.parse(parser),
         Just(ToHome.inst),
         '/ path is matched ToHome'
     );
