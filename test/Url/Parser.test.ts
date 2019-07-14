@@ -20,7 +20,11 @@ const parseDate = (str: string): Maybe<Date> => {
     return isNaN(date.getTime()) ? Nothing : Just(date);
 };
 
-const parseDateQuery = (val: Maybe<string>): Maybe<Date> => val.chain(parseDate);
+const parseDateQuery = (value: Maybe<string>): Maybe<Date> => value.chain(parseDate);
+
+const parseDateQueries = (values: Array<string>): Array<Date> => {
+    return Maybe.sequence(values.map(parseDate)).getOrElse([]);
+};
 
 const serializeDate = (date: Date): string => {
     const day = date.getDate();
@@ -581,7 +585,7 @@ test('Parser.Query.custom', t => {
         Just({
             _1: Just(new Date('10-20-2014'))
         }),
-        'exact before single valid requested query is not matched'
+        'exact before single valid requested query is matched'
     );
 
     t.deepEqual(
@@ -874,6 +878,181 @@ test('Parser.Query.boolean', t => {
             _2: Just(false)
         }),
         'valid double queries are matched'
+    );
+});
+
+test('Parser.Query.list.custom', t => {
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL
+        ),
+        Just({
+            _1: []
+        }),
+        'empty query string is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withQuery('to=10-02-2014')
+        ),
+        Just({
+            _1: []
+        }),
+        'empty requested query is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withQuery('from=10-33-2014')
+        ),
+        Just({
+            _1: []
+        }),
+        'single invalid requested query is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withQuery('from=10-02-2014')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014') ]
+        }),
+        'single valid requested query is matched as singleton array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withQuery('from=10-02-2014&from=09-01-2013')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014'), new Date('09-01-2013') ]
+        }),
+        'multiple valid requested query is matched as multiple array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withQuery('q=event&from=10-02-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014') ]
+        }),
+        'single valid requested query from multiple is matched as singleton array'
+    );
+
+    t.deepEqual(
+        Parser.s('before')
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withQuery('from=10-02-2014')
+        ),
+        Nothing,
+        'different before single valid requested query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before')
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withPath('/before/').withQuery('from=10-33-2014')
+        ),
+        Just({
+            _1: []
+        }),
+        'exact before single invalid requested query is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.s('before')
+        .query('from').list.custom(parseDateQueries)
+        .map(single).parse(
+            URL.withPath('/before/').withQuery('from=10-20-2014')
+        ),
+        Just({
+            _1: [ new Date('10-20-2014') ]
+        }),
+        'exact before single valid requested query is matched as singleton array'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .query('from').list.custom(parseDateQueries)
+        .map(double).parse(
+            URL.withQuery('q=event&from=10-02-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014') ],
+            _2: []
+        }),
+        'second valid matching is not applying'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .query('from').list.custom(parseDateQueries)
+        .query('to').list.custom(parseDateQueries)
+        .query('current').list.custom(parseDateQueries)
+        .map(tripple).parse(
+            URL.withQuery('q=event&from=10-02-2014&current=10-08-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014') ],
+            _2: [ new Date('10-02-2015') ],
+            _3: [ new Date('10-08-2014') ]
+        }),
+        'tripple valid queries'
+    );
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.root.query('from').list.custom(parseDateQueries).map(single),
+            Parser.s('before').query('from').list.custom(parseDateQueries).map(single)
+        ]).parse(
+            URL.withPath('/before/').withQuery('from=10-02-2014')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014') ]
+        }),
+        'does not omit not passed query'
+    );
+
+    t.deepEqual(
+        Parser.s('root')
+        .query('from').list.custom(parseDateQueries)
+        .slash.s('id')
+        .slash.number
+        .query('to').list.custom(parseDateQueries)
+        .query('current').list.custom(parseDateQueries)
+        .slash.s('name')
+        .slash.string
+        .map(_1 => _2 => _3 => _4 => _5 => ({ _1, _2, _3, _4, _5 }))
+        .parse(
+            URL.withPath('/root/id/1/name/ivan/')
+                .withQuery('q=event&from=10-02-2014&current=10-08-2014&to=10-02-2015')
+        ),
+        Just({
+            _1: [ new Date('10-02-2014') ],
+            _2: 1,
+            _3: [ new Date('10-02-2015') ],
+            _4: [ new Date('10-08-2014') ],
+            _5: 'ivan'
+        }),
+        'tripple valid queries mixed with paths and matchers'
     );
 });
 
