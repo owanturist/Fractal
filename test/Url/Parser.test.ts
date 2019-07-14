@@ -1096,6 +1096,54 @@ test('Parser.Query.list.string', t => {
     );
 });
 
+test('Parser.Query.list.number', t => {
+    t.deepEqual(
+        Parser.root.query('n').list.number.map(single).parse(URL),
+        Just({
+            _1: []
+        }),
+        'empty query is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.root.query('n').list.number.map(single).parse(
+            URL.withQuery('n=1&n=23')
+        ),
+        Just({
+            _1: [ 1, 23 ]
+        }),
+        'multiple query is matched as multiple array'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('n').list.number.map(single).parse(
+            URL.withQuery('q=31')
+        ),
+        Nothing,
+        'not exact path with single query is not matched'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('n').list.number.map(single).parse(
+            URL.withPath('/before/').withQuery('n=null')
+        ),
+        Just({
+            _1: []
+        }),
+        'path with single invalid query is matched as empty array'
+    );
+
+    t.deepEqual(
+        Parser.s('before').query('n').list.number.map(single).parse(
+            URL.withPath('/before/').withQuery('n=42')
+        ),
+        Just({
+            _1: [ 42 ]
+        }),
+        'exact path with single query is matched as singleton array'
+    );
+});
+
 test('Real example', t => {
     interface Route {
         toPath(): string;
