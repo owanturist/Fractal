@@ -40,6 +40,10 @@ const parseNonNegative = (str: string): Maybe<number> => {
     return num < 0 ? Nothing : Just(num);
 };
 
+const single = <T1>(_1: T1) => ({ _1 });
+const double = <T1>(_1: T1) => <T2>(_2: T2) => ({ _1, _2 });
+const tripple = <T1>(_1: T1) => <T2>(_2: T2) => <T3>(_3: T3) => ({ _1, _2, _3 });
+
 test('Parser.top', t => {
     t.deepEqual(
         Parser.root.map(0).parse(
@@ -133,10 +137,6 @@ test('Parser.s', t => {
 });
 
 test('Parser.custom', t => {
-    const single = (_1: Date) => ({ _1 });
-    const double = (_1: Date) => (_2: Date) => ({ _1, _2 });
-    const tripple = (_1: Date) => (_2: Date) => (_3: Date) => ({ _1, _2, _3 });
-
     t.deepEqual(
         Parser.custom(parseDate).map(single).parse(
             URL
@@ -288,8 +288,6 @@ test('Parser.custom', t => {
 });
 
 test('Parser.string', t => {
-    const single = (_1: string) => ({ _1 });
-
     t.deepEqual(
         Parser.string.map(single).parse(
             URL
@@ -320,8 +318,6 @@ test('Parser.string', t => {
 });
 
 test('Parser.number', t => {
-    const single = (_1: number) => ({ _1 });
-
     t.deepEqual(
         Parser.number.map(single).parse(
             URL
@@ -482,10 +478,6 @@ test('Parser.oneOf', t => {
 });
 
 test('Parser.Query.custom', t => {
-    const single = (_1: Maybe<Date>) => ({ _1 });
-    const double = (_1: Maybe<Date>) => (_2: Maybe<Date>) => ({ _1, _2 });
-    const tripple = (_1: Maybe<Date>) => (_2: Maybe<Date>) => (_3: Maybe<Date>) => ({ _1, _2, _3 });
-
     t.deepEqual(
         Parser.root
         .query('from').custom(parseDateQuery)
@@ -661,8 +653,6 @@ test('Parser.Query.custom', t => {
 });
 
 test('Parser.Query.string', t => {
-    const single = (_1: Maybe<string>) => ({ _1 });
-
     t.deepEqual(
         Parser.root.query('q').string.map(single).parse(
             URL
@@ -703,8 +693,6 @@ test('Parser.Query.string', t => {
 });
 
 test('Parser.Query.number', t => {
-    const single = (_1: Maybe<number>) => ({ _1 });
-
     t.deepEqual(
         Parser.root.query('n').number.map(single).parse(
             URL
@@ -755,8 +743,6 @@ test('Parser.Query.number', t => {
 });
 
 test('Parser.Query.enum', t => {
-    const single = (_1: Maybe<Date>) => ({ _1 });
-
     t.deepEqual(
         Parser.root.query('start').enum([]).map(single).parse(
             URL.withQuery('start=second')
@@ -826,9 +812,6 @@ test('Parser.Query.enum', t => {
 });
 
 test('Parser.Query.boolean', t => {
-    const single = (_1: Maybe<boolean>) => ({ _1 });
-    const double = (_1: Maybe<boolean>) => (_2: Maybe<boolean>) => ({ _1, _2 });
-
     t.deepEqual(
         Parser.root.query('checked').boolean.map(single).parse(
             URL
@@ -944,7 +927,7 @@ test('Real example', t => {
     }
 
     class ToEvent implements Route {
-        public static cons = (date: Date) => (index: number): Route => {
+        public static cons = (date: Date, index: number): Route => {
             return new ToEvent(date, index);
         }
 
@@ -964,7 +947,7 @@ test('Real example', t => {
         Parser.s('article').slash.string.map(ToArticle.cons),
         Parser.s('events').slash.oneOf([
             Parser.custom(parseDate).map(ToEvents.cons),
-            Parser.custom(parseDate).slash.custom(parseNonNegative).map(ToEvent.cons)
+            Parser.custom(parseDate).slash.custom(parseNonNegative).map(date => index => ToEvent.cons(date, index))
         ])
     ]);
 
@@ -1018,7 +1001,7 @@ test('Real example', t => {
 
     t.deepEqual(
         URL.withPath('/events/10-02-2013/123/').parse(parser),
-        Just(ToEvent.cons(new Date('10-02-2013'))(123)),
+        Just(ToEvent.cons(new Date('10-02-2013'), 123)),
         '/events/10-02-2013/123/ path is matched ToEvent'
     );
 });
