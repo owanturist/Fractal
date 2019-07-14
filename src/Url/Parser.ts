@@ -151,6 +151,13 @@ export abstract class Parser<A, B> {
         return new QueryImpl(key, this);
     }
 
+    public fragment<B_ extends B, C>(converter: (valeu: Maybe<string>) => B_): Parser<FF<A, (value: B_) => C>, C> {
+        return new FragmentParser(
+            converter,
+            this as unknown as Parser<FF<A, (value: B_) => C>, (value: B_) => C>
+        );
+    }
+
     public parse(url: Url): Maybe<FA<A, B>> {
         const states = this.dive({
             unvisited: prepareUnvisited(url.path),
@@ -285,6 +292,27 @@ class MapParser<A, B, C> extends Parser<(value: B) => C, C> {
             fragment,
             value: this.tagger
         }).map(state => mapState(value, state));
+    }
+}
+
+class FragmentParser<A, B, C> extends Parser<FF<A, (value: B) => C>, C> {
+    public constructor(
+        private readonly converter: (value: Maybe<string>) => B,
+        private readonly prev: Parser<FF<A, (value: B) => C>, (value: B) => C>
+    ) {
+        super();
+    }
+
+    public dive(state: State<FF<A, (value: B) => C>>): Array<State<C>> {
+        return concatMap(
+            ({ unvisited, queries, fragment, value }) => [{
+                unvisited: rest(unvisited),
+                queries,
+                fragment: Nothing,
+                value: value(this.converter(fragment))
+            }],
+            this.prev.dive(state)
+        );
     }
 }
 

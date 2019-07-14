@@ -481,7 +481,63 @@ test('Parser.oneOf', t => {
     );
 });
 
-test('Parser.Query.custom', t => {
+test('Parser.fragment', t => {
+    const parseArrayOfStrings = (value: Maybe<string>): Array<string> => {
+        return value.map(str => str.split(',')).getOrElse([ 'null' ]);
+    };
+
+    t.deepEqual(
+        Parser.root
+        .fragment(parseArrayOfStrings)
+        .map(single).parse(URL),
+        Just({
+            _1: [ 'null' ]
+        }),
+        'empty fragment is matched as [ null ]'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .fragment(parseArrayOfStrings)
+        .map(single).parse(
+            URL.withFragment('first,second')
+        ),
+        Just({
+            _1: [ 'first', 'second' ]
+        }),
+        'not empty fragment is matched properly'
+    );
+
+    t.deepEqual(
+        Parser.root
+        .fragment(parseArrayOfStrings)
+        .fragment(parseArrayOfStrings)
+        .map(double).parse(
+            URL.withFragment('first,second')
+        ),
+        Just({
+            _1: [ 'first', 'second' ],
+            _2: [ 'null' ]
+        }),
+        'double matching is prevented'
+    );
+
+
+    t.deepEqual(
+        Parser.oneOf([
+            Parser.root.fragment(parseArrayOfStrings).map(single),
+            Parser.s('before').fragment(parseArrayOfStrings).map(single)
+        ]).parse(
+            URL.withPath('/before/').withFragment('first,second')
+        ),
+        Just({
+            _1: [ 'first', 'second' ]
+        }),
+        'does not omit not passed fragment'
+    );
+});
+
+test('Parser.query.custom', t => {
     t.deepEqual(
         Parser.root
         .query('from').custom(parseDateQuery)
@@ -656,7 +712,7 @@ test('Parser.Query.custom', t => {
     );
 });
 
-test('Parser.Query.string', t => {
+test('Parser.query.string', t => {
     t.deepEqual(
         Parser.root.query('q').string.map(single).parse(
             URL
@@ -696,7 +752,7 @@ test('Parser.Query.string', t => {
     );
 });
 
-test('Parser.Query.number', t => {
+test('Parser.query.number', t => {
     t.deepEqual(
         Parser.root.query('n').number.map(single).parse(
             URL
@@ -746,7 +802,7 @@ test('Parser.Query.number', t => {
     );
 });
 
-test('Parser.Query.enum', t => {
+test('Parser.query.enum', t => {
     t.deepEqual(
         Parser.root.query('start').enum([]).map(single).parse(
             URL.withQuery('start=second')
@@ -829,7 +885,7 @@ test('Parser.Query.enum', t => {
     );
 });
 
-test('Parser.Query.boolean', t => {
+test('Parser.query.boolean', t => {
     t.deepEqual(
         Parser.root.query('checked').boolean.map(single).parse(
             URL
@@ -895,7 +951,7 @@ test('Parser.Query.boolean', t => {
     );
 });
 
-test('Parser.Query.list.custom', t => {
+test('Parser.query.list.custom', t => {
     t.deepEqual(
         Parser.root
         .query('from').list.custom(parseDateQueries)
@@ -1070,7 +1126,7 @@ test('Parser.Query.list.custom', t => {
     );
 });
 
-test('Parser.Query.list.string', t => {
+test('Parser.query.list.string', t => {
     t.deepEqual(
         Parser.root.query('q').list.string.map(single).parse(
             URL
@@ -1110,7 +1166,7 @@ test('Parser.Query.list.string', t => {
     );
 });
 
-test('Parser.Query.list.number', t => {
+test('Parser.query.list.number', t => {
     t.deepEqual(
         Parser.root.query('n').list.number.map(single).parse(URL),
         Just({
@@ -1158,7 +1214,7 @@ test('Parser.Query.list.number', t => {
     );
 });
 
-test('Parser.Query.list.enum', t => {
+test('Parser.query.list.enum', t => {
     t.deepEqual(
         Parser.root.query('start').list.enum([]).map(single).parse(
             URL.withQuery('start=second')
@@ -1241,7 +1297,7 @@ test('Parser.Query.list.enum', t => {
     );
 });
 
-test('Parser.Query.list.boolean', t => {
+test('Parser.query.list.boolean', t => {
     t.deepEqual(
         Parser.root.query('checked').list.boolean.map(single).parse(
             URL
