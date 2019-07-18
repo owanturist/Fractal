@@ -421,15 +421,7 @@ export class Process {
 
 // PROGRAMS
 
-export class Program<Model, Msg> {
-    public static worker<Model, Msg>(config: {
-        init(): [ Model, Cmd<Msg> ];
-        update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
-        subscriptions(model: Model): Sub<Msg>;
-    }): Program<Model, Msg> {
-        return new Program(config.init, config.update, config.subscriptions);
-    }
-
+export class Worker<Model, Msg> {
     public readonly ports: {
         send(name: string, value: Value): void;
         subscribe(name: string, listener: (value: Value) => void): void;
@@ -439,12 +431,11 @@ export class Program<Model, Msg> {
     private readonly runtime: Runtime<Msg>;
     private readonly subscribers: Array<() => void> = [];
 
-    private constructor(
-        init: () => [ Model, Cmd<Msg> ],
+    public constructor(
+        [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
         private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
         private readonly subscriptions: (model: Model) => Sub<Msg>
     ) {
-        const [ initialModel, initialCmd ] = init();
         const ports = Port.init();
 
         this.model = initialModel;
@@ -488,6 +479,26 @@ export class Program<Model, Msg> {
                 subscribed = false;
             }
         };
+    }
+}
+
+export class Program<Flags, Model, Msg> {
+    public static worker<Flags, Model, Msg>(config: {
+        init(flags: Flags): [ Model, Cmd<Msg> ];
+        update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+        subscriptions(model: Model): Sub<Msg>;
+    }): Program<Flags, Model, Msg> {
+        return new Program(config.init, config.update, config.subscriptions);
+    }
+
+    private constructor(
+        private readonly init_: (flags: Flags) => [ Model, Cmd<Msg> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
+        private readonly subscriptions: (model: Model) => Sub<Msg>
+    ) {}
+
+    public init(flags: Flags): Worker<Model, Msg> {
+        return new Worker(this.init_(flags), this.update, this.subscriptions);
     }
 }
 
