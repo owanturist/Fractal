@@ -23,7 +23,7 @@ const parseDate = (str: string): Maybe<Date> => {
 const parseDateQuery = (value: Maybe<string>): Maybe<Date> => value.chain(parseDate);
 
 const parseDateQueries = (values: Array<string>): Array<Date> => {
-    return Maybe.list(values.map(parseDate)).getOrElse([]);
+    return Maybe.combine(values.map(parseDate)).getOrElse([]);
 };
 
 const serializeDate = (date: Date): string => {

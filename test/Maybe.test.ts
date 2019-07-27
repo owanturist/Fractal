@@ -163,41 +163,41 @@ test('Maybe.props()', t => {
     );
 });
 
-test('Maybe.list()', t => {
+test('Maybe.combine()', t => {
     t.deepEqual(
-        Maybe.list([]),
+        Maybe.combine([]),
         Just([])
     );
 
     t.deepEqual(
-        Maybe.list([ Nothing ]),
+        Maybe.combine([ Nothing ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.list([ Just(1) ]),
+        Maybe.combine([ Just(1) ]),
         Just([ 1 ])
     );
 
     t.deepEqual(
-        Maybe.list([ Nothing, Nothing ]),
+        Maybe.combine([ Nothing, Nothing ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.list([ Nothing, Just(2) ]),
+        Maybe.combine([ Nothing, Just(2) ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.list([ Just(1), Nothing ]),
+        Maybe.combine([ Just(1), Nothing ]),
         Nothing
     );
 
     const array = [ Just(1), Just(2) ];
 
     t.deepEqual(
-        Maybe.list(array),
+        Maybe.combine(array),
         Just([ 1, 2 ])
     );
 

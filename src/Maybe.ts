@@ -183,7 +183,7 @@ export const props = <O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>
     return Just(acc);
 };
 
-export const list = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
+export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
     const acc: Array<T> = [];
 
     for (const item of array) {
@@ -201,7 +201,7 @@ export const Maybe = {
     fromNullable,
     fromEither,
     props,
-    list,
+    combine,
     Nothing,
     Just
 };

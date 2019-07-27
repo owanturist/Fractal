@@ -421,7 +421,7 @@ class QueryListImpl<A, B> implements QueryList<A, B> {
 
     public get number(): Parser<FF<A, (values: Array<number>) => B>, B> {
         return this.custom(values => {
-            return Maybe.list(values.map(parseInt)).getOrElse([]);
+            return Maybe.combine(values.map(parseInt)).getOrElse([]);
         });
     }
 
@@ -436,7 +436,7 @@ class QueryListImpl<A, B> implements QueryList<A, B> {
         const dict = buildDict(variants);
 
         return this.custom(values => {
-            return Maybe.list(
+            return Maybe.combine(
                 values.map(key => Maybe.fromNullable(dict[ key ]))
             ).getOrElse([]);
         });
