@@ -206,13 +206,26 @@ export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
     return Just(acc);
 };
 
+export const values = <T>(array: Array<Maybe<T>>): Array<T> => {
+    const acc: Array<T> = [];
+
+    for (const item of array) {
+        if (item.isJust()) {
+            acc.push(item.getOrElse(null as never));
+        }
+    }
+
+    return acc;
+};
+
 export const Maybe = {
+    Nothing,
+    Just,
     fromNullable,
     fromEither,
     props,
     combine,
-    Nothing,
-    Just
+    values
 };
 
 export default Maybe;

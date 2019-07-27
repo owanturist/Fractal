@@ -208,6 +208,51 @@ test('Maybe.combine()', t => {
     );
 });
 
+test('Maybe.values()', t => {
+    t.deepEqual(
+        Maybe.values([]),
+        []
+    );
+
+    t.deepEqual(
+        Maybe.values([ Nothing ]),
+        []
+    );
+
+    t.deepEqual(
+        Maybe.values([ Just(1) ]),
+        [ 1 ]
+    );
+
+    t.deepEqual(
+        Maybe.values([ Nothing, Nothing ]),
+        []
+    );
+
+    t.deepEqual(
+        Maybe.values([ Nothing, Just(2) ]),
+        [ 2 ]
+    );
+
+    t.deepEqual(
+        Maybe.values([ Just(1), Nothing ]),
+        [ 1 ]
+    );
+
+    const array = [ Just(1), Just(2) ];
+
+    t.deepEqual(
+        Maybe.values(array),
+        [ 1, 2 ]
+    );
+
+    t.deepEqual(
+        array,
+        [ Just(1), Just(2) ],
+        'checking of Array immutability'
+    );
+});
+
 test('Maybe.prototype.isNothing()', t => {
     t.true(Nothing.isNothing());
 
