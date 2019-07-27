@@ -1,4 +1,7 @@
 import {
+    Arg,
+    Return,
+    IsNever,
     WhenNever,
     Cata
 } from './Basics';
@@ -8,80 +11,37 @@ import {
     Right
 } from './Either';
 
-export type Pattern<T, R> = Cata<{
-    Nothing(): R;
-    Just(value: T): R;
-}>;
+type Wrap<T> = IsNever<T, never, Maybe<T>>;
 
-export abstract class Maybe<T> {
-    public static fromNullable<T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> {
-        return value == null ? Nothing : Just(value as T extends null | undefined ? never : T);
-    }
-
-    public static fromEither<E, T>(either: Either<E, T>): Maybe<T> {
-        return either.fold((): Maybe<T> => Nothing, Just);
-    }
-
-    public static props<T>(config: {[ K in keyof T ]: Maybe<T[ K ]>}): Maybe<T> {
-        let acc: Maybe<T> = Just({} as T);
-
-        for (const key in config) {
-            if (config.hasOwnProperty(key)) {
-                acc = acc.chain(
-                    (obj: T): Maybe<T> => config[ key ].map(
-                        (value: T[ Extract<keyof T, string> ]): T => {
-                            obj[ key ] = value;
-
-                            return obj;
-                        }
-                    )
-                );
-            }
-        }
-
-        return acc;
-    }
-
-    public static sequence<T>(array: Array<Maybe<T>>): Maybe<Array<T>> {
-        let acc: Maybe<Array<T>> = Just([]);
-
-        for (const item of array) {
-            acc = acc.chain(
-                (arr: Array<T>): Maybe<Array<T>> => item.map(
-                    (value: T): Array<T> => {
-                        arr.push(value);
-
-                        return arr;
-                    }
-                )
-            );
-        }
-
-        return acc;
-    }
-
-    public abstract isNothing(): boolean;
-    public abstract isJust(): boolean;
-    public abstract isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean;
-
-    public abstract map<R>(fn: (value: T) => R): Maybe<R>;
-    public abstract chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
-    public abstract ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
-    public abstract pipe(
-        maybe: T extends (value: infer A) => unknown ? Maybe<A> : never
-    ): Maybe<T extends (value: unknown) => infer U ? U : T>;
-
-    public abstract orElse<D>(fn: () => Maybe<WhenNever<T, D>>): Maybe<WhenNever<T, D>>;
-    public abstract getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D>;
-
-    public abstract fold<R>(nothingFn: () => R, justFn: (value: T) => R): R;
-    public abstract cata<R>(pattern: Pattern<T, R>): R;
-
-    public abstract toEither<E>(error: E): Either<E, T>;
+export namespace Maybe {
+    export type Pattern<T, R> = Cata<{
+        Nothing(): R;
+        Just(value: T): R;
+    }>;
 }
 
-namespace Internal {
-    export class Nothing extends Maybe<never> {
+export type Pattern<T, R> = Maybe.Pattern<T, R>;
+
+export interface Maybe<T> {
+    isNothing(): boolean;
+    isJust(): boolean;
+    isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean;
+
+    map<R>(fn: (value: T) => R): Maybe<R>;
+    chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+    ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
+    pipe(maybe: Wrap<Arg<T>>): Maybe<Return<T>>;
+    orElse<D>(fn: () => Maybe<WhenNever<T, D>>): Maybe<WhenNever<T, D>>;
+
+    getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D>;
+    fold<R>(onNothing: () => R, onJust: (value: T) => R): R;
+    cata<R>(pattern: Pattern<T, R>): R;
+
+    toEither<E>(error: E): Either<E, T>;
+}
+
+namespace MaybeVariants {
+    export class Nohting implements Maybe<never> {
         public isNothing(): boolean {
             return true;
         }
@@ -95,18 +55,18 @@ namespace Internal {
         }
 
         public map<R>(): Maybe<R> {
-            return this as unknown as Maybe<R>;
+            return this;
         }
 
         public chain<R>(): Maybe<R> {
-            return this as unknown as Maybe<R>;
+            return this;
         }
 
         public ap<R>(): Maybe<R> {
-            return this as unknown as Maybe<R>;
+            return this;
         }
 
-        public pipe<U>(): Maybe<U> {
+        public pipe<R>(): Maybe<R> {
             return this;
         }
 
@@ -118,8 +78,8 @@ namespace Internal {
             return defaults;
         }
 
-        public fold<R>(nothingFn: () => R): R {
-            return nothingFn();
+        public fold<R>(onNothing: () => R): R {
+            return onNothing();
         }
 
         public cata<T, R>(pattern: Pattern<T, R>): R {
@@ -135,10 +95,8 @@ namespace Internal {
         }
     }
 
-    export class Just<T> extends Maybe<T> {
-        constructor(private readonly value: T) {
-            super();
-        }
+    export class Just<T> implements Maybe<T> {
+        public constructor(private readonly value: T) {}
 
         public isNothing(): boolean {
             return false;
@@ -151,14 +109,12 @@ namespace Internal {
         public isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean {
             return another.fold(
                 (): boolean => false,
-                (value: WhenNever<T, D>): boolean => value === this.value
+                (value: WhenNever<T, D>): boolean => this.value === value
             );
         }
 
         public map<R>(fn: (value: T) => R): Maybe<R> {
-            return new Just(
-                fn(this.value)
-            );
+            return new Just(fn(this.value));
         }
 
         public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
@@ -166,11 +122,11 @@ namespace Internal {
         }
 
         public ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R> {
-            return maybeFn.pipe(this);
+            return maybeFn.pipe(this as unknown as Wrap<T>);
         }
 
-        public pipe<A, U>(maybe: T extends (value: A) => unknown ? Maybe<A> : never): Maybe<U> {
-            return maybe.map(this.value as unknown as (value: A) => U);
+        public pipe(maybe: Wrap<Arg<T>>): Maybe<Return<T>> {
+            return maybe.map(this.value as unknown as (value: Arg<T>) => Return<T>);
         }
 
         public orElse<D>(): Maybe<WhenNever<T, D>> {
@@ -181,8 +137,8 @@ namespace Internal {
             return this.value as WhenNever<T, D>;
         }
 
-        public fold<R>(_nothingFn: () => R, justFn: (value: T) => R): R {
-            return justFn(this.value);
+        public fold<R>(_onNothing: () => R, onJust: (value: T) => R): R {
+            return onJust(this.value);
         }
 
         public cata<R>(pattern: Pattern<T, R>): R {
@@ -199,6 +155,59 @@ namespace Internal {
     }
 }
 
-export const Nothing: Maybe<never> = new Internal.Nothing();
+export const Nothing: Maybe<never> = new MaybeVariants.Nohting();
 
-export const Just = <T>(value: T): Maybe<T> => new Internal.Just(value);
+export const Just = <T>(value: T): Maybe<T> => new MaybeVariants.Just(value);
+
+export const fromNullable = <T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> => {
+    return value == null ? Nothing : Just(value as T extends null | undefined ? never : T);
+};
+
+export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
+    return either.map(Just).getOrElse(Nothing);
+};
+
+export const props = <O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
+    let acc: Maybe<O> = Just({} as O);
+
+    for (const key in config) {
+        if (config.hasOwnProperty(key)) {
+            acc = acc.chain((obj: O): Maybe<O> => {
+                return config[ key ].map((value: O[ Extract<keyof O, string> ]): O => {
+                    obj[ key ] = value;
+
+                    return obj;
+                });
+            });
+        }
+    }
+
+    return acc;
+};
+
+export const list = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
+    let acc: Maybe<Array<T>> = Just([]);
+
+    for (const item of array) {
+        acc = acc.chain((arr: Array<T>): Maybe<Array<T>> => {
+            return item.map((value: T): Array<T> => {
+                arr.push(value);
+
+                return arr;
+            });
+        });
+    }
+
+    return acc;
+};
+
+export const Maybe = {
+    fromNullable,
+    fromEither,
+    props,
+    list,
+    Nothing,
+    Just
+};
+
+export default Maybe;

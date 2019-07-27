@@ -1,10 +1,6 @@
 import test from 'ava';
 
-import {
-    Maybe,
-    Nothing,
-    Just
-} from '../src/Maybe';
+import Maybe, { Nothing, Just } from '../src/Maybe';
 import {
     Left,
     Right
@@ -167,41 +163,41 @@ test('Maybe.props()', t => {
     );
 });
 
-test('Maybe.sequence()', t => {
+test('Maybe.list()', t => {
     t.deepEqual(
-        Maybe.sequence([]),
+        Maybe.list([]),
         Just([])
     );
 
     t.deepEqual(
-        Maybe.sequence([ Nothing ]),
+        Maybe.list([ Nothing ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.sequence([ Just(1) ]),
+        Maybe.list([ Just(1) ]),
         Just([ 1 ])
     );
 
     t.deepEqual(
-        Maybe.sequence([ Nothing, Nothing ]),
+        Maybe.list([ Nothing, Nothing ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.sequence([ Nothing, Just(2) ]),
+        Maybe.list([ Nothing, Just(2) ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.sequence([ Just(1), Nothing ]),
+        Maybe.list([ Just(1), Nothing ]),
         Nothing
     );
 
     const array = [ Just(1), Just(2) ];
 
     t.deepEqual(
-        Maybe.sequence(array),
+        Maybe.list(array),
         Just([ 1, 2 ])
     );
 
