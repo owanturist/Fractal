@@ -168,37 +168,33 @@ export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
 };
 
 export const props = <O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
-    let acc: Maybe<O> = Just({} as O);
+    const acc: O = {} as O;
 
     for (const key in config) {
         if (config.hasOwnProperty(key)) {
-            acc = acc.chain((obj: O): Maybe<O> => {
-                return config[ key ].map((value: O[ Extract<keyof O, string> ]): O => {
-                    obj[ key ] = value;
+            if (config[ key ].isNothing()) {
+                return Nothing;
+            }
 
-                    return obj;
-                });
-            });
+            acc[ key ] = config[ key ].getOrElse(null as never);
         }
     }
 
-    return acc;
+    return Just(acc);
 };
 
 export const list = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
-    let acc: Maybe<Array<T>> = Just([]);
+    const acc: Array<T> = [];
 
     for (const item of array) {
-        acc = acc.chain((arr: Array<T>): Maybe<Array<T>> => {
-            return item.map((value: T): Array<T> => {
-                arr.push(value);
+        if (item.isNothing()) {
+            return Nothing;
+        }
 
-                return arr;
-            });
-        });
+        acc.push(item.getOrElse(null as never));
     }
 
-    return acc;
+    return Just(acc);
 };
 
 export const Maybe = {
