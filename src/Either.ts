@@ -2,11 +2,7 @@ import {
     WhenNever,
     Cata
 } from './Basics';
-import {
-    Maybe,
-    Nothing,
-    Just
-} from './Maybe';
+import Maybe, { Nothing, Just } from './Maybe';
 
 export type Pattern<E, T, R> = Cata<{
     Left(error: E): R;

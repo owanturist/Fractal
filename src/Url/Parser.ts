@@ -1,11 +1,7 @@
 import {
     Url
 } from './index';
-import {
-    Maybe,
-    Nothing,
-    Just
-} from '../Maybe';
+import Maybe, { Nothing, Just } from '../Maybe';
 
 interface Queries {
     readonly [ key: string ]: Array<string>;

@@ -1,6 +1,4 @@
-import {
-    Maybe
-} from '../Maybe';
+import Maybe from '../Maybe';
 
 interface ValueArray extends Array<Value> {}
 
