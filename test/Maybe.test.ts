@@ -280,6 +280,25 @@ test('Maybe.prototype.chain()', t => {
     );
 });
 
+test('Maybe.prototype.filter()', t => {
+    const isEven = (a: number) => a % 2 === 0;
+
+    t.deepEqual(
+        Nothing.filter(isEven),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).filter(isEven),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(2).filter(isEven),
+        Just(2)
+    );
+});
+
 test('Maybe.prototype.ap()', t => {
     t.deepEqual(
         Nothing.ap(Nothing),

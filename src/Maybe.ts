@@ -29,6 +29,7 @@ export interface Maybe<T> {
 
     map<R>(fn: (value: T) => R): Maybe<R>;
     chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
+    filter(fn: (value: T) => boolean): Maybe<T>;
     ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
     pipe(maybe: Wrap<Arg<T>>): Maybe<Return<T>>;
     orElse<D>(fn: () => Maybe<WhenNever<T, D>>): Maybe<WhenNever<T, D>>;
@@ -59,6 +60,10 @@ namespace MaybeVariants {
         }
 
         public chain<R>(): Maybe<R> {
+            return this;
+        }
+
+        public filter<T>(): Maybe<T> {
             return this;
         }
 
@@ -119,6 +124,10 @@ namespace MaybeVariants {
 
         public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
             return fn(this.value);
+        }
+
+        public filter(fn: (value: T) => boolean): Maybe<T> {
+            return fn(this.value) ? this : Nothing;
         }
 
         public ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R> {
