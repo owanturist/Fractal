@@ -559,6 +559,46 @@ test('Maybe.prototype.cata()', t => {
     );
 });
 
+test('Maybe.prototype.touch()', t => {
+    const someFuncHandeMaybe = (maybeNumber: Maybe<number>): string => {
+        return maybeNumber.map(num => num * 2 + '_').getOrElse('_');
+    };
+
+    t.is(
+        Nothing
+            .orElse(() => Just(20))
+            .map(a => a * a)
+            .touch(someFuncHandeMaybe)
+            .replace('_', '|')
+            .trim(),
+
+        someFuncHandeMaybe(
+            Nothing
+                .orElse(() => Just(20))
+                .map(a => a * a)
+        )
+        .replace('_', '|')
+        .trim()
+    );
+
+    t.is(
+        Just(1)
+            .map(a => a - 1)
+            .chain(a => a > 0 ? Just(a) : Nothing)
+            .touch(someFuncHandeMaybe)
+            .repeat(10)
+            .trim(),
+
+        someFuncHandeMaybe(
+            Just(1)
+            .map(a => a - 1)
+            .chain(a => a > 0 ? Just(a) : Nothing)
+        )
+        .repeat(10)
+        .trim()
+    );
+});
+
 test('Maybe.prototype.toEither()', t => {
     t.deepEqual(
         Nothing.toEither('err'),

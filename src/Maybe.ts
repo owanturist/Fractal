@@ -22,6 +22,9 @@ export namespace Maybe {
 
 export type Pattern<T, R> = Maybe.Pattern<T, R>;
 
+/**
+ *
+ */
 export interface Maybe<T> {
     isNothing(): boolean;
     isJust(): boolean;
@@ -37,6 +40,7 @@ export interface Maybe<T> {
     getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D>;
     fold<R>(onNothing: () => R, onJust: (value: T) => R): R;
     cata<R>(pattern: Pattern<T, R>): R;
+    touch<R>(fn: (that: Maybe<T>) => R): R;
 
     toEither<E>(error: E): Either<E, T>;
 }
@@ -93,6 +97,10 @@ namespace MaybeVariants {
             }
 
             return (pattern._ as () => R)();
+        }
+
+        public touch<T, R>(fn: (that: Maybe<T>) => R): R {
+            return fn(this);
         }
 
         public toEither<E, T>(error: E): Either<E, T> {
@@ -156,6 +164,10 @@ namespace MaybeVariants {
             }
 
             return (pattern._ as () => R)();
+        }
+
+        public touch<R>(fn: (that: Maybe<T>) => R): R {
+            return fn(this);
         }
 
         public toEither<E>(): Either<E, T> {
