@@ -616,6 +616,11 @@ test('Maybe.prototype.touch()', t => {
     );
 
     t.deepEqual(
+        Nothing.touch(Maybe.join),
+        Nothing
+    );
+
+    t.deepEqual(
         Just(1).touch(Just).touch(Maybe.join),
         Just(1)
     );
