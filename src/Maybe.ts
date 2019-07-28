@@ -14,6 +14,9 @@ import {
 type Wrap<T> = IsNever<T, never, Maybe<T>>;
 
 export namespace Maybe {
+    /**
+     * Pattern for matching the `Maybe` variants.
+     */
     export type Pattern<T, R> = Cata<{
         Nothing(): R;
         Just(value: T): R;
@@ -23,14 +26,54 @@ export namespace Maybe {
 export type Pattern<T, R> = Maybe.Pattern<T, R>;
 
 /**
- *
+ * A data structure that models the presence or absence of a value.
+ * A `Maybe` can help you with optional arguments,
+ * error handling, and records with optional fields.
  */
 export interface Maybe<T> {
+    /**
+     * Conveniently check if a `Maybe` matches `Nothing`.
+     *
+     * @example
+     * Just(42).isNothing() == false
+     *
+     * Just([]).isNothing() == false
+     *
+     * Nothing.isNothing() == true
+     */
     isNothing(): boolean;
+
+    /**
+     * Conveniently check if a `Maybe` matches `Just<any>`.
+     *
+     * @example
+     * Just(42).isJust() == true
+     *
+     * Just([]).isJust() == true
+     *
+     * Nothing.isJust() == false
+     */
     isJust(): boolean;
+
+    /**
+     * Check if the `Maybe` equals to another `Maybe`.
+     *
+     * @param another `Maybe` to check equality.
+     */
     isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean;
 
+    /**
+     * Transform the `Maybe` value with a given function.
+     *
+     * @param fn transforming function.
+     */
     map<R>(fn: (value: T) => R): Maybe<R>;
+
+    /**
+     * Chain together many computations that may fail.
+     *
+     * @param fn chaining function.
+     */
     chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
     filter(fn: (value: T) => boolean): Maybe<T>;
     ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
