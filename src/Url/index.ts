@@ -1,11 +1,7 @@
 import {
     Cata
 } from '../Basics';
-import {
-    Maybe,
-    Nothing,
-    Just
-} from '../Maybe';
+import Maybe, { Nothing, Just } from '../Maybe';
 import {
     Parser
 } from './Parser';

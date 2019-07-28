@@ -1,10 +1,6 @@
 import test from 'ava';
 
-import {
-    Maybe,
-    Nothing,
-    Just
-} from '../src/Maybe';
+import Maybe, { Nothing, Just } from '../src/Maybe';
 import {
     Left,
     Right
@@ -36,6 +32,23 @@ test('Maybe.fromEither()', t => {
 
     t.deepEqual(
         Maybe.fromEither(Right(1)),
+        Just(1)
+    );
+});
+
+test('Maybe.join()', t => {
+    t.deepEqual(
+        Maybe.join(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.join(Just(Nothing)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.join(Just(Just(1))),
         Just(1)
     );
 });
@@ -167,42 +180,87 @@ test('Maybe.props()', t => {
     );
 });
 
-test('Maybe.sequence()', t => {
+test('Maybe.combine()', t => {
     t.deepEqual(
-        Maybe.sequence([]),
+        Maybe.combine([]),
         Just([])
     );
 
     t.deepEqual(
-        Maybe.sequence([ Nothing ]),
+        Maybe.combine([ Nothing ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.sequence([ Just(1) ]),
+        Maybe.combine([ Just(1) ]),
         Just([ 1 ])
     );
 
     t.deepEqual(
-        Maybe.sequence([ Nothing, Nothing ]),
+        Maybe.combine([ Nothing, Nothing ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.sequence([ Nothing, Just(2) ]),
+        Maybe.combine([ Nothing, Just(2) ]),
         Nothing
     );
 
     t.deepEqual(
-        Maybe.sequence([ Just(1), Nothing ]),
+        Maybe.combine([ Just(1), Nothing ]),
         Nothing
     );
 
     const array = [ Just(1), Just(2) ];
 
     t.deepEqual(
-        Maybe.sequence(array),
+        Maybe.combine(array),
         Just([ 1, 2 ])
+    );
+
+    t.deepEqual(
+        array,
+        [ Just(1), Just(2) ],
+        'checking of Array immutability'
+    );
+});
+
+test('Maybe.values()', t => {
+    t.deepEqual(
+        Maybe.values([]),
+        []
+    );
+
+    t.deepEqual(
+        Maybe.values([ Nothing ]),
+        []
+    );
+
+    t.deepEqual(
+        Maybe.values([ Just(1) ]),
+        [ 1 ]
+    );
+
+    t.deepEqual(
+        Maybe.values([ Nothing, Nothing ]),
+        []
+    );
+
+    t.deepEqual(
+        Maybe.values([ Nothing, Just(2) ]),
+        [ 2 ]
+    );
+
+    t.deepEqual(
+        Maybe.values([ Just(1), Nothing ]),
+        [ 1 ]
+    );
+
+    const array = [ Just(1), Just(2) ];
+
+    t.deepEqual(
+        Maybe.values(array),
+        [ 1, 2 ]
     );
 
     t.deepEqual(
@@ -281,6 +339,25 @@ test('Maybe.prototype.chain()', t => {
     t.deepEqual(
         Just(1).chain(a => Just('_' + a * 2)),
         Just('_2')
+    );
+});
+
+test('Maybe.prototype.filter()', t => {
+    const isEven = (a: number) => a % 2 === 0;
+
+    t.deepEqual(
+        Nothing.filter(isEven),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).filter(isEven),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(2).filter(isEven),
+        Just(2)
     );
 });
 
@@ -496,6 +573,56 @@ test('Maybe.prototype.cata()', t => {
             Just: a => '_' + a * 2
         }),
         '_2'
+    );
+});
+
+test('Maybe.prototype.touch()', t => {
+    const someFuncHandeMaybe = (maybeNumber: Maybe<number>): string => {
+        return maybeNumber.map(num => num * 2 + '_').getOrElse('_');
+    };
+
+    t.is(
+        Nothing
+            .orElse(() => Just(20))
+            .map(a => a * a)
+            .touch(someFuncHandeMaybe)
+            .replace('_', '|')
+            .trim(),
+
+        someFuncHandeMaybe(
+            Nothing
+                .orElse(() => Just(20))
+                .map(a => a * a)
+        )
+        .replace('_', '|')
+        .trim()
+    );
+
+    t.is(
+        Just(1)
+            .map(a => a - 1)
+            .chain(a => a > 0 ? Just(a) : Nothing)
+            .touch(someFuncHandeMaybe)
+            .repeat(10)
+            .trim(),
+
+        someFuncHandeMaybe(
+            Just(1)
+            .map(a => a - 1)
+            .chain(a => a > 0 ? Just(a) : Nothing)
+        )
+        .repeat(10)
+        .trim()
+    );
+
+    t.deepEqual(
+        Nothing.touch(Maybe.join),
+        Nothing
+    );
+
+    t.deepEqual(
+        Just(1).touch(Just).touch(Maybe.join),
+        Just(1)
     );
 });
 

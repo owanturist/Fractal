@@ -2,11 +2,7 @@ import {
     WhenNever,
     Cata
 } from './Basics';
-import {
-    Maybe,
-    Nothing,
-    Just
-} from './Maybe';
+import Maybe, { Nothing, Just } from './Maybe';
 import {
     Either
 } from './Either';
