@@ -226,7 +226,7 @@ export interface Maybe<T> {
     toEither<E>(error: E): Either<E, T>;
 }
 
-namespace MaybeVariants {
+namespace Variants {
     export class Nohting implements Maybe<never> {
         public isNothing(): boolean {
             return true;
@@ -360,14 +360,14 @@ namespace MaybeVariants {
 /**
  * Represents a `Maybe` containing no value.
  */
-export const Nothing: Maybe<never> = new MaybeVariants.Nohting();
+export const Nothing: Maybe<never> = new Variants.Nohting();
 
 /**
  * Constructs a `Maybe` containing the `value`.
  *
  * @param value The `Maybe` value.
  */
-export const Just = <T>(value: T): Maybe<T> => new MaybeVariants.Just(value);
+export const Just = <T>(value: T): Maybe<T> => new Variants.Just(value);
 
 /**
  * Converts nullable `value` into `Maybe`.
