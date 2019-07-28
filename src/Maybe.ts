@@ -188,6 +188,10 @@ export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
     return either.map(Just).getOrElse(Nothing);
 };
 
+export const join = <T>(maybe: Maybe<Maybe<T>>): Maybe<T> => {
+    return maybe.chain((nested: Maybe<T>): Maybe<T> => nested);
+};
+
 export const props = <O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
     const acc: O = {} as O;
 
@@ -235,6 +239,7 @@ export const Maybe = {
     Just,
     fromNullable,
     fromEither,
+    join,
     props,
     combine,
     values

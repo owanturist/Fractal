@@ -36,6 +36,23 @@ test('Maybe.fromEither()', t => {
     );
 });
 
+test('Maybe.join()', t => {
+    t.deepEqual(
+        Maybe.join(Nothing),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.join(Just(Nothing)),
+        Nothing
+    );
+
+    t.deepEqual(
+        Maybe.join(Just(Just(1))),
+        Just(1)
+    );
+});
+
 test('Maybe.props()', t => {
     t.deepEqual(
         Maybe.props({}),
@@ -596,6 +613,11 @@ test('Maybe.prototype.touch()', t => {
         )
         .repeat(10)
         .trim()
+    );
+
+    t.deepEqual(
+        Just(1).touch(Just).touch(Maybe.join),
+        Just(1)
     );
 });
 
