@@ -437,11 +437,13 @@ export const props = <O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>
 
     for (const key in config) {
         if (config.hasOwnProperty(key)) {
-            if (config[ key ].isNothing()) {
-                return Nothing;
+            const value = config[ key ];
+
+            if (value.isNothing()) {
+                return value as Maybe<never>;
             }
 
-            acc[ key ] = config[ key ].getOrElse(null as never /* don't use this hack */);
+            acc[ key ] = value.getOrElse(null as never /* don't use this hack */);
         }
     }
 
@@ -463,7 +465,7 @@ export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
 
     for (const item of array) {
         if (item.isNothing()) {
-            return Nothing;
+            return item as Maybe<never>;
         }
 
         acc.push(item.getOrElse(null as never /* don't use this hack */));
