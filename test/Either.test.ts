@@ -1,14 +1,7 @@
 import test from 'ava';
 
-import {
-    Nothing,
-    Just
-} from '../src/Maybe';
-import {
-    Either,
-    Left,
-    Right
-} from '../src/Either';
+import { Nothing, Just } from '../src/Maybe';
+import Either, { Left, Right } from '../src/Either';
 
 test('Either.fromNullable()', t => {
     const e1: Either<string, never> = Either.fromNullable('err', undefined);
@@ -167,41 +160,41 @@ test('Either.props()', t => {
     );
 });
 
-test('Either.sequence()', t => {
+test('Either.combine()', t => {
     t.deepEqual(
-        Either.sequence([]),
+        Either.combine([]),
         Right([])
     );
 
     t.deepEqual(
-        Either.sequence([ Left('1') ]),
+        Either.combine([ Left('1') ]),
         Left('1')
     );
 
     t.deepEqual(
-        Either.sequence([ Right(1) ]),
+        Either.combine([ Right(1) ]),
         Right([ 1 ])
     );
 
     t.deepEqual(
-        Either.sequence([ Left('1'), Left('2') ]),
+        Either.combine([ Left('1'), Left('2') ]),
         Left('1')
     );
 
     t.deepEqual(
-        Either.sequence([ Left('1'), Right(2) ]),
+        Either.combine([ Left('1'), Right(2) ]),
         Left('1')
     );
 
     t.deepEqual(
-        Either.sequence([ Right(1), Left('2') ]),
+        Either.combine([ Right(1), Left('2') ]),
         Left('2')
     );
 
     const array = [ Right(1), Right(2) ];
 
     t.deepEqual(
-        Either.sequence(array),
+        Either.combine(array),
         Right([ 1, 2 ])
     );
 
@@ -383,14 +376,14 @@ test('Either.prototype.pipe()', t => {
     );
 });
 
-test('Either.prototype.bimap()', t => {
+test('Either.prototype.mapBoth()', t => {
     t.deepEqual(
-        Left('err').bimap(err => err === 'err', a => '_' + a * 2),
+        Left('err').mapBoth(err => err === 'err', a => '_' + a * 2),
         Left(true)
     );
 
     t.deepEqual(
-        Right(1).bimap(err => err + '_', a => '_' + a * 2),
+        Right(1).mapBoth(err => err + '_', a => '_' + a * 2),
         Right('_2')
     );
 });

@@ -314,7 +314,7 @@ class List<T> extends Streamable<Array<T>> {
         for (let index = 0; index < input.length; index++) {
             result = result.chain(
                 (acc: Array<T>): Either<Error, Array<T>> => {
-                    return this.decoder.decode(input[ index ]).bimap(
+                    return this.decoder.decode(input[ index ]).mapBoth(
                         (error: Error): Error => Error.Index(index, error),
                         (value: T): Array<T> => {
                             acc.push(value);
@@ -346,7 +346,7 @@ class KeyValue<T> extends Streamable<Array<[ string, T ]>> {
             if (input.hasOwnProperty(key)) {
                 result = result.chain(
                     (acc: Array<[ string, T ]>): Either<Error, Array<[ string, T ]>> => {
-                        return this.decoder.decode(input[ key ]).bimap(
+                        return this.decoder.decode(input[ key ]).mapBoth(
                             (error: Error): Error => Error.Field(key, error),
                             (value: T): Array<[ string, T ]> => {
                                 acc.push([ key, value ]);
