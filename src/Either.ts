@@ -44,7 +44,10 @@ export abstract class Either<E, T> {
         return either.fold(identity, identity);
     }
 
-    public static props<E, O extends object>(config: {[ K in keyof O ]: Either<E, O[ K ]>}): Either<E, O> {
+    /**
+     * @todo fix the `E` calculation. Now it's always `unknown`.
+     */
+    public static props<E, O extends {}>(config: {[ K in keyof O ]: Either<E, O[ K ]>}): Either<E, O> {
         const acc: O = {} as O;
 
         for (const key in config) {
@@ -62,18 +65,21 @@ export abstract class Either<E, T> {
         return Right(acc);
     }
 
-    public static combine<E, T>(array: Array<Either<E, T>>): Either<E, Array<T>> {
+    public static combine<E, T>(array: Array<Either<E, T>>): Either<
+        unknown extends E ? never : E,
+        Array<unknown extends T ? never : T>
+    > {
         const acc: Array<T> = [];
 
         for (const item of array) {
             if (item.isLeft()) {
-                return item as Either<E, never>;
+                return item as Either<unknown extends E ? never : E, never>;
             }
 
             acc.push(item.getOrElse(null as never /* don't use this hack */));
         }
 
-        return Right(acc);
+        return Right(acc as Array<unknown extends T ? never : T>);
     }
 
     public isLeft(): boolean {
@@ -90,7 +96,12 @@ export abstract class Either<E, T> {
 
     public abstract mapLeft<S>(fn: (error: E) => S): Either<S, T>;
 
-    public abstract chain<E_, R>(fn: (value: T) => Either<WhenNever<E, E_>, R>): Either<WhenNever<E, E_>, R>;
+    /**
+     * @todo fix _2 case
+     */
+    public abstract chain<E_, R>(
+        fn: (value: T) => Either<WhenNever<E, E_>, R>
+    ): Either<WhenNever<E, E_>, R>;
 
     public abstract ap<E_, R = never>(
         eitherFn: Either<WhenNever<E, E_>, (value: T) => R>
