@@ -96,9 +96,6 @@ export abstract class Either<E, T> {
 
     public abstract mapLeft<S>(fn: (error: E) => S): Either<S, T>;
 
-    /**
-     * @todo fix _2 case
-     */
     public abstract chain<E_, R>(
         fn: (value: T) => Either<WhenNever<E, E_>, R>
     ): Either<WhenNever<E, E_>, R>;

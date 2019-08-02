@@ -65,7 +65,7 @@ test('Either.props()', t => {
         bar: never;
     }> */ = Either.props({
         foo: Left('err1'),
-        bar: Left(1)
+        bar: Left('err2')
     });
     t.deepEqual(_4, Left('err1'));
 
@@ -234,7 +234,7 @@ test('Either.prototype.chain()', t => {
     const _1 /* Either<string, never> */ = Left('err1').chain(() => Left('err2'));
     t.deepEqual(_1, Left('err1'));
 
-    const _2 /* Either<string, number> */ = Right(1).chain(() => Left('err'));
+    const _2 /* Either<string, never> */ = Right(1).chain(() => Left('err'));
     t.deepEqual(_2, Left('err'));
 
     const _3 /* Either<string, boolean> */ = Left('err').chain(a => Right(a > 0));
