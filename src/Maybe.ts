@@ -64,7 +64,7 @@ export interface Maybe<T> {
      * Just(42).isEqual(Just(13)) // false
      * Just(42).isEqual(Just(42)) // true
      */
-    isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean;
+    isEqual<T_>(another: Maybe<WhenNever<T, T_>>): boolean;
 
     /**
      * Transform the `Maybe` value with a given function.
@@ -144,7 +144,7 @@ export interface Maybe<T> {
      * Just(13).orElse(() => Nothing)  // Just(13)
      * Just(13).orElse(() => Just(42)) // Just(13)
      */
-    orElse<D>(fn: () => Maybe<WhenNever<T, D>>): Maybe<WhenNever<T, D>>;
+    orElse<T_>(fn: () => Maybe<WhenNever<T, T_>>): Maybe<WhenNever<T, T_>>;
 
     /**
      * Provide a `default` value, turning an optional value into a normal value.
@@ -155,7 +155,7 @@ export interface Maybe<T> {
      * Nothing.getOrElse(42)  // 42
      * Just(13).getOrElse(42) // 13
      */
-    getOrElse<D>(defaults: WhenNever<T, D>): WhenNever<T, D>;
+    getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_>;
 
     /**
      * Fold the current `Maybe` according variant.
@@ -226,7 +226,7 @@ export interface Maybe<T> {
     toEither<E>(error: E): Either<E, T>;
 }
 
-namespace MaybeVariants {
+namespace Variants {
     export class Nohting implements Maybe<never> {
         public isNothing(): boolean {
             return true;
@@ -300,10 +300,10 @@ namespace MaybeVariants {
             return true;
         }
 
-        public isEqual<D>(another: Maybe<WhenNever<T, D>>): boolean {
+        public isEqual<T_>(another: Maybe<WhenNever<T, T_>>): boolean {
             return another.fold(
                 (): boolean => false,
-                (value: WhenNever<T, D>): boolean => this.value === value
+                (value: WhenNever<T, T_>): boolean => this.value === value
             );
         }
 
@@ -327,12 +327,12 @@ namespace MaybeVariants {
             return maybe.map(this.value as unknown as (value: Arg<T>) => Return<T>);
         }
 
-        public orElse<D>(): Maybe<WhenNever<T, D>> {
-            return this as unknown as Maybe<WhenNever<T, D>>;
+        public orElse<T_>(): Maybe<WhenNever<T, T_>> {
+            return this as unknown as Maybe<WhenNever<T, T_>>;
         }
 
-        public getOrElse<D>(): WhenNever<T, D> {
-            return this.value as WhenNever<T, D>;
+        public getOrElse<T_>(): WhenNever<T, T_> {
+            return this.value as WhenNever<T, T_>;
         }
 
         public fold<R>(_onNothing: () => R, onJust: (value: T) => R): R {
@@ -360,14 +360,14 @@ namespace MaybeVariants {
 /**
  * Represents a `Maybe` containing no value.
  */
-export const Nothing: Maybe<never> = new MaybeVariants.Nohting();
+export const Nothing: Maybe<never> = new Variants.Nohting();
 
 /**
  * Constructs a `Maybe` containing the `value`.
  *
  * @param value The `Maybe` value.
  */
-export const Just = <T>(value: T): Maybe<T> => new MaybeVariants.Just(value);
+export const Just = <T>(value: T): Maybe<T> => new Variants.Just(value);
 
 /**
  * Converts nullable `value` into `Maybe`.
@@ -437,11 +437,13 @@ export const props = <O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>
 
     for (const key in config) {
         if (config.hasOwnProperty(key)) {
-            if (config[ key ].isNothing()) {
-                return Nothing;
+            const value = config[ key ];
+
+            if (value.isNothing()) {
+                return value as Maybe<never>;
             }
 
-            acc[ key ] = config[ key ].getOrElse(null as never /* don't use this hack */);
+            acc[ key ] = value.getOrElse(null as never /* don't use this hack */);
         }
     }
 
@@ -463,7 +465,7 @@ export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<T>> => {
 
     for (const item of array) {
         if (item.isNothing()) {
-            return Nothing;
+            return item as Maybe<never>;
         }
 
         acc.push(item.getOrElse(null as never /* don't use this hack */));

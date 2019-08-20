@@ -18,6 +18,8 @@ export type Cata<O extends {[ K in keyof O ]: (...args: Array<unknown>) => unkno
     : never
     ;
 
+export const identity = <T>(value: T): T => value;
+
 export const inst = <T>(Constructor: new () => T) => new Constructor();
 
 export const cons = <A extends Array<unknown>, T>(
