@@ -99,7 +99,7 @@ export abstract class Maybe<T> {
      *     title: Just('name')
      * }) // Just({ id: 0, title: 'name' })
      */
-    public static props<O extends object>(config: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> {
+    public static props<O extends {}>(config: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> {
         const acc: O = {} as O;
 
         for (const key in config) {
@@ -127,7 +127,7 @@ export abstract class Maybe<T> {
      * combine([ Nothing, Just(42) ]) // Nothing
      * combine([ Just(1), Just(2) ])  // Just([ 1, 2 ])
      */
-    public static combine<T>(array: Array<Maybe<T>>): Maybe<Array<T>> {
+    public static combine<T>(array: Array<Maybe<T>>): Maybe<Array<unknown extends T ? never : T>> {
         const acc: Array<T> = [];
 
         for (const item of array) {
@@ -138,7 +138,7 @@ export abstract class Maybe<T> {
             acc.push(item.getOrElse(null as never /* don't use this hack */));
         }
 
-        return Just(acc);
+        return Just((acc as Array<unknown extends T ? never : T>));
     }
 
     /**
@@ -150,7 +150,7 @@ export abstract class Maybe<T> {
      * values([ Nothing, Just(42), Just(0) ]) // [ 42, 0 ]
      * values([ Just(1), Just(2), Nothing ])  // [ 1, 2 ]
      */
-    public static values<T>(array: Array<Maybe<T>>): Array<T> {
+    public static values<T>(array: Array<Maybe<T>>): Array<unknown extends T ? never : T> {
         const acc: Array<T> = [];
 
         for (const item of array) {
@@ -159,7 +159,7 @@ export abstract class Maybe<T> {
             }
         }
 
-        return acc;
+        return acc as Array<unknown extends T ? never : T>;
     }
 
     /**
@@ -232,7 +232,7 @@ export abstract class Maybe<T> {
      * Just(42).filter((a: number) => a > 0)  // Just(42)
      * Just(-42).filter((a: number) => a > 0) // Nothing
      */
-    public abstract filter(fn: (value: T) => boolean): Maybe<T>;
+    public abstract filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): Maybe<WhenNever<T, T_>>;
 
     /**
      * Apply a `maybeFn` function to the `Maybe` value.
@@ -245,7 +245,7 @@ export abstract class Maybe<T> {
      * Nothing.ap(Just((a: number) => a * 2)) // Nothing
      * Just(3).ap(Just((a: number) => a * 2)) // Just(6)
      */
-    public abstract ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
+    public abstract ap<R = never>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
 
     /**
      * Like the boolean `||` this will return the first value that is `Just`.
@@ -422,8 +422,8 @@ namespace Variants {
             return fn(this.value);
         }
 
-        public filter(fn: (value: T) => boolean): Maybe<T> {
-            return fn(this.value) ? this : Maybe.Nothing;
+        public filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): Maybe<WhenNever<T, T_>> {
+            return (fn(this.value as WhenNever<T, T_>) ? this : Maybe.Nothing) as Maybe<WhenNever<T, T_>>;
         }
 
         public ap<R>(maybeFn: Maybe<(value: T) => R>): Maybe<R> {

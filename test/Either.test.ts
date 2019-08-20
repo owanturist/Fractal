@@ -338,17 +338,51 @@ test('Either.prototype.fold()', t => {
 });
 
 test('Either.prototype.cata()', t => {
-    const _1 /* string */ = Left('err').cata({
-        Left: err => err + '_',
-        Right: (a: number) => '_' + a * 2
+    const _1 /* number */ = Left('err').cata({
+        _: () => -1
     });
-    t.is(_1, 'err_');
+    t.is(_1, -1);
 
-    const _2 /* string */ = Right(2).cata({
-        Left: (err: string) => err + '_',
-        Right: a => '_' + a * 2
+    const _2 /* number */ = Right(2).cata({
+        _: () => -1
     });
-    t.is(_2, '_4');
+    t.is(_2, -1);
+
+    const _3 /* number */ = Left('err').cata({
+        _: () => -1,
+        Left: e => e.length
+    });
+    t.is(_3, 3);
+
+    const _4 /* number */ = Right(2).cata({
+        _: () => -1,
+        Left: (e: string) => e.length
+    });
+    t.is(_4, -1);
+
+    const _5 /* number */ = Left('err').cata({
+        _: () => -1,
+        Right: (a: number) => a * 10
+    });
+    t.is(_5, -1);
+
+    const _6 /* number */ = Right(2).cata({
+        _: () => -1,
+        Right: a => a * 10
+    });
+    t.is(_6, 20);
+
+    const _7 /* number */ = Left('err').cata({
+        Left: e => e.length,
+        Right: (a: number) => a * 10
+    });
+    t.is(_7, 3);
+
+    const _8 /* number */ = Right(2).cata({
+        Left: (e: string) => e.length,
+        Right: a => a * 10
+    });
+    t.is(_8, 20);
 });
 
 test('Either.prototype.pipe()', t => {
