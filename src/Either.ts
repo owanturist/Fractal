@@ -85,7 +85,7 @@ export abstract class Either<E, T> {
      * merge(Left('error'))                                    // 'error'
      * merge(Right('value'))                                   // 'value'
      * merge(Left('error').orElse(() => Right('value')))       // 'value'
-     * Left('error').chain(() => Right('value')).touch(merge)  // 'error'
+     * Left('error').chain(() => Right('value')).pipe(merge)   // 'error'
      */
     public static merge<T>(either: Either<T, T>): T {
         return either.fold(identity, identity);
@@ -362,7 +362,7 @@ export abstract class Either<E, T> {
      *
      * Right(42)
      *     .chain((a: number) => a > 0 ? Right(42 / 2) : Left('The number is negative'))
-     *     .touch(helperFunction)
+     *     .pipe(helperFunction)
      *     .toFixed(2)
      *
      * // equals to
@@ -371,7 +371,7 @@ export abstract class Either<E, T> {
      *     Right(42).chain((a: number) => a > 0 ? Right(42 / 2) : Left('The number is negative'))
      * ).toFixed(2)
      */
-    public touch<R>(fn: (that: Either<E, T>) => R): R {
+    public pipe<R>(fn: (that: Either<E, T>) => R): R {
         return fn(this);
     }
 

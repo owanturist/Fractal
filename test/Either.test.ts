@@ -194,7 +194,7 @@ test('Either.merge()', t => {
     const _3 /* string */ = Either.merge(Left('err').orElse(() => Right('ok')));
     t.deepEqual(_3, 'ok');
 
-    const _4 /* string */ = Left('err').orElse(() => Right('ok')).touch(Either.merge);
+    const _4 /* string */ = Left('err').orElse(() => Right('ok')).pipe(Either.merge);
     t.deepEqual(_4, 'ok');
 });
 
@@ -349,6 +349,61 @@ test('Either.prototype.cata()', t => {
         Right: a => '_' + a * 2
     });
     t.is(_2, '_4');
+});
+
+test('Either.prototype.pipe()', t => {
+    const someFuncHandeEither = (eitherNumber: Either<string, number>): string => {
+        return eitherNumber.map(num => num * 2 + '_').getOrElse('_');
+    };
+
+    t.is(
+        Left('err')
+            .orElse(() => Right(20))
+            .map(a => a * a)
+            .pipe(someFuncHandeEither)
+            .replace('_', '|')
+            .trim(),
+
+        someFuncHandeEither(
+            Left('err')
+                .orElse(() => Right(20))
+                .map(a => a * a)
+        )
+        .replace('_', '|')
+        .trim()
+    );
+
+    t.is(
+        Right(1)
+            .map(a => a - 1)
+            .chain(a => a > 0 ? Right(a) : Left('err'))
+            .pipe(someFuncHandeEither)
+            .repeat(10)
+            .trim(),
+
+        someFuncHandeEither(
+            Right(1)
+            .map(a => a - 1)
+            .chain(a => a > 0 ? Right(a) : Left('err'))
+        )
+        .repeat(10)
+        .trim()
+    );
+
+    t.deepEqual(
+        Left('err').pipe(Either.merge),
+        'err'
+    );
+
+    t.deepEqual(
+        Right('ok').pipe(Either.merge),
+        'ok'
+    );
+
+    t.deepEqual(
+        Left('err').orElse(() => Right('ok')).pipe(Either.merge),
+        'ok'
+    );
 });
 
 test('Either.prototype.toMaybe()', t => {
