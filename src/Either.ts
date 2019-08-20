@@ -525,7 +525,7 @@ export const merge = Either.merge;
 export const props = Either.props;
 
 /**
- * @alias `Either.combinet`
+ * @alias `Either.combine`
  */
 export const combine = Either.combine;
 
