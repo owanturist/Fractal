@@ -184,6 +184,20 @@ test('Either.combine()', t => {
     t.deepEqual(_7, Right([ 1, 2 ]));
 });
 
+test('Either.merge()', t => {
+    const _1 /* string */ = Either.merge(Left('err'));
+    t.deepEqual(_1, 'err');
+
+    const _2 /* number */ = Either.merge(Right(1));
+    t.deepEqual(_2, 1);
+
+    const _3 /* string */ = Either.merge(Left('err').orElse(() => Right('ok')));
+    t.deepEqual(_3, 'ok');
+
+    const _4 /* string */ = Left('err').orElse(() => Right('ok')).touch(Either.merge);
+    t.deepEqual(_4, 'ok');
+});
+
 test('Either.prototype.isLeft()', t => {
     t.true(Left('err').isLeft());
 
