@@ -383,83 +383,6 @@ test('Maybe.prototype.ap()', t => {
     );
 });
 
-test('Maybe.prototype.pipe()', t => {
-    const fnNothing: Maybe<(a: number) => string> = Nothing;
-    const fnJust = Just((a: number) => '_' + a * 2);
-
-    t.deepEqual(
-        fnNothing.pipe(Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        fnNothing.pipe(Just(2)),
-        Nothing
-    );
-
-    t.deepEqual(
-        fnJust.pipe(Nothing),
-        Nothing
-    );
-
-    t.deepEqual(
-        fnJust.pipe(Just(2)),
-        Just('_4')
-    );
-
-    const trippleFnNothing: Maybe<(a: number) => (b: string) => (c: boolean) => string> = Nothing;
-    const trippleFnJust = Just((a: number) => (b: string) => (c: boolean) => c ? b : '_' + a * 2);
-
-    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Nothing)   .pipe(Nothing),    Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Nothing)   .pipe(Just(true)), Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Just('hi')).pipe(Nothing),    Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Nothing).pipe(Just('hi')).pipe(Just(true)), Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Nothing)   .pipe(Nothing),    Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Nothing)   .pipe(Just(true)), Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Just('hi')).pipe(Nothing),    Nothing);
-    t.deepEqual(trippleFnNothing.pipe(Just(2)).pipe(Just('hi')).pipe(Just(true)), Nothing);
-
-    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Nothing)   .pipe(Nothing),     Nothing);
-    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Nothing)   .pipe(Just(true)),  Nothing);
-    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Just('hi')).pipe(Nothing),     Nothing);
-    t.deepEqual(trippleFnJust.pipe(Nothing).pipe(Just('hi')).pipe(Just(true)),  Nothing);
-    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Nothing)   .pipe(Nothing),     Nothing);
-    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Nothing)   .pipe(Just(true)),  Nothing);
-    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Nothing),     Nothing);
-    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Just(true)),  Just('hi'));
-    t.deepEqual(trippleFnJust.pipe(Just(2)).pipe(Just('hi')).pipe(Just(false)), Just('_4'));
-
-    t.deepEqual(
-        Maybe.fromNullable((a: number) => '_' + a * 2).pipe(Just(2)),
-        Just('_4'),
-        'Maybe.fromNullable is piping'
-    );
-
-    t.deepEqual(
-        Maybe.fromEither(Right((a: number) => '_' + a * 2)).pipe(Just(2)),
-        Just('_4'),
-        'Maybe.fromEither is piping'
-    );
-
-    t.deepEqual(
-        Just(2).map(a => (b: number) => '_' + a * b).pipe(Just(3)),
-        Just('_6'),
-        'Maybe.prototype.map is piping'
-    );
-
-    t.deepEqual(
-        Just(2).chain(a => Just((b: number) => '_' + a * b)).pipe(Just(3)),
-        Just('_6'),
-        'Maybe.prototype.chain is piping'
-    );
-
-    t.deepEqual(
-        Just(2).ap(Just((a: number) => (b: number) => '_' + a * b)).pipe(Just(3)),
-        Just('_6'),
-        'Maybe.prototype.ap is piping'
-    );
-});
-
 test('Maybe.prototype.orElse()', t => {
     t.deepEqual(
         Nothing.orElse(() => Nothing),
@@ -576,7 +499,7 @@ test('Maybe.prototype.cata()', t => {
     );
 });
 
-test('Maybe.prototype.touch()', t => {
+test('Maybe.prototype.pipe()', t => {
     const someFuncHandeMaybe = (maybeNumber: Maybe<number>): string => {
         return maybeNumber.map(num => num * 2 + '_').getOrElse('_');
     };
@@ -585,7 +508,7 @@ test('Maybe.prototype.touch()', t => {
         Nothing
             .orElse(() => Just(20))
             .map(a => a * a)
-            .touch(someFuncHandeMaybe)
+            .pipe(someFuncHandeMaybe)
             .replace('_', '|')
             .trim(),
 
@@ -602,7 +525,7 @@ test('Maybe.prototype.touch()', t => {
         Just(1)
             .map(a => a - 1)
             .chain(a => a > 0 ? Just(a) : Nothing)
-            .touch(someFuncHandeMaybe)
+            .pipe(someFuncHandeMaybe)
             .repeat(10)
             .trim(),
 
@@ -616,12 +539,12 @@ test('Maybe.prototype.touch()', t => {
     );
 
     t.deepEqual(
-        Nothing.touch(Maybe.join),
+        Nothing.pipe(Maybe.join),
         Nothing
     );
 
     t.deepEqual(
-        Just(1).touch(Just).touch(Maybe.join),
+        Just(1).pipe(Just).pipe(Maybe.join),
         Just(1)
     );
 });
