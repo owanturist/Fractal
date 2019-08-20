@@ -1,14 +1,9 @@
 import {
-    Arg,
-    Return,
-    IsNever,
     WhenNever,
     Cata,
     identity
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
-
-type Wrap<E, T> = IsNever<T, never, Either<E, T>>;
 
 export namespace Either {
     /**
@@ -230,9 +225,7 @@ export abstract class Either<E, T> {
      * Just(1).chain((a: number) => a > 0 ? Right(a < 2) : Left('negate'))        // Right(true)
      * Just(-3).chain((a: number) => a > 0 ? Right(a < 2) : Left('negate'))       // Left('negate')
      */
-    public abstract chain<E_, R>(
-        fn: (value: T) => Either<WhenNever<E, E_>, R>
-    ): Either<WhenNever<E, E_>, R>;
+    public abstract chain<E_, R>(fn: (value: T) => Either<WhenNever<E, E_>, R>): Either<WhenNever<E, E_>, R>;
 
     /**
      * Apply a `eitherFn` function to the `Either` value.
@@ -248,24 +241,6 @@ export abstract class Either<E, T> {
     public abstract ap<E_, R = never>(
         eitherFn: Either<WhenNever<E, E_>, (value: T) => R>
     ): Either<WhenNever<E, E_>, WhenNever<R, T>>;
-
-    /**
-     * Apply a `either` value into the inner function.
-     *
-     * @param either `Either` value to apply.
-     *
-     * @example
-     * Right((a: number) => (b: boolean) => b ? 0 a * s)
-     *     .pipe(Right(42))
-     *     .pipe(Left('error'))
-     *     // Left('error')
-     *
-     * Right((a: number) => (b: boolean) => b ? 0 : a * 2)
-     *     .pipe(Right(3))
-     *     .pipe(Right(true))
-     *     // Right(6)
-     */
-    public abstract pipe<E_>(either: Wrap<WhenNever<E, E_>, Arg<T>>): Either<WhenNever<E, E_>, Return<T>>;
 
     /**
      * Like the boolean `||` this will return the first value that is `Right`.
@@ -445,10 +420,6 @@ namespace Variants {
             return this as unknown as Either<WhenNever<E, E_>, never>;
         }
 
-        public pipe<E_>(): Either<WhenNever<E, E_>, never> {
-            return this as unknown as Either<WhenNever<E, E_>, never>;
-        }
-
         public orElse<E_>(
             fn: (error: WhenNever<E, E_>) => Either<WhenNever<E, E_>, never>
         ): Either<WhenNever<E, E_>, never> {
@@ -496,16 +467,8 @@ namespace Variants {
             return fn(this.value);
         }
 
-        public pipe(either: Wrap<never, Arg<T>>): Either<never, Return<T>> {
-            return either.map(this.value as unknown as (value: Arg<T>) => Return<T>);
-        }
-
-        public ap<R>(
-            eitherFn: Either<never, (value: T) => R>
-        ): Either<never, WhenNever<R, T>> {
-            return eitherFn.pipe(
-                this as unknown as IsNever<T, never, Either<never, T>>
-            ) as Either<never, WhenNever<R, T>>;
+        public ap<R>(eitherFn: Either<never, (value: T) => R>): Either<never, WhenNever<R, T>> {
+            return eitherFn.map((fn: (value: T) => R) => fn(this.value)) as Either<never, WhenNever<R, T>>;
         }
 
         public orElse<T_>(): Either<never, WhenNever<T, T_>> {

@@ -258,60 +258,6 @@ test('Either.prototype.ap()', t => {
     t.deepEqual(_4, Right(true));
 });
 
-test('Either.prototype.pipe()', t => {
-    const fnLeft: Either<string, (a: number) => string> = Left('_err_');
-    const fnRight = Right((a: number) => a > 0);
-
-    const _1 /* Either<string, string> */ = fnLeft.pipe(Left('err1'));
-    t.deepEqual(_1, Left('_err_'));
-
-    const _2 /* Either<string, string> */ = fnLeft.pipe(Right(2));
-    t.deepEqual(_2, Left('_err_'));
-
-    const _3 /* Either<string, boolean> */ = fnRight.pipe(Left('err1'));
-    t.deepEqual(_3, Left('err1'));
-
-    const _4 /* Either<never, boolean> */ = fnRight.pipe(Right(2));
-    t.deepEqual(_4, Right(true));
-
-    const trippleFnLeft: Either<string, (a: number) => (b: string) => (c: boolean) => string> = Left('_err_');
-    const trippleFnRight = Right((a: number) => (b: string) => (c: boolean) => c ? b : '_' + a * 2);
-
-    t.deepEqual(trippleFnLeft.pipe(Left('err1')).pipe(Left('err2')).pipe(Left('err3')), Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Left('err1')).pipe(Left('err2')).pipe(Right(true)),  Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Left('err1')).pipe(Right('hi')) .pipe(Left('err3')), Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Left('err1')).pipe(Right('hi')) .pipe(Right(true)),  Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Right(2))    .pipe(Left('err2')).pipe(Left('err3')), Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Right(2))    .pipe(Left('err2')).pipe(Right(true)),  Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Right(2))    .pipe(Right('hi')) .pipe(Left('err3')), Left('_err_'));
-    t.deepEqual(trippleFnLeft.pipe(Right(2))    .pipe(Right('hi')) .pipe(Right(true)),  Left('_err_'));
-
-    t.deepEqual(trippleFnRight.pipe(Left('err1')).pipe(Left('err2')).pipe(Left('err3')), Left('err1'));
-    t.deepEqual(trippleFnRight.pipe(Left('err1')).pipe(Left('err2')).pipe(Right(true)),  Left('err1'));
-    t.deepEqual(trippleFnRight.pipe(Left('err1')).pipe(Right('hi')) .pipe(Left('err3')), Left('err1'));
-    t.deepEqual(trippleFnRight.pipe(Left('err1')).pipe(Right('hi')) .pipe(Right(true)),  Left('err1'));
-    t.deepEqual(trippleFnRight.pipe(Right(2))    .pipe(Left('err2')).pipe(Left('err3')), Left('err2'));
-    t.deepEqual(trippleFnRight.pipe(Right(2))    .pipe(Left('err2')).pipe(Right(true)),  Left('err2'));
-    t.deepEqual(trippleFnRight.pipe(Right(2))    .pipe(Right('hi')) .pipe(Left('err3')), Left('err3'));
-    t.deepEqual(trippleFnRight.pipe(Right(2))    .pipe(Right('hi')) .pipe(Right(true)),  Right('hi'));
-    t.deepEqual(trippleFnRight.pipe(Right(2))    .pipe(Right('hi')) .pipe(Right(false)), Right('_4'));
-
-    const _5 /* Either<string, boolean> */ = Either.fromNullable('err', (a: number) => a > 0).pipe(Right(2));
-    t.deepEqual(_5, Right(true), 'Either.fromNullable is piping');
-
-    const _6 /* Either<string, boolean> */ = Either.fromMaybe('err', Maybe.Just((a: number) => a > 0)).pipe(Right(-2));
-    t.deepEqual(_6, Right(false), 'Either.fromMaybe is piping');
-
-    const _7 /* Either<never, boolean> */  = Right(2).map(a => (b: number) => a - b > 0).pipe(Right(3));
-    t.deepEqual(_7, Right(false), 'Either.prototype.map is piping');
-
-    const _8 /* Either<never, boolean> */ = Right(2).chain(a => Right((b: number) => a > b)).pipe(Right(3));
-    t.deepEqual(_8, Right(false), 'Either.prototype.chain is piping');
-
-    const _9 /* Either<never, boolean> */ = Right(4).ap(Right((a: number) => (b: number) => a > b)).pipe(Right(3));
-    t.deepEqual(_9, Right(true), 'Either.prototype.ap is piping');
-});
-
 test('Either.prototype.mapBoth()', t => {
     const _1 /* Either<boolean, boolean> */ = Left('err').mapBoth(err => err === 'err', (a: number) => a > 0);
     t.deepEqual(_1, Left(true));
