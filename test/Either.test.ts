@@ -291,6 +291,14 @@ test('Either.prototype.swap()', t => {
     t.deepEqual(_3, Left(1));
 });
 
+test('Either.prototype.extract()', t => {
+    const _1 /* number */ = Left('err').extract(str => str.length);
+    t.deepEqual(_1, 3);
+
+    const _2 /* number */ = Right(4).extract((str: string) => str.length);
+    t.deepEqual(_2, 4);
+});
+
 test('Either.prototype.mapLeft()', t => {
     const _1 /* Either<boolean, never> */ = Left('err').mapLeft(err => err === 'err');
     t.deepEqual(_1, Left(true));

@@ -305,8 +305,8 @@ export abstract class Either<E, T> {
      * Left('error').extract((e: string) => e.length) // 5
      * Right(0).extract((e: string) => e.length)      // 0
      */
-    public extract(fn: (error: E) => T): T {
-        return this.fold(fn, identity);
+    public extract<T_>(fn: (error: E) => WhenNever<T, T_>): WhenNever<T, T_> {
+        return this.fold(fn, identity as (value: T) => WhenNever<T, T_>);
     }
 
     /**
