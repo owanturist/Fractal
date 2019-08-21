@@ -2,10 +2,7 @@ import {
     Cata
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
-import {
-    Either,
-    Right
-} from './Either';
+import Either, { Right } from './Either';
 import {
     Task
 } from './Core';
