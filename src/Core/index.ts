@@ -2,14 +2,8 @@ import {
     IsNever,
     WhenNever
 } from '../Basics';
-import {
-    Either,
-    Left,
-    Right
-} from '../Either';
-import {
-    Value
-} from '../Json/Encode';
+import Either, { Left, Right } from '../Either';
+import { Value } from '../Json/Encode';
 import * as Scheduler from './Scheduler';
 
 export abstract class Manager<AppMsg, SelfMsg, State> {

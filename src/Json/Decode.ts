@@ -2,11 +2,7 @@ import {
     Cata
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
-import {
-    Either,
-    Left,
-    Right
-} from '../Either';
+import Either, { Left, Right } from '../Either';
 import * as Encode from './Encode';
 
 const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);

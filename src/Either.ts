@@ -420,9 +420,9 @@ namespace Variants {
             return this as unknown as Either<WhenNever<E, E_>, never>;
         }
 
-        public orElse<E_>(
-            fn: (error: WhenNever<E, E_>) => Either<WhenNever<E, E_>, never>
-        ): Either<WhenNever<E, E_>, never> {
+        public orElse<E_, T>(
+            fn: (error: WhenNever<E, E_>) => Either<WhenNever<E, E_>, T>
+        ): Either<WhenNever<E, E_>, T> {
             return fn(this.error as WhenNever<E, E_>);
         }
 

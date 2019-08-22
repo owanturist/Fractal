@@ -3,9 +3,7 @@ import {
     Cata
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
-import {
-    Either
-} from './Either';
+import Either from './Either';
 
 export type Pattern<E, T, R> = Cata<{
     NotAsked(): R;
