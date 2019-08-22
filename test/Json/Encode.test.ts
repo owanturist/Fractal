@@ -76,7 +76,7 @@ test('Json.Encode.nullable()', t => {
     );
 });
 
-test('Json.Encode.list()', t => {
+test('Json.Encode.list(encoders)', t => {
     t.is(
         Encode.list([
             Encode.number(1),
@@ -145,14 +145,14 @@ test('Json.Encode.list()', t => {
 });
 
 
-test('Json.Encode.listOf()', t => {
+test('Json.Encode.list(encoder, values)', t => {
     t.is(
-        Encode.listOf(Encode.number, [ 1, 2, 1 ]).encode(0),
+        Encode.list(Encode.number, [ 1, 2, 1 ]).encode(0),
         '[1,2,1]'
     );
 
     t.deepEqual(
-        Encode.listOf(Encode.number, [ 1, 2, 1 ]).serialize(),
+        Encode.list(Encode.number, [ 1, 2, 1 ]).serialize(),
         [ 1, 2, 1 ]
     );
 });
@@ -164,7 +164,7 @@ test('Json.Encode.object()', t => {
         foo: boolean;
     }
 
-    const encoder1 = (foo: Foo): Encode.Encoder => Encode.object({
+    const encoder1 = (foo: Foo): Encode.Encode => Encode.object({
         _bar: Encode.string(foo.bar),
         _baz: Encode.number(foo.baz),
         _foo: Encode.boolean(foo.foo)
