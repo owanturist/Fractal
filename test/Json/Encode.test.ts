@@ -1,10 +1,7 @@
 import test from 'ava';
 
-import {
-    Nothing,
-    Just
-} from '../../src/Maybe';
-import * as Encode from '../../src/Json/Encode';
+import Maybe from '../../src/Maybe';
+import Encode from '../../src/Json/Encode';
 
 test('Json.Encode.nill', t => {
     t.is(
@@ -56,27 +53,27 @@ test('Json.Encode.boolean()', t => {
 
 test('Json.Encode.nullable()', t => {
     t.is(
-        Encode.nullable(Encode.string, Nothing).encode(0),
+        Encode.nullable(Encode.string, Maybe.Nothing).encode(0),
         'null'
     );
 
     t.is(
-        Encode.nullable(Encode.string, Nothing).serialize(),
+        Encode.nullable(Encode.string, Maybe.Nothing).serialize(),
         null
     );
 
     t.is(
-        Encode.nullable(Encode.string, Just('msg')).encode(0),
+        Encode.nullable(Encode.string, Maybe.Just('msg')).encode(0),
         '"msg"'
     );
 
     t.is(
-        Encode.nullable(Encode.string, Just('msg')).serialize(),
+        Encode.nullable(Encode.string, Maybe.Just('msg')).serialize(),
         'msg'
     );
 });
 
-test('Json.Encode.list()', t => {
+test('Json.Encode.list(encoders)', t => {
     t.is(
         Encode.list([
             Encode.number(1),
@@ -144,39 +141,49 @@ test('Json.Encode.list()', t => {
     );
 });
 
-
-test('Json.Encode.listOf()', t => {
+test('Json.Encode.list(encoder, values)', t => {
     t.is(
-        Encode.listOf(Encode.number, [ 1, 2, 1 ]).encode(0),
+        Encode.list(Encode.number, [ 1, 2, 1 ]).encode(0),
         '[1,2,1]'
     );
 
     t.deepEqual(
-        Encode.listOf(Encode.number, [ 1, 2, 1 ]).serialize(),
+        Encode.list(Encode.number, [ 1, 2, 1 ]).serialize(),
         [ 1, 2, 1 ]
     );
 });
 
-test('Json.Encode.object()', t => {
-    interface Foo {
+test('Json.Encode.object(object)', t => {
+    const _1 = (foo: {
         bar: string;
         baz: number;
         foo: boolean;
-    }
-
-    const encoder1 = (foo: Foo): Encode.Encoder => Encode.object({
+    }): Encode.Value => Encode.object({
         _bar: Encode.string(foo.bar),
         _baz: Encode.number(foo.baz),
         _foo: Encode.boolean(foo.foo)
     });
 
     t.is(
-        encoder1({
+        _1({
             bar: 'str',
             baz: 0,
             foo: false
         }).encode(0),
         '{"_bar":"str","_baz":0,"_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: 'str',
+            baz: 0,
+            foo: false
+        }).encode(4),
+        '{\n'
+        + '    "_bar": "str",\n'
+        + '    "_baz": 0,\n'
+        + '    "_foo": false\n'
+        + '}'
     );
 
     t.is(
@@ -217,9 +224,30 @@ test('Json.Encode.object()', t => {
         }).encode(0),
         '{"foo":0,"bar":[false,"1"]}'
     );
+});
+
+test('Json.Encode.object(list)', t => {
+    const _1 = (foo: {
+        bar: string;
+        baz: number;
+        foo: boolean;
+    }): Encode.Value => Encode.object([
+        [ '_bar', Encode.string(foo.bar) ],
+        [ '_baz', Encode.number(foo.baz) ],
+        [ '_foo', Encode.boolean(foo.foo) ]
+    ]);
 
     t.is(
-        encoder1({
+        _1({
+            bar: 'str',
+            baz: 0,
+            foo: false
+        }).encode(0),
+        '{"_bar":"str","_baz":0,"_foo":false}'
+    );
+
+    t.is(
+        _1({
             bar: 'str',
             baz: 0,
             foo: false
@@ -229,5 +257,59 @@ test('Json.Encode.object()', t => {
         + '    "_baz": 0,\n'
         + '    "_foo": false\n'
         + '}'
+    );
+
+    t.is(
+        Encode.object([
+            [
+                'foo',
+                Encode.object([
+                    [
+                        'bar',
+                        Encode.object([
+                            [ 'baz', Encode.number(0) ]
+                        ])
+                    ]
+                ])
+            ]
+        ]).encode(0),
+        '{"foo":{"bar":{"baz":0}}}'
+    );
+
+    t.deepEqual(
+        Encode.object([
+            [
+                'foo',
+                Encode.object([
+                    [
+                        'bar',
+                        Encode.object([
+                            [ 'baz', Encode.number(0) ]
+                        ])
+                    ]
+                ])
+            ]
+        ]).serialize(),
+        {
+            foo: {
+                bar: {
+                    baz: 0
+                }
+            }
+        }
+    );
+
+    t.is(
+        Encode.object([
+            [ 'foo', Encode.number(0) ],
+            [
+                'bar',
+                Encode.list([
+                    Encode.boolean(false),
+                    Encode.string('1')
+                ])
+            ]
+        ]).encode(0),
+        '{"foo":0,"bar":[false,"1"]}'
     );
 });

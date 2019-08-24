@@ -24,7 +24,9 @@ export abstract class Maybe<T> {
     /**
      * Represents a `Maybe` containing no value.
      */
-    public static Nothing: Maybe<never>;
+    public static get Nothing(): Maybe<never> {
+        return Variants.Nothing.SINGLETON;
+    }
 
     /**
      * Constructs a `Maybe` containing the `value`.
@@ -356,6 +358,8 @@ export abstract class Maybe<T> {
 
 namespace Variants {
     export class Nothing extends Maybe<never> {
+        public static readonly SINGLETON: Maybe<never> = new Nothing();
+
         public isNothing(): boolean {
             return true;
         }
@@ -396,8 +400,6 @@ namespace Variants {
             return super.cata(pattern);
         }
     }
-
-    Maybe.Nothing = new Nothing();
 
     export class Just<T> extends Maybe<T> {
         public constructor(private readonly value: T) {

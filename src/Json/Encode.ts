@@ -1,92 +1,95 @@
+import {
+    isArray
+} from '../Basics';
 import Maybe from '../Maybe';
 
-interface ValueArray extends Array<Value> {}
+export namespace Encode {
+    export interface Value {
+        encode(indent: number): string;
 
-export type Value
-    = null
-    | string
-    | boolean
-    | number
-    | ValueArray
-    | {[ key: string ]: Value }
-    ;
+        serialize(): unknown;
+    }
+}
 
-export abstract class Encoder {
+class Encoder implements Value {
+    public constructor(private readonly value: unknown) {}
+
     public encode(indent: number): string {
-        return JSON.stringify(this.serialize(), null, indent);
+        return JSON.stringify(this.value, null, indent);
     }
 
-    public abstract serialize(): Value;
-}
-
-namespace Encode {
-    export class Primitive<T extends null | string | boolean | number> extends Encoder {
-        constructor(private readonly primitive: T) {
-            super();
-        }
-
-        public serialize(): T {
-            return this.primitive;
-        }
-    }
-
-    export class List extends Encoder {
-        constructor(private readonly array: Array<Encoder>) {
-            super();
-        }
-
-        public serialize(): Array<Value> {
-            const result: Array<Value> = [];
-
-            for (const value of this.array) {
-                result.push(value.serialize());
-            }
-
-            return result;
-        }
-    }
-
-    export class Object extends Encoder {
-        constructor(private readonly object: {[ key: string ]: Encoder}) {
-            super();
-        }
-
-        public serialize(): {[ key: string ]: Value } {
-            const result: {[ key: string ]: Value } = {};
-
-            for (const key in this.object) {
-                if (this.object.hasOwnProperty(key)) {
-                    result[ key ] = this.object[ key ].serialize();
-                }
-            }
-
-            return result;
-        }
+    public serialize(): unknown {
+        return this.value;
     }
 }
 
-export const nill: Encoder = new Encode.Primitive(null);
+export const nill: Value = new Encoder(null);
 
-export const string = (string: string): Encoder => new Encode.Primitive(string);
-export const number = (number: number): Encoder => new Encode.Primitive(number);
-export const boolean = (boolean: boolean): Encoder => new Encode.Primitive(boolean);
+export function string(string: string): Value {
+    return new Encoder(string);
+}
 
-export const nullable = <T>(encoder: (value: T) => Encoder, maybe: Maybe<T>): Encoder => {
+export function number(number: number): Value {
+    return new Encoder(number);
+}
+
+export function boolean(boolean: boolean): Value {
+    return new Encoder(boolean);
+}
+
+export function nullable<T>(encoder: (value: T) => Value, maybe: Maybe<T>): Value {
     return maybe.map(encoder).getOrElse(nill);
-};
+}
 
-export const list = (array: Array<Encoder>): Encoder => new Encode.List(array);
+export function list(listOfValues: Array<Value>): Value;
+export function list<T>(encoder: (value: T) => Value, list: Array<T>): Value;
+export function list<T>(...args: [ Array<Value> ] | [ (value: T) => Value, Array<T> ]): Value {
+    const acc: Array<unknown> = [];
 
-export const listOf = <T>(encoder: (value: T) => Encoder, array: Array<T>): Encoder => {
-    const result: Array<Encoder> = [];
-
-    for (const value of array) {
-        result.push(encoder(value));
+    if (args.length === 1) {
+        for (const value of args[ 0 ]) {
+            acc.push(value.serialize());
+        }
+    } else {
+        for (const item of args[ 1 ]) {
+            acc.push(args[ 0 ](item).serialize());
+        }
     }
 
-    return list(result);
+    return new Encoder(acc);
+}
+
+export function object(object: {[ key: string ]: Value }): Value;
+// tslint:disable-next-line:unified-signatures
+export function object(list: Array<[ string, Value ]>): Value;
+export function object(listOrObject: Array<[ string, Value ]> | {[ key: string ]: Value }): Value {
+    const acc: {[ key: string ]: unknown } = {};
+
+    if (isArray(listOrObject)) {
+        for (const [ key, value ] of listOrObject) {
+            acc[ key ] = value.serialize();
+        }
+    } else {
+        for (const key in listOrObject) {
+            if (listOrObject.hasOwnProperty(key)) {
+                acc[ key ] = listOrObject[ key ].serialize();
+            }
+        }
+    }
+
+    return new Encoder(acc);
+}
+
+export type Value = Encode.Value;
+
+export const Encode = {
+    nill,
+    string,
+    number,
+    boolean,
+    nullable,
+    list,
+    object
 };
 
-export const object = <T extends {[ key: string ]: Encoder }>(object: T): Encoder => {
-    return new Encode.Object(object);
-};
+export default Encode;

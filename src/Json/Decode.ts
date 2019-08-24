@@ -1,20 +1,18 @@
 import {
-    Cata
+    Cata,
+    isString,
+    isNumber,
+    isBoolean,
+    isArray,
+    isObject
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
-import * as Encode from './Encode';
+import Encode from './Encode';
 
 const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);
-const isString = (value: unknown): value is string => typeof value === 'string';
-const isNumber = (value: unknown): value is number => typeof value === 'number';
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-const isArray = (input: unknown): input is Array<unknown> => input instanceof Array;
-const isObject = (input: unknown): input is {[ key: string ]: Value } => {
-    return typeof input === 'object' && input !== null && !isArray(input);
-};
 
-const expecting = <T>(type: string, source: Value): Either<Error, T> => {
+const expecting = <T>(type: string, source: unknown): Either<Error, T> => {
     return Left(
         Error.Failure(`Expecting ${type}`, source)
     );
@@ -41,7 +39,7 @@ export namespace Error {
         Field(field: string, error: Error): R;
         Index(index: number, error: Error): R;
         OneOf(errors: Array<Error>): R;
-        Failure(message: string, source: Value): R;
+        Failure(message: string, source: unknown): R;
     }>;
 
     export const Field = (field: string, error: Error): Error => new Internal.Field(field, error);
@@ -50,7 +48,7 @@ export namespace Error {
 
     export const OneOf = (errors: Array<Error>): Error => new Internal.OneOf(errors);
 
-    export const Failure = (message: string, source: Value): Error => new Internal.Failure(message, source);
+    export const Failure = (message: string, source: unknown): Error => new Internal.Failure(message, source);
 }
 
 namespace Internal {
@@ -146,7 +144,7 @@ namespace Internal {
     export class Failure extends Error {
         constructor(
             private readonly message: string,
-            private readonly source: Value
+            private readonly source: unknown
         ) {
             super();
         }
@@ -194,7 +192,7 @@ export abstract class Decoder<T> {
         }
     }
 
-    public abstract decode(input: Value): Either<Error, T>;
+    public abstract decode(input: unknown): Either<Error, T>;
 
     public abstract pipe(
         decoder: T extends (value: infer A) => unknown ? Decoder<A> : never
@@ -231,8 +229,6 @@ abstract class Streamable<T> extends Decoder<T> {
     ): Decoder<U> {
         return new Pipe(field(key, nullable(decoder)), this as unknown as Decoder<(value: Maybe<A>) => U>);
     }
-
-    public abstract decode(input: Value): Either<Error, T>;
 }
 
 class Pipe<T, R> extends Streamable<R> {
@@ -243,7 +239,7 @@ class Pipe<T, R> extends Streamable<R> {
         super();
     }
 
-    public decode(input: Value): Either<Error, R> {
+    public decode(input: unknown): Either<Error, R> {
         return this.fn.chain((fn: (value: T) => R): Decoder<R> => this.value.map(fn)).decode(input);
     }
 }
@@ -256,7 +252,7 @@ class Map<T, R> extends Streamable<R> {
         super();
     }
 
-    public decode(input: Value): Either<Error, R> {
+    public decode(input: unknown): Either<Error, R> {
         return this.decoder.decode(input).map(this.fn);
     }
 }
@@ -279,19 +275,31 @@ class Chain<T, R> extends Streamable<R> {
 class Primitive<T> extends Streamable<T> {
     constructor(
         private readonly type: string,
-        private readonly check: (input: any) => input is T
+        private readonly check: (input: unknown) => input is T
     ) {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         return this.check(input) ? Right(input) : expecting(this.type, input);
     }
 }
 
+class Encoder implements Value {
+    public constructor(private readonly value: unknown) {}
+
+    public encode(indent: number): string {
+        return JSON.stringify(this.value, null, indent);
+    }
+
+    public serialize(): unknown {
+        return this.value;
+    }
+}
+
 class Identity extends Streamable<Value> {
-    public decode(input: Value): Either<Error, Value> {
-        return Right(input);
+    public decode(input: unknown): Either<Error, Value> {
+        return Right(new Encoder(input));
     }
 }
 
@@ -300,7 +308,7 @@ class List<T> extends Streamable<Array<T>> {
         super();
     }
 
-    public decode(input: Value): Either<Error, Array<T>> {
+    public decode(input: unknown): Either<Error, Array<T>> {
         if (!isArray(input)) {
             return expecting('a LIST', input);
         }
@@ -331,7 +339,7 @@ class KeyValue<T> extends Streamable<Array<[ string, T ]>> {
         super();
     }
 
-    public decode(input: Value): Either<Error, Array<[ string, T ]>> {
+    public decode(input: unknown): Either<Error, Array<[ string, T ]>> {
         if (!isObject(input)) {
             return expecting('an OBJECT', input);
         }
@@ -367,7 +375,7 @@ class Field<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         if (isObject(input) && this.key in input) {
             return this.decoder
                 .decode(input[ this.key ])
@@ -386,7 +394,7 @@ class Index<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         if (!isArray(input)) {
             return expecting('an ARRAY', input);
         }
@@ -409,7 +417,7 @@ class OneOf<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         let result: Either<Array<Error>, T> = Left([]);
 
         for (const decoder of this.decoders) {
@@ -433,7 +441,7 @@ class Props<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         let acc: Either<Error, T> = Right({} as T);
 
         for (const key in this.config) {
@@ -461,7 +469,7 @@ class Nill<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         return input === null ? Right(this.defaults) : expecting('null', input);
     }
 }
@@ -471,7 +479,7 @@ class Fail extends Streamable<never> {
         super();
     }
 
-    public decode(input: Value): Either<Error, never> {
+    public decode(input: unknown): Either<Error, never> {
         return Left(
             Error.Failure(this.msg, input)
         );

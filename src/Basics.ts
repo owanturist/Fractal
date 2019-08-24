@@ -18,10 +18,34 @@ export type Cata<O extends {[ K in keyof O ]: (...args: Array<unknown>) => unkno
     : never
     ;
 
-export const identity = <T>(value: T): T => value;
+export function identity<T>(value: T): T {
+    return value;
+}
 
-export const inst = <T>(Constructor: new () => T) => new Constructor();
+export function inst<T>(Constructor: new () => T) {
+    return new Constructor();
+}
 
-export const cons = <A extends Array<unknown>, T>(
-    Constructor: new (...args: A) => A extends [] ? never : T
-) => (...args: A): T => new Constructor(...args);
+export function cons<A extends Array<unknown>, T>(Constructor: new (...args: A) => A extends [] ? never : T) {
+    return (...args: A): T => new Constructor(...args);
+}
+
+export function isString(value: unknown): value is string {
+    return typeof value === 'string';
+}
+
+export function isNumber(value: unknown): value is number {
+    return typeof value === 'number';
+}
+
+export function isBoolean(value: unknown): value is boolean {
+    return typeof value === 'boolean';
+}
+
+export function isArray(input: unknown): input is Array<unknown> {
+    return input instanceof Array;
+}
+
+export function isObject(input: unknown): input is {[ key: string ]: unknown } {
+    return typeof input === 'object' && input !== null && !isArray(input);
+}

@@ -10,7 +10,7 @@ import {
     Cmd
 } from './Platform/Cmd';
 import * as Decode from './Json/Decode';
-import * as Encode from './Json/Encode';
+import Encode from './Json/Encode';
 
 /* H E L P E R S */
 
@@ -253,7 +253,7 @@ export const emptyBody: Body = PhantomBody.of(Nothing);
 
 export const stringBody = (type: string, value: string): Body => PhantomBody.of(Just({ type, value }));
 
-export const jsonBody = (encoder: Encode.Encoder): Body => stringBody('application/json', encoder.encode(4));
+export const jsonBody = (encoder: Encode.Value): Body => stringBody('application/json', encoder.encode(4));
 
 /* R E Q U E S T */
 
@@ -294,7 +294,7 @@ export class Request<T> {
         return this.withBody(stringBody(type, value));
     }
 
-    public withJsonBody(encoder: Encode.Encoder): Request<T> {
+    public withJsonBody(encoder: Encode.Value): Request<T> {
         return this.withBody(jsonBody(encoder));
     }
 
