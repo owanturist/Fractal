@@ -41,7 +41,7 @@ export namespace Error {
         Field(field: string, error: Error): R;
         Index(index: number, error: Error): R;
         OneOf(errors: Array<Error>): R;
-        Failure(message: string, source: Value): R;
+        Failure(message: string, source: unknown): R;
     }>;
 
     export const Field = (field: string, error: Error): Error => new Internal.Field(field, error);
@@ -50,7 +50,7 @@ export namespace Error {
 
     export const OneOf = (errors: Array<Error>): Error => new Internal.OneOf(errors);
 
-    export const Failure = (message: string, source: Value): Error => new Internal.Failure(message, source);
+    export const Failure = (message: string, source: unknown): Error => new Internal.Failure(message, source);
 }
 
 namespace Internal {
@@ -146,7 +146,7 @@ namespace Internal {
     export class Failure extends Error {
         constructor(
             private readonly message: string,
-            private readonly source: Value
+            private readonly source: unknown
         ) {
             super();
         }
@@ -194,7 +194,7 @@ export abstract class Decoder<T> {
         }
     }
 
-    public abstract decode(input: Value): Either<Error, T>;
+    public abstract decode(input: unknown): Either<Error, T>;
 
     public abstract pipe(
         decoder: T extends (value: infer A) => unknown ? Decoder<A> : never
@@ -279,7 +279,7 @@ class Chain<T, R> extends Streamable<R> {
 class Primitive<T> extends Streamable<T> {
     constructor(
         private readonly type: string,
-        private readonly check: (input: any) => input is T
+        private readonly check: (input: unknown) => input is T
     ) {
         super();
     }
@@ -289,9 +289,21 @@ class Primitive<T> extends Streamable<T> {
     }
 }
 
+class Encoder implements Value {
+    public constructor(private readonly value: unknown) {}
+
+    public encode(indent: number): string {
+        return JSON.stringify(this.value, null, indent);
+    }
+
+    public serialize(): unknown {
+        return this.value;
+    }
+}
+
 class Identity extends Streamable<Value> {
-    public decode(input: Value): Either<Error, Value> {
-        return Right(input);
+    public decode(input: unknown): Either<Error, Value> {
+        return Right(new Encoder(input));
     }
 }
 

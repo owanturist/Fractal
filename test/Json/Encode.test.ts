@@ -1,7 +1,7 @@
 import test from 'ava';
 
 import Maybe from '../../src/Maybe';
-import { Encode } from '../../src/Json/Encode';
+import Encode from '../../src/Json/Encode';
 
 test('Json.Encode.nill', t => {
     t.is(
@@ -158,7 +158,7 @@ test('Json.Encode.object(object)', t => {
         bar: string;
         baz: number;
         foo: boolean;
-    }): Encode => Encode.object({
+    }): Encode.Value => Encode.object({
         _bar: Encode.string(foo.bar),
         _baz: Encode.number(foo.baz),
         _foo: Encode.boolean(foo.foo)
@@ -231,7 +231,7 @@ test('Json.Encode.object(list)', t => {
         bar: string;
         baz: number;
         foo: boolean;
-    }): Encode => Encode.object([
+    }): Encode.Value => Encode.object([
         [ '_bar', Encode.string(foo.bar) ],
         [ '_baz', Encode.number(foo.baz) ],
         [ '_foo', Encode.boolean(foo.foo) ]
