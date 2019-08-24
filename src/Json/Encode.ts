@@ -1,3 +1,6 @@
+import {
+    isArray
+} from '../Basics';
 import Maybe from '../Maybe';
 
 export namespace Encode {
@@ -62,7 +65,7 @@ export function object(list: Array<[ string, Value ]>): Value;
 export function object(listOrObject: Array<[ string, Value ]> | {[ key: string ]: Value }): Value {
     const acc: {[ key: string ]: unknown } = {};
 
-    if (Array.isArray(listOrObject)) {
+    if (isArray(listOrObject)) {
         for (const [ key, value ] of listOrObject) {
             acc[ key ] = value.serialize();
         }

@@ -1,20 +1,18 @@
 import {
-    Cata
+    Cata,
+    isString,
+    isNumber,
+    isBoolean,
+    isArray,
+    isObject
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
-import * as Encode from './Encode';
+import Encode from './Encode';
 
 const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);
-const isString = (value: unknown): value is string => typeof value === 'string';
-const isNumber = (value: unknown): value is number => typeof value === 'number';
-const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-const isArray = (input: unknown): input is Array<unknown> => input instanceof Array;
-const isObject = (input: unknown): input is {[ key: string ]: Value } => {
-    return typeof input === 'object' && input !== null && !isArray(input);
-};
 
-const expecting = <T>(type: string, source: Value): Either<Error, T> => {
+const expecting = <T>(type: string, source: unknown): Either<Error, T> => {
     return Left(
         Error.Failure(`Expecting ${type}`, source)
     );
@@ -231,8 +229,6 @@ abstract class Streamable<T> extends Decoder<T> {
     ): Decoder<U> {
         return new Pipe(field(key, nullable(decoder)), this as unknown as Decoder<(value: Maybe<A>) => U>);
     }
-
-    public abstract decode(input: Value): Either<Error, T>;
 }
 
 class Pipe<T, R> extends Streamable<R> {
@@ -243,7 +239,7 @@ class Pipe<T, R> extends Streamable<R> {
         super();
     }
 
-    public decode(input: Value): Either<Error, R> {
+    public decode(input: unknown): Either<Error, R> {
         return this.fn.chain((fn: (value: T) => R): Decoder<R> => this.value.map(fn)).decode(input);
     }
 }
@@ -256,7 +252,7 @@ class Map<T, R> extends Streamable<R> {
         super();
     }
 
-    public decode(input: Value): Either<Error, R> {
+    public decode(input: unknown): Either<Error, R> {
         return this.decoder.decode(input).map(this.fn);
     }
 }
@@ -284,7 +280,7 @@ class Primitive<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         return this.check(input) ? Right(input) : expecting(this.type, input);
     }
 }
@@ -312,7 +308,7 @@ class List<T> extends Streamable<Array<T>> {
         super();
     }
 
-    public decode(input: Value): Either<Error, Array<T>> {
+    public decode(input: unknown): Either<Error, Array<T>> {
         if (!isArray(input)) {
             return expecting('a LIST', input);
         }
@@ -343,7 +339,7 @@ class KeyValue<T> extends Streamable<Array<[ string, T ]>> {
         super();
     }
 
-    public decode(input: Value): Either<Error, Array<[ string, T ]>> {
+    public decode(input: unknown): Either<Error, Array<[ string, T ]>> {
         if (!isObject(input)) {
             return expecting('an OBJECT', input);
         }
@@ -379,7 +375,7 @@ class Field<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         if (isObject(input) && this.key in input) {
             return this.decoder
                 .decode(input[ this.key ])
@@ -398,7 +394,7 @@ class Index<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         if (!isArray(input)) {
             return expecting('an ARRAY', input);
         }
@@ -421,7 +417,7 @@ class OneOf<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         let result: Either<Array<Error>, T> = Left([]);
 
         for (const decoder of this.decoders) {
@@ -445,7 +441,7 @@ class Props<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         let acc: Either<Error, T> = Right({} as T);
 
         for (const key in this.config) {
@@ -473,7 +469,7 @@ class Nill<T> extends Streamable<T> {
         super();
     }
 
-    public decode(input: Value): Either<Error, T> {
+    public decode(input: unknown): Either<Error, T> {
         return input === null ? Right(this.defaults) : expecting('null', input);
     }
 }
@@ -483,7 +479,7 @@ class Fail extends Streamable<never> {
         super();
     }
 
-    public decode(input: Value): Either<Error, never> {
+    public decode(input: unknown): Either<Error, never> {
         return Left(
             Error.Failure(this.msg, input)
         );
