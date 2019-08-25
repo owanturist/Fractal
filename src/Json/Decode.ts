@@ -193,58 +193,9 @@ export abstract class Decoder<T> {
     }
 
     public abstract decode(input: unknown): Either<Error, T>;
-
-    public abstract pipe(
-        decoder: T extends (value: infer A) => unknown ? Decoder<A> : never
-    ): Decoder<T extends (value: unknown) => infer U ? U : T>;
-
-    public abstract require(
-        key: T extends (value: unknown) => unknown ? string : never,
-        decoder: T extends (value: infer A) => unknown ? Decoder<A> : never
-    ): Decoder<T extends (value: unknown) => infer U ? U : T>;
-
-    public abstract optional(
-        key: T extends (value: Maybe<unknown>) => unknown ? string : never,
-        decoder: T extends (value: Maybe<infer A>) => unknown ? Decoder<A> : never
-    ): Decoder<T extends (value: unknown) => infer U ? U : T>;
 }
 
-abstract class Streamable<T> extends Decoder<T> {
-    public pipe<A, U>(
-        decoder: T extends (value: A) => unknown ? Decoder<A> : never
-    ): Decoder<U> {
-        return new Pipe(decoder, this as unknown as Decoder<(value: A) => U>);
-    }
-
-    public require<A, U>(
-        key: string,
-        decoder: T extends (value: A) => unknown ? Decoder<A> : never
-    ): Decoder<U> {
-        return new Pipe(field(key, decoder), this as unknown as Decoder<(value: A) => U>);
-    }
-
-    public optional<A, U>(
-        key: string,
-        decoder: T extends (value: Maybe<A>) => unknown ? Decoder<A> : never
-    ): Decoder<U> {
-        return new Pipe(field(key, nullable(decoder)), this as unknown as Decoder<(value: Maybe<A>) => U>);
-    }
-}
-
-class Pipe<T, R> extends Streamable<R> {
-    constructor(
-        private readonly value: Decoder<T>,
-        private readonly fn: Decoder<(value: T) => R>
-    ) {
-        super();
-    }
-
-    public decode(input: unknown): Either<Error, R> {
-        return this.fn.chain((fn: (value: T) => R): Decoder<R> => this.value.map(fn)).decode(input);
-    }
-}
-
-class Map<T, R> extends Streamable<R> {
+class Map<T, R> extends Decoder<R> {
     constructor(
         private readonly fn: (value: T) => R,
         protected readonly decoder: Decoder<T>
@@ -257,7 +208,7 @@ class Map<T, R> extends Streamable<R> {
     }
 }
 
-class Chain<T, R> extends Streamable<R> {
+class Chain<T, R> extends Decoder<R> {
     constructor(
         private readonly fn: (value: T) => Decoder<R>,
         protected readonly decoder: Decoder<T>
@@ -272,7 +223,7 @@ class Chain<T, R> extends Streamable<R> {
     }
 }
 
-class Primitive<T> extends Streamable<T> {
+class Primitive<T> extends Decoder<T> {
     constructor(
         private readonly type: string,
         private readonly check: (input: unknown) => input is T
@@ -297,13 +248,13 @@ class Encoder implements Value {
     }
 }
 
-class Identity extends Streamable<Value> {
+class Identity extends Decoder<Value> {
     public decode(input: unknown): Either<Error, Value> {
         return Right(new Encoder(input));
     }
 }
 
-class List<T> extends Streamable<Array<T>> {
+class List<T> extends Decoder<Array<T>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
@@ -334,7 +285,7 @@ class List<T> extends Streamable<Array<T>> {
     }
 }
 
-class KeyValue<T> extends Streamable<Array<[ string, T ]>> {
+class KeyValue<T> extends Decoder<Array<[ string, T ]>> {
     constructor(private readonly decoder: Decoder<T>) {
         super();
     }
@@ -367,7 +318,7 @@ class KeyValue<T> extends Streamable<Array<[ string, T ]>> {
     }
 }
 
-class Field<T> extends Streamable<T> {
+class Field<T> extends Decoder<T> {
     constructor(
         private readonly key: string,
         private readonly decoder: Decoder<T>
@@ -386,7 +337,7 @@ class Field<T> extends Streamable<T> {
     }
 }
 
-class Index<T> extends Streamable<T> {
+class Index<T> extends Decoder<T> {
     constructor(
         private readonly index: number,
         private readonly decoder: Decoder<T>
@@ -412,7 +363,7 @@ class Index<T> extends Streamable<T> {
     }
 }
 
-class OneOf<T> extends Streamable<T> {
+class OneOf<T> extends Decoder<T> {
     constructor(private readonly decoders: Array<Decoder<T>>) {
         super();
     }
@@ -436,7 +387,7 @@ class OneOf<T> extends Streamable<T> {
     }
 }
 
-class Props<T> extends Streamable<T> {
+class Props<T> extends Decoder<T> {
     constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
         super();
     }
@@ -464,7 +415,7 @@ class Props<T> extends Streamable<T> {
     }
 }
 
-class Nill<T> extends Streamable<T> {
+class Nill<T> extends Decoder<T> {
     constructor(private readonly defaults: T) {
         super();
     }
@@ -474,7 +425,7 @@ class Nill<T> extends Streamable<T> {
     }
 }
 
-class Fail extends Streamable<never> {
+class Fail extends Decoder<never> {
     constructor(private readonly msg: string) {
         super();
     }
@@ -486,7 +437,7 @@ class Fail extends Streamable<never> {
     }
 }
 
-class Succeed<T> extends Streamable<T> {
+class Succeed<T> extends Decoder<T> {
     constructor(private readonly value: T) {
         super();
     }
