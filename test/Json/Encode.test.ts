@@ -4,51 +4,23 @@ import Maybe from '../../src/Maybe';
 import Encode from '../../src/Json/Encode';
 
 test('Json.Encode.nill', t => {
-    t.is(
-        Encode.nill.encode(0),
-        'null'
-    );
-
-    t.is(
-        Encode.nill.serialize(),
-        null
-    );
+    t.is(Encode.nill.encode(0), 'null');
+    t.is(Encode.nill.serialize(), null);
 });
 
 test('Json.Encode.string()', t => {
-    t.is(
-        Encode.string('msg').encode(0),
-        '"msg"'
-    );
-
-    t.is(
-        Encode.string('msg').serialize(),
-        'msg'
-    );
+    t.is(Encode.string('msg').encode(0), '"msg"');
+    t.is(Encode.string('msg').serialize(), 'msg');
 });
 
 test('Json.Encode.number()', t => {
-    t.is(
-        Encode.number(1).encode(0),
-        '1'
-    );
-
-    t.is(
-        Encode.number(1).serialize(),
-        1
-    );
+    t.is(Encode.number(1).encode(0), '1');
+    t.is(Encode.number(1).serialize(), 1);
 });
 
 test('Json.Encode.boolean()', t => {
-    t.is(
-        Encode.boolean(false).encode(0),
-        'false'
-    );
-
-    t.is(
-        Encode.boolean(false).serialize(),
-        false
-    );
+    t.is(Encode.boolean(false).encode(0), 'false');
+    t.is(Encode.boolean(false).serialize(), false);
 });
 
 test('Json.Encode.nullable()', t => {
