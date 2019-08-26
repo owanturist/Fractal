@@ -415,13 +415,23 @@ class Props<T> extends Decoder<T> {
     }
 }
 
-class Nill<T> extends Decoder<T> {
+class Null<T> extends Decoder<T> {
     constructor(private readonly defaults: T) {
         super();
     }
 
     public decode(input: unknown): Either<Error, T> {
         return input === null ? Right(this.defaults) : expecting('null', input);
+    }
+}
+
+class Optional<T> extends Decoder<Maybe<T>> {
+    constructor(private readonly decoder: Decoder<T>) {
+        super();
+    }
+
+    public decode(input: unknown): Either<Error, Maybe<T>> {
+        return input === undefined ? Right(Nothing) : this.decoder.decode(input).map(Just);
     }
 }
 
@@ -460,7 +470,7 @@ export const number: Decoder<number> = new Primitive('a NUMBER', isNumber);
 export const boolean: Decoder<boolean> = new Primitive('a BOOLEAN', isBoolean);
 export const value: Decoder<Value> = new Identity();
 
-export const nill = <T>(defaults: T): Decoder<T> => new Nill(defaults);
+export const nill = <T>(defaults: T): Decoder<T> => new Null(defaults);
 export const fail = (msg: string): Decoder<never> => new Fail(msg);
 export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
 export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders);
@@ -470,10 +480,7 @@ export const nullable = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
     decoder.map(Just)
 ]);
 
-export const maybe = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => oneOf([
-    decoder.map(Just),
-    succeed(Nothing)
-]);
+export const optional = <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new Optional(decoder);
 
 export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder);
 export const keyValue = <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>> => new KeyValue(decoder);

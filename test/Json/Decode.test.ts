@@ -179,39 +179,56 @@ test('Json.Decode.nullable()', t => {
     );
 });
 
-test('Json.Decode.maybe()', t => {
+test('Json.Decode.optional()', t => {
+    const _1 /* Decoder<Maybe<number>> */ = Decode.optional(Decode.number);
+    t.deepEqual(_1.decode(undefined), Either.Right(Maybe.Nothing));
+    t.deepEqual(_1.decode(1), Either.Right(Maybe.Just(1)));
+    t.deepEqual(_1.decode('str'), Either.Left(Decode.Error.Failure('Expecting a NUMBER', 'str')));
+
     const input = {
         s1: 'str',
         s2: 1
     };
 
+    const _2 /* Decoder<Maybe<number>> */ = Decode.optional(Decode.field('s1', Decode.number));
     t.deepEqual(
-        Decode.maybe(Decode.field('s1', Decode.number)).decode(input),
-        Either.Right(Maybe.Nothing)
+        _2.decode(input),
+        Either.Left(Decode.Error.Field(
+            's1',
+            Decode.Error.Failure('Expecting a NUMBER', 'str')
+        ))
     );
 
+    const _3 /* Decoder<Maybe<number>> */ = Decode.optional(Decode.field('s2', Decode.number));
     t.deepEqual(
-        Decode.maybe(Decode.field('s2', Decode.number)).decode(input),
+        _3.decode(input),
         Either.Right(Maybe.Just(1))
     );
 
+    const _4 /* Decoder<Maybe<number>> */ = Decode.optional(Decode.field('s3', Decode.number));
     t.deepEqual(
-        Decode.maybe(Decode.field('s3', Decode.number)).decode(input),
+        _4.decode(input),
         Either.Right(Maybe.Nothing)
     );
 
+    const _5 /* Decoder<Maybe<number>> */ = Decode.field('s1', Decode.optional(Decode.number));
     t.deepEqual(
-        Decode.field('s1', Decode.maybe(Decode.number)).decode(input),
-        Either.Right(Maybe.Nothing)
+        _5.decode(input),
+        Either.Left(Decode.Error.Field(
+            's1',
+            Decode.Error.Failure('Expecting a NUMBER', 'str')
+        ))
     );
 
+    const _6 /* Decoder<Maybe<number>> */ = Decode.field('s2', Decode.optional(Decode.number));
     t.deepEqual(
-        Decode.field('s2', Decode.maybe(Decode.number)).decode(input),
+        _6.decode(input),
         Either.Right(Maybe.Just(1))
     );
 
+    const _7 /* Decoder<Maybe<number>> */ = Decode.field('s3', Decode.optional(Decode.number));
     t.deepEqual(
-        Decode.field('s3', Decode.maybe(Decode.number)).decode(input),
+        _7.decode(input),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'s3\'', { s1: 'str', s2: 1 }))
     );
 });
