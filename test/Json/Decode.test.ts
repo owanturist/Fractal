@@ -187,7 +187,8 @@ test('Json.Decode.optional()', t => {
 
     const input = {
         s1: 'str',
-        s2: 1
+        s2: 1,
+        s4: undefined
     };
 
     const _2 /* Decoder<Maybe<number>> */ = Decode.optional(Decode.field('s1', Decode.number));
@@ -211,25 +212,46 @@ test('Json.Decode.optional()', t => {
         Either.Right(Maybe.Nothing)
     );
 
-    const _5 /* Decoder<Maybe<number>> */ = Decode.field('s1', Decode.optional(Decode.number));
+    const _5 /* Decoder<Maybe<number>> */ = Decode.optional(Decode.field('s4', Decode.number));
     t.deepEqual(
         _5.decode(input),
+        Either.Left(Decode.Error.Field(
+            's4',
+            Decode.Error.Failure('Expecting a NUMBER', undefined)
+        ))
+    );
+
+    const _6 /* Decoder<Maybe<number>> */ = Decode.field('s1', Decode.optional(Decode.number));
+    t.deepEqual(
+        _6.decode(input),
         Either.Left(Decode.Error.Field(
             's1',
             Decode.Error.Failure('Expecting a NUMBER', 'str')
         ))
     );
 
-    const _6 /* Decoder<Maybe<number>> */ = Decode.field('s2', Decode.optional(Decode.number));
+    const _7 /* Decoder<Maybe<number>> */ = Decode.field('s2', Decode.optional(Decode.number));
     t.deepEqual(
-        _6.decode(input),
+        _7.decode(input),
         Either.Right(Maybe.Just(1))
     );
 
-    const _7 /* Decoder<Maybe<number>> */ = Decode.field('s3', Decode.optional(Decode.number));
+    const _8 /* Decoder<Maybe<number>> */ = Decode.field('s3', Decode.optional(Decode.number));
     t.deepEqual(
-        _7.decode(input),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'s3\'', { s1: 'str', s2: 1 }))
+        _8.decode(input),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'s3\'', { s1: 'str', s2: 1, s4: undefined }))
+    );
+
+    const _9 /* Decoder<Maybe<number>> */ = Decode.field('s4', Decode.optional(Decode.number));
+    t.deepEqual(
+        _9.decode(input),
+        Either.Right(Maybe.Nothing)
+    );
+
+    const _10 /* Decoder<> */ = Decode.field('key', Decode.number).pipe(Decode.optional);
+    t.deepEqual(
+        _10.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with an optional field named \'key\'', null))
     );
 });
 

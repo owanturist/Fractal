@@ -182,6 +182,10 @@ export abstract class Decoder<T> {
         return this.chain((value: T): Decoder<R> => decoderFn.map((fn: (value: T) => R): R => fn(value)));
     }
 
+    public pipe<R>(fn: (decoder: Decoder<T>) => R): R {
+        return fn(this);
+    }
+
     public decodeJSON(input: string): Either<Error, T> {
         try {
             return this.decode(JSON.parse(input));
@@ -190,6 +194,10 @@ export abstract class Decoder<T> {
                 Error.Failure(`This is not valid JSON! ${(err as SyntaxError).message}`, input)
             );
         }
+    }
+
+    public decodeOptional(input: unknown): Either<Error, Maybe<T>> {
+        return typeof input === 'undefined' ? Right(Nothing) : this.decode(input).map(Just);
     }
 
     public abstract decode(input: unknown): Either<Error, T>;
@@ -326,6 +334,19 @@ class Field<T> extends Decoder<T> {
         super();
     }
 
+    public decodeOptional(input: unknown): Either<Error, Maybe<T>> {
+        if (!isObject(input)) {
+            return expecting(`an OBJECT with an optional field named '${this.key}'`, input);
+        }
+
+        return this.key in input
+            ? this.decoder.decode(input[ this.key ]).mapBoth(
+                (error: Error): Error => Error.Field(this.key, error),
+                Just
+            )
+            : Right(Nothing);
+    }
+
     public decode(input: unknown): Either<Error, T> {
         if (isObject(input) && this.key in input) {
             return this.decoder
@@ -431,7 +452,7 @@ class Optional<T> extends Decoder<Maybe<T>> {
     }
 
     public decode(input: unknown): Either<Error, Maybe<T>> {
-        return input === undefined ? Right(Nothing) : this.decoder.decode(input).map(Just);
+        return this.decoder.decodeOptional(input);
     }
 }
 
