@@ -536,3 +536,296 @@ export const props = <T>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T
 };
 
 export const lazy = <T>(callDecoder: () => Decoder<T>): Decoder<T> => succeed(null).chain(callDecoder);
+
+export namespace Decode {
+    interface Base {
+        string: Decoder<unknown>;
+        bool: Decoder<unknown>;
+        int: Decoder<unknown>;
+        float: Decoder<unknown>;
+        value: Decoder<unknown>;
+
+        props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<unknown>;
+        of<T>(decoder: Decoder<T>): Decoder<unknown>;
+        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<unknown>;
+
+        list<T>(decoder: Decoder<T>): Decoder<unknown>;
+        dict<T>(decoder: Decoder<T>): Decoder<unknown>;
+
+        keyValue<T>(decoder: Decoder<T>): Decoder<unknown>;
+        keyValue<K, T>(convertKey: (key: string) => Either<string, K>, decoder: Decoder<T>): Decoder<unknown>;
+
+        lazy<T>(callDecoder: () => Decoder<T>): Decoder<unknown>;
+
+        field(key: string): unknown;
+        index(position: number): unknown;
+        at(path: Array<string | number>): unknown;
+    }
+
+    class Path implements Base {
+        public get optional(): Optional {
+            throw new SyntaxError();
+        }
+
+        public get string(): Decoder<string> {
+            throw new SyntaxError();
+        }
+
+        public get bool(): Decoder<boolean> {
+            throw new SyntaxError();
+        }
+
+        public get int(): Decoder<number> {
+            throw new SyntaxError();
+        }
+
+        public get float(): Decoder<number> {
+            throw new SyntaxError();
+        }
+
+        public get value(): Decoder<Value> {
+            throw new SyntaxError();
+        }
+
+        public props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
+            throw new SyntaxError();
+        }
+
+        public of<T>(_decoder: Decoder<T>): Decoder<T> {
+            throw new SyntaxError();
+        }
+
+        public oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<T> {
+            throw new SyntaxError();
+        }
+
+        public list<T>(_decoder: Decoder<T>): Decoder<Array<T>> {
+            throw new SyntaxError();
+        }
+
+        public dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
+            throw new SyntaxError();
+        }
+
+        public keyValue<T>(_decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
+        public keyValue<K, T>(
+            _convertKey: (key: string) => Either<string, K>,
+            _decoder: Decoder<T>
+        ): Decoder<Array<[ K, T ]>>;
+        public keyValue(..._args: any): any {
+            throw new SyntaxError();
+        }
+
+        public lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
+            throw new SyntaxError();
+        }
+
+        public field(_key: string): Path {
+            throw new SyntaxError();
+        }
+
+        public index(_position: number): Path {
+            throw new SyntaxError();
+        }
+
+        public at(_path: Array<string | number>): Path {
+            throw new SyntaxError();
+        }
+    }
+
+    class Optional implements Base {
+        public get string(): Decoder<Maybe<string>> {
+            throw new SyntaxError();
+        }
+
+        public get bool(): Decoder<Maybe<boolean>> {
+            throw new SyntaxError();
+        }
+
+        public get int(): Decoder<Maybe<number>> {
+            throw new SyntaxError();
+        }
+
+        public get float(): Decoder<Maybe<number>> {
+            throw new SyntaxError();
+        }
+
+        public get value(): Decoder<Maybe<Value>> {
+            throw new SyntaxError();
+        }
+
+        public props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
+            throw new SyntaxError();
+        }
+
+        public of<T>(_decoder: Decoder<T>): Decoder<Maybe<T>> {
+            throw new SyntaxError();
+        }
+
+        public oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
+            throw new SyntaxError();
+        }
+
+        public list<T>(_decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
+            throw new SyntaxError();
+        }
+
+        public dict<T>(_decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
+            throw new SyntaxError();
+        }
+
+        public keyValue<T>(_decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
+        public keyValue<K, T>(
+            _convertKey: (key: string) => Either<string, K>,
+            _decoder: Decoder<T>
+        ): Decoder<Maybe<Array<[ K, T ]>>>;
+        public keyValue(..._args: any): any {
+            throw new SyntaxError();
+        }
+
+        public lazy<T>(_callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
+            throw new SyntaxError();
+        }
+
+        public field(_key: string): OptionalPath {
+            throw new SyntaxError();
+        }
+
+        public index(_position: number): OptionalPath {
+            throw new SyntaxError();
+        }
+
+        public at(_path: Array<string | number>): OptionalPath {
+            throw new SyntaxError();
+        }
+    }
+
+    class OptionalPath extends Optional {
+        public get optional(): Optional {
+            throw new SyntaxError();
+        }
+    }
+
+    interface Decoder<T> {
+        map<R>(_fn: (value: T) => R): Decoder<R>;
+        chain<R>(_fn: (value: T) => Decoder<R>): Decoder<R>;
+        decode(_input: unknown): Either<string, T>;
+    }
+
+    const optional: Optional = null as any;
+
+    const string: Decoder<string> = null as any;
+
+    const bool: Decoder<boolean> = null as any;
+
+    const int: Decoder<number> = null as any;
+
+    const float: Decoder<number> = null as any;
+
+    function fail(_message: string): Decoder<never> {
+        throw new SyntaxError();
+    }
+
+    function succeed<T>(_value: T): Decoder<T> {
+        throw new SyntaxError();
+    }
+
+    function props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
+        throw new SyntaxError();
+    }
+
+    function oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<T> {
+        throw new SyntaxError();
+    }
+
+    function list<T>(_decoder: Decoder<T>): Decoder<Array<T>> {
+        throw new SyntaxError();
+    }
+
+    function dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
+        throw new SyntaxError();
+    }
+
+    function keyValue<T>(_decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
+    function keyValue<K, T>(
+        _convertKey: (key: string) => Either<string, K>,
+        _decoder: Decoder<T>
+    ): Decoder<Array<[ K, T ]>>;
+    function keyValue(..._args: any): any {
+        throw new SyntaxError();
+    }
+
+    function lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
+        throw new SyntaxError();
+    }
+
+    function field(_key: string): Path {
+        throw new SyntaxError();
+    }
+
+    function index(_position: number): Path {
+        throw new SyntaxError();
+    }
+
+    function at(_path: Array<string | number>): Path {
+        throw new SyntaxError();
+    }
+
+    const D = {
+        optional,
+        string,
+        bool,
+        int,
+        float,
+        fail,
+        succeed,
+        props,
+        oneOf,
+        list,
+        dict,
+        keyValue,
+        lazy,
+        field,
+        index,
+        at
+    };
+
+    export const _1 = D.optional.field('').props({
+        foo: D.field('').float,
+        bar: D.float
+    });
+
+    export const _2 = D.field('').optional.field('').optional.field('').optional.props({
+        bar: D.field('').oneOf([
+            D.string,
+            D.float.map(a => a.toFixed()),
+            D.oneOf([
+                D.field('').string
+            ])
+        ]),
+        baz: D.field('').index(0).list(D.props({
+            a: D.field('').float
+        })),
+
+        ok: D.field('').keyValue(D.int),
+        oke: D.field('').keyValue(a => a === '' ? Left('') : Right(1), D.bool),
+        di: D.field('').index(0).optional.dict(D.bool),
+        at: D.optional.at([ '', 0 ]).optional.bool
+    });
+
+    interface User {
+        id: string;
+        name: string;
+        age: number;
+        father: Maybe<User>;
+        friends: Array<User>;
+    }
+
+    export const _3: Decoder<User> = D.props({
+        id: D.field('id').string,
+        name: D.field('name').string,
+        age: D.field('age').int,
+        father: D.field('father').optional.lazy(() => _3),
+        friends: D.field('friends').list(D.lazy(() => _3))
+    });
+}
