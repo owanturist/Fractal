@@ -5,7 +5,7 @@ import {
     isFloat,
     isBoolean
 } from '../Basics';
-import Maybe from '../Maybe';
+import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
 import Encode from './Encode';
 
@@ -575,52 +575,58 @@ class Path implements Decode {
 
 class Optional implements Decode {
     public get string(): Decoder<Maybe<string>> {
-        throw new SyntaxError();
+        return this.of(string);
     }
 
     public get bool(): Decoder<Maybe<boolean>> {
-        throw new SyntaxError();
+        return this.of(bool);
     }
 
     public get int(): Decoder<Maybe<number>> {
-        throw new SyntaxError();
+        return this.of(int);
     }
 
     public get float(): Decoder<Maybe<number>> {
-        throw new SyntaxError();
+        return this.of(float);
     }
 
-    public props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
-        throw new SyntaxError();
+    public props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
+        return this.of(props(config));
     }
 
-    public of<T>(_decoder: Decoder<T>): Decoder<Maybe<T>> {
-        throw new SyntaxError();
+    public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return new Nullable(decoder);
     }
 
-    public oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
-        throw new SyntaxError();
+    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
+        return this.of(oneOf(decoders));
     }
 
-    public list<T>(_decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
-        throw new SyntaxError();
+    public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
+        return this.of(list(decoder));
     }
 
-    public dict<T>(_decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
-        throw new SyntaxError();
+    public dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
+        return this.of(dict(decoder));
     }
 
-    public keyValue<T>(_decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
+    public keyValue<T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
     public keyValue<K, T>(
-        _convertKey: (key: string) => Either<string, K>,
-        _decoder: Decoder<T>
+        convertKey: (key: string) => Either<string, K>,
+        decoder: Decoder<T>
     ): Decoder<Maybe<Array<[ K, T ]>>>;
-    public keyValue(..._args: any): any {
-        throw new SyntaxError();
+    public keyValue<K, T>(
+        ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
+    ): Decoder<Maybe<Array<[ string, T ]>>> | Decoder<Maybe<Array<[ K, T ]>>> {
+        if (args.length === 1) {
+            return this.of(keyValue(args[ 0 ]));
+        }
+
+        return this.of(keyValue(args[ 0 ], args[ 1 ]));
     }
 
-    public lazy<T>(_callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
-        throw new SyntaxError();
+    public lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
+        return this.of(lazy(callDecoder));
     }
 
     public field(_name: string): OptionalPath {
@@ -675,9 +681,11 @@ export abstract class Decoder<T> {
         }
     }
 
-    public abstract decode(input: unknown): Either<Error, T>;
+    public decode(input: unknown): Either<Error, T> {
+        return this.decodeWithPrefix(Nothing, input);
+    }
 
-    protected abstract getType(): string;
+    public abstract decodeWithPrefix(prefix: Maybe<string>, input: unknown): Either<Error, T>;
 }
 
 class Primitive<T> extends Decoder<T> {
@@ -689,16 +697,26 @@ class Primitive<T> extends Decoder<T> {
         super();
     }
 
-    public decode(input: unknown): Either<Error, T> {
-        return this.check(input) ? Right(input) : expecting(`${this.prefix} ${this.type}`, input);
-    }
-
-    protected getType() {
-        return this.type;
+    public decodeWithPrefix(prefix: Maybe<string>, input: unknown): Either<Error, T> {
+        return this.check(input)
+            ? Right(input)
+            : expecting(`${prefix.getOrElse(this.prefix)} ${this.type}`, input);
     }
 }
 
-export const optional: Optional = null as any;
+class Nullable<T> extends Decoder<Maybe<T>> {
+    public constructor(private readonly decoder: Decoder<T>) {
+        super();
+    }
+
+    public decodeWithPrefix(_prefix: Maybe<string>, input: unknown): Either<Error, Maybe<T>> {
+        return input === null
+            ? Right(Nothing)
+            : this.decoder.decodeWithPrefix(Just('an OPTIONAL'), input).map(Just);
+    }
+}
+
+export const optional: Optional = new Optional();
 
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 

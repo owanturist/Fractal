@@ -36,7 +36,7 @@ test('Json.Decode.string', t => {
     );
 });
 
-test.skip('Json.Decode.optional.string', t => {
+test('Json.Decode.optional.string', t => {
     t.deepEqual(
         Decode.optional.string.decode(undefined),
         Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
