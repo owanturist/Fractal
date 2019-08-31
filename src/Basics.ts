@@ -1,3 +1,5 @@
+import Maybe, { Nothing, Just } from './Maybe';
+
 export type Arg<F> = F extends (arg: infer A) => unknown ? A : never;
 
 export type Return<F> = F extends (...args: Array<unknown>) => infer R ? R : never;
@@ -38,6 +40,12 @@ export function isNumber(value: unknown): value is number {
     return typeof value === 'number';
 }
 
+export const isFloat = isNumber;
+
+export function isInt(value: unknown): value is number {
+    return isNumber(value) && toInt(value.toString()).isJust();
+}
+
 export function isBoolean(value: unknown): value is boolean {
     return typeof value === 'boolean';
 }
@@ -48,4 +56,12 @@ export function isArray(input: unknown): input is Array<unknown> {
 
 export function isObject(input: unknown): input is {[ key: string ]: unknown } {
     return typeof input === 'object' && input !== null && !isArray(input);
+}
+
+export function toInt(input: string): Maybe<number> {
+    if (/^(\+|-)?\d+$/.test(input)) {
+        return Just(Number(input));
+    }
+
+    return Nothing;
 }

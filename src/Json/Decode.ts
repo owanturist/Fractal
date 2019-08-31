@@ -1,12 +1,11 @@
 import {
     Cata,
     isString,
-    isNumber,
-    isBoolean,
-    isArray,
-    isObject
+    isInt,
+    isFloat,
+    isBoolean
 } from '../Basics';
-import Maybe, { Nothing, Just } from '../Maybe';
+import Maybe from '../Maybe';
 import Either, { Left, Right } from '../Either';
 import Encode from './Encode';
 
@@ -641,28 +640,73 @@ class OptionalPath extends Optional {
     public get optional(): Optional {
         throw new SyntaxError();
     }
+
+    public get value(): Decoder<Value> {
+        throw new SyntaxError();
+    }
 }
 
-interface Decoder<T> {
-    map<R>(fn: (value: T) => R): Decoder<R>;
-    chain<R>(fn: (value: T) => Decoder<R>): Decoder<R>;
+export abstract class Decoder<T> {
+    public map<R>(_fn: (value: T) => R): Decoder<R> {
+        throw new SyntaxError();
+    }
 
-    chainMaybe<R>(message: string, fn: (value: T) => Maybe<R>): Decoder<R>;
-    chainEither<R>(fn: (value: T) => Either<string, R>): Decoder<R>;
+    public chain<R>(_fn: (value: T) => Decoder<R>): Decoder<R> {
+        throw new SyntaxError();
+    }
 
-    decode(input: unknown): Either<Error, T>;
-    decodeJSON(input: string): Either<Error, T>;
+    public chainMaybe<R>(message: string, fn: (value: T) => Maybe<R>): Decoder<R> {
+        return this.chain((value: T): Decoder<R> => fromMaybe(message, fn(value)));
+    }
+
+    public chainEither<R>(fn: (value: T) => Either<string, R>): Decoder<R> {
+        return this.map(fn).chain(fromEither);
+    }
+
+    public decodeJSON(input: string): Either<Error, T> {
+        try {
+            return this.decode(JSON.parse(input));
+        } catch (error) {
+            const error_: SyntaxError = error;
+
+            return Left(
+                Error.Failure(`This is not valid JSON! ${error_.message}`, input)
+            );
+        }
+    }
+
+    public abstract decode(input: unknown): Either<Error, T>;
+
+    protected abstract getType(): string;
+}
+
+class Primitive<T> extends Decoder<T> {
+    public constructor(
+        private readonly prefix: string,
+        private readonly type: string,
+        private readonly check: (input: unknown) => input is T
+    ) {
+        super();
+    }
+
+    public decode(input: unknown): Either<Error, T> {
+        return this.check(input) ? Right(input) : expecting(`${this.prefix} ${this.type}`, input);
+    }
+
+    protected getType() {
+        return this.type;
+    }
 }
 
 export const optional: Optional = null as any;
 
-export const string: Decoder<string> = null as any;
+export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 
-export const bool: Decoder<boolean> = null as any;
+export const bool: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
 
-export const int: Decoder<number> = null as any;
+export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
 
-export const float: Decoder<number> = null as any;
+export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 
 export const value: Decoder<Value> = null as any;
 
