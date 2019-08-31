@@ -4,7 +4,8 @@ import {
     isInt,
     isFloat,
     isBoolean,
-    isObject
+    isObject,
+    identity
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
@@ -509,7 +510,7 @@ class Path implements Decode {
     ) {}
 
     public get optional(): Optional {
-        throw new SyntaxError();
+        return new Optional(this.createDecoder);
     }
 
     public get string(): Decoder<string> {
@@ -585,6 +586,10 @@ class Path implements Decode {
 }
 
 class Optional implements Decode {
+    public constructor(
+        private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<T>
+    ) {}
+
     public get string(): Decoder<Maybe<string>> {
         return this.of(string);
     }
@@ -606,7 +611,7 @@ class Optional implements Decode {
     }
 
     public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
-        return new Nullable(decoder);
+        return this.createDecoder(new Nullable(decoder));
     }
 
     public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
@@ -850,7 +855,7 @@ class OptionalField<T> extends Decoder<Maybe<T>> {
     }
 }
 
-export const optional: Optional = new Optional();
+export const optional: Optional = new Optional(identity);
 
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 

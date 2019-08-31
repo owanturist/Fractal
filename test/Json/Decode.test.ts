@@ -111,15 +111,15 @@ test('Json.Decode.optional.field().string', t => {
     );
 });
 
-test.skip('Json.Decode.field().optional.string', t => {
+test('Json.Decode.field().optional.string', t => {
     t.deepEqual(
         Decode.field('_1').optional.string.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'foo\'', null))
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'_1\'', null))
     );
 
     t.deepEqual(
         Decode.field('_1').optional.string.decode({}),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'foo\'', null))
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a field named \'_1\'', {}))
     );
 
     t.deepEqual(
