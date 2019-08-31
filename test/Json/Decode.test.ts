@@ -78,10 +78,10 @@ test('Json.Decode.field().string', t => {
     );
 });
 
-test.skip('Json.Decode.optional.field().string', t => {
+test('Json.Decode.optional.field().string', t => {
     t.deepEqual(
         Decode.optional.field('_1').string.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT with an optional field named \'foo\'', null))
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with an optional field named \'_1\'', null))
     );
 
     t.deepEqual(

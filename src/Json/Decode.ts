@@ -36,15 +36,15 @@ export abstract class Error {
 
 export namespace Error {
     export type Pattern<R> = Cata<{
-        Field(field: string, error: Error): R;
-        Index(index: number, error: Error): R;
+        Field(name: string, error: Error): R;
+        Index(position: number, error: Error): R;
         OneOf(errors: Array<Error>): R;
         Failure(message: string, source: unknown): R;
     }>;
 
-    export const Field = (field: string, error: Error): Error => new Internal.Field(field, error);
+    export const Field = (name: string, error: Error): Error => new Internal.Field(name, error);
 
-    export const Index = (index: number, error: Error): Error => new Internal.Index(index, error);
+    export const Index = (position: number, error: Error): Error => new Internal.Index(position, error);
 
     export const OneOf = (errors: Array<Error>): Error => new Internal.OneOf(errors);
 
@@ -640,8 +640,10 @@ class Optional implements Decode {
         return this.of(lazy(callDecoder));
     }
 
-    public field(_name: string): OptionalPath {
-        throw new SyntaxError();
+    public field(name: string): OptionalPath {
+        return new OptionalPath(
+            <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new OptionalField(name, decoder)
+        );
     }
 
     public index(_position: number): OptionalPath {
@@ -653,12 +655,85 @@ class Optional implements Decode {
     }
 }
 
-class OptionalPath extends Optional {
+class OptionalPath implements Decode {
+    public constructor(
+        private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
+    ) {}
+
     public get optional(): Optional {
-        throw new SyntaxError();
+        return optional;
+    }
+
+    public get string(): Decoder<Maybe<string>> {
+        return this.of(string);
+    }
+
+    public get bool(): Decoder<Maybe<boolean>> {
+        return this.of(bool);
+    }
+
+    public get int(): Decoder<Maybe<number>> {
+        return this.of(int);
+    }
+
+    public get float(): Decoder<Maybe<number>> {
+        return this.of(float);
     }
 
     public get value(): Decoder<Value> {
+        throw new SyntaxError();
+    }
+
+    public props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
+        return this.of(props(config));
+    }
+
+    public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return this.createDecoder(decoder);
+    }
+
+    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
+        return this.of(oneOf(decoders));
+    }
+
+    public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
+        return this.of(list(decoder));
+    }
+
+    public dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
+        return this.of(dict(decoder));
+    }
+
+    public keyValue<T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
+    public keyValue<K, T>(
+        convertKey: (key: string) => Either<string, K>,
+        decoder: Decoder<T>
+    ): Decoder<Maybe<Array<[ K, T ]>>>;
+    public keyValue<K, T>(
+        ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
+    ): Decoder<Maybe<Array<[ string, T ]>>> | Decoder<Maybe<Array<[ K, T ]>>> {
+        if (args.length === 1) {
+            return this.of(keyValue(args[ 0 ]));
+        }
+
+        return this.of(keyValue(args[ 0 ], args[ 1 ]));
+    }
+
+    public lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
+        return this.of(lazy(callDecoder));
+    }
+
+    public field(name: string): OptionalPath {
+        return new OptionalPath(
+            <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new OptionalField(name, decoder)
+        );
+    }
+
+    public index(_position: number): OptionalPath {
+        throw new SyntaxError();
+    }
+
+    public at(_path: Array<string | number>): OptionalPath {
         throw new SyntaxError();
     }
 }
@@ -729,20 +804,49 @@ class Nullable<T> extends Decoder<Maybe<T>> {
 
 class Field<T> extends Decoder<T> {
     constructor(
-        private readonly key: string,
+        private readonly name: string,
         private readonly decoder: Decoder<T>
     ) {
         super();
     }
 
     public decodeAs(required: boolean, input: unknown): Either<Error, T> {
-        if (isObject(input) && (!required || this.key in input)) {
+        if (isObject(input) && this.name in input) {
             return this.decoder
-                .decode(input[ this.key ])
-                .mapLeft((error: Error): Error => Error.Field(this.key, error));
+                .decode(input[ this.name ])
+                .mapLeft((error: Error): Error => Error.Field(this.name, error));
         }
 
-        return expecting(`${required ? 'an' : 'an OPTIONAL'} OBJECT with a field named '${this.key}'`, input);
+        return expecting(`${required ? 'an' : 'an OPTIONAL'} OBJECT with a field named '${this.name}'`, input);
+    }
+}
+
+class OptionalField<T> extends Decoder<Maybe<T>> {
+    constructor(
+        private readonly name: string,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, Maybe<T>> {
+        if (isObject(input)) {
+            if (this.name in input) {
+                return this.decoder
+                    .decode(input[ this.name ])
+                    .mapBoth(
+                        (error: Error): Error => Error.Field(this.name, error),
+                        Just
+                    );
+            }
+
+            return Right(Nothing);
+        }
+
+        return expecting(
+            `${required ? 'an' : 'an OPTIONAL'} OBJECT with an optional field named '${this.name}'`,
+            input
+        );
     }
 }
 
