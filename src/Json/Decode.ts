@@ -822,7 +822,7 @@ class Field<T> extends Decoder<T> {
                 .mapLeft((error: Error): Error => Error.Field(this.name, error));
         }
 
-        return expecting(`${required ? 'an' : 'an OPTIONAL'} OBJECT with a field named '${this.name}'`, input);
+        return expecting(`${required ? 'an' : 'an OPTIONAL'} OBJECT with a FIELD named '${this.name}'`, input);
     }
 }
 
@@ -849,7 +849,7 @@ class OptionalField<T> extends Decoder<Maybe<T>> {
         }
 
         return expecting(
-            `${required ? 'an' : 'an OPTIONAL'} OBJECT with an optional field named '${this.name}'`,
+            `${required ? 'an' : 'an OPTIONAL'} OBJECT with an OPTIONAL FIELD named '${this.name}'`,
             input
         );
     }
