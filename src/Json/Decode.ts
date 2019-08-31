@@ -3,7 +3,8 @@ import {
     isString,
     isInt,
     isFloat,
-    isBoolean
+    isBoolean,
+    isObject
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
@@ -503,61 +504,71 @@ interface Decode {
 }
 
 class Path implements Decode {
+    public constructor(
+        private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<T>
+    ) {}
+
     public get optional(): Optional {
         throw new SyntaxError();
     }
 
     public get string(): Decoder<string> {
-        throw new SyntaxError();
+        return this.of(string);
     }
 
     public get bool(): Decoder<boolean> {
-        throw new SyntaxError();
+        return this.of(bool);
     }
 
     public get int(): Decoder<number> {
-        throw new SyntaxError();
+        return this.of(int);
     }
 
     public get float(): Decoder<number> {
-        throw new SyntaxError();
+        return this.of(float);
     }
 
     public get value(): Decoder<Value> {
-        throw new SyntaxError();
+        return this.of(value);
     }
 
-    public props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
-        throw new SyntaxError();
+    public props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
+        return this.of(props(config));
     }
 
-    public of<T>(_decoder: Decoder<T>): Decoder<T> {
-        throw new SyntaxError();
+    public of<T>(decoder: Decoder<T>): Decoder<T> {
+        return this.createDecoder(decoder);
     }
 
-    public oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<T> {
-        throw new SyntaxError();
+    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
+        return this.of(oneOf(decoders));
     }
 
-    public list<T>(_decoder: Decoder<T>): Decoder<Array<T>> {
-        throw new SyntaxError();
+    public list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
+        return this.of(list(decoder));
     }
 
-    public dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
-        throw new SyntaxError();
+    public dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
+        return this.of(dict(decoder));
     }
 
-    public keyValue<T>(_decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
+    public keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
     public keyValue<K, T>(
-        _convertKey: (key: string) => Either<string, K>,
-        _decoder: Decoder<T>
+        convertKey: (key: string) => Either<string, K>,
+        decoder: Decoder<T>
     ): Decoder<Array<[ K, T ]>>;
-    public keyValue(..._args: any): any {
-        throw new SyntaxError();
+    public keyValue<K, T>(
+        ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
+    ): Decoder<Array<[ string, T ]>> | Decoder<Array<[ K, T ]>> {
+        if (args.length === 1) {
+            return this.of(keyValue(args[ 0 ]));
+        }
+
+        return this.of(keyValue(args[ 0 ], args[ 1 ]));
     }
 
-    public lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
-        throw new SyntaxError();
+    public lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
+        return this.of(lazy(callDecoder));
     }
 
     public field(_name: string): Path {
@@ -682,10 +693,10 @@ export abstract class Decoder<T> {
     }
 
     public decode(input: unknown): Either<Error, T> {
-        return this.decodeWithPrefix(Nothing, input);
+        return this.decodeAs(true, input);
     }
 
-    public abstract decodeWithPrefix(prefix: Maybe<string>, input: unknown): Either<Error, T>;
+    public abstract decodeAs(required: boolean, input: unknown): Either<Error, T>;
 }
 
 class Primitive<T> extends Decoder<T> {
@@ -697,10 +708,10 @@ class Primitive<T> extends Decoder<T> {
         super();
     }
 
-    public decodeWithPrefix(prefix: Maybe<string>, input: unknown): Either<Error, T> {
+    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
         return this.check(input)
             ? Right(input)
-            : expecting(`${prefix.getOrElse(this.prefix)} ${this.type}`, input);
+            : expecting(`${required ? this.prefix : 'an OPTIONAL'} ${this.type}`, input);
     }
 }
 
@@ -709,10 +720,29 @@ class Nullable<T> extends Decoder<Maybe<T>> {
         super();
     }
 
-    public decodeWithPrefix(_prefix: Maybe<string>, input: unknown): Either<Error, Maybe<T>> {
+    public decodeAs(_required: boolean, input: unknown): Either<Error, Maybe<T>> {
         return input === null
             ? Right(Nothing)
-            : this.decoder.decodeWithPrefix(Just('an OPTIONAL'), input).map(Just);
+            : this.decoder.decodeAs(false, input).map(Just);
+    }
+}
+
+class Field<T> extends Decoder<T> {
+    constructor(
+        private readonly key: string,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
+        if (isObject(input) && (!required || this.key in input)) {
+            return this.decoder
+                .decode(input[ this.key ])
+                .mapLeft((error: Error): Error => Error.Field(this.key, error));
+        }
+
+        return expecting(`${required ? 'an' : 'an OPTIONAL'} OBJECT with a field named '${this.key}'`, input);
     }
 }
 
@@ -765,8 +795,8 @@ export function lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
     throw new SyntaxError();
 }
 
-export function field(_name: string): Path {
-    throw new SyntaxError();
+export function field(name: string): Path {
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new Field(name, decoder));
 }
 
 export function index(_position: number): Path {
