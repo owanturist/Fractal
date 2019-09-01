@@ -266,6 +266,66 @@ test('Json.Decode.optional.index().of()', t => {
     );
 });
 
+test('Json.Decode.index().optional.of()', t => {
+    t.deepEqual(
+        Decode.index(0).optional.of(Decode.string).decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        Decode.index(0).optional.of(Decode.string).decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0] but only see 0 entries', []))
+    );
+
+    t.deepEqual(
+        Decode.index(0).optional.of(Decode.string).decode([ 1 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        Decode.index(0).optional.of(Decode.string).decode([ null ]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.index(0).optional.of(Decode.string).decode([ 'str' ]),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.index().optional.of()', t => {
+    t.deepEqual(
+        Decode.optional.index(0).optional.of(Decode.string).decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).optional.of(Decode.string).decode([]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).optional.of(Decode.string).decode([ 1 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).optional.of(Decode.string).decode([ null ]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).optional.of(Decode.string).decode([ 'str' ]),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
 test.todo('Json.Decode.at()');
 
 test.skip('Json.Decode.fromEither()', t => {
