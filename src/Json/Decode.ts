@@ -879,6 +879,27 @@ class Props<T> extends Decoder<T> {
         return acc;
     }
 }
+class OneOf<T> extends Decoder<T> {
+    constructor(private readonly decoders: Array<Decoder<T>>) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
+        let result: Either<Array<Error>, T> = Left([]);
+
+        for (const decoder of this.decoders) {
+            result = result.orElse((acc: Array<Error>): Either<Array<Error>, T> => {
+                return decoder.decodeAs(required, input).mapLeft((error: Error): Array<Error> => {
+                    acc.push(error);
+
+                    return acc;
+                });
+            });
+        }
+
+        return result.mapLeft(Error.OneOf);
+    }
+}
 
 class Nullable<T> extends Decoder<Maybe<T>> {
     public constructor(private readonly decoder: Decoder<T>) {
@@ -1052,8 +1073,8 @@ export function props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O
     return new Props(config);
 }
 
-export function oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<T> {
-    throw new SyntaxError();
+export function oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
+    return new OneOf(decoders);
 }
 
 export function list<T>(_decoder: Decoder<T>): Decoder<Array<T>> {

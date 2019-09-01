@@ -568,31 +568,56 @@ test('Json.Decode.props()', t => {
     );
 });
 
-test.todo('Json.Decode.of()');
-
-test('Json.Decode.optional.of()', t => {
+test('Json.Decode.oneOf()', t => {
     t.deepEqual(
-        Decode.optional.of(Decode.string).decode(undefined),
-        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
+        Decode.oneOf([]).decode(null),
+        Either.Left(Decode.Error.OneOf([]))
     );
 
     t.deepEqual(
-        Decode.optional.of(Decode.string).decode(null),
+        Decode.oneOf([
+            Decode.string
+        ]).decode(null),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting a STRING', null)
+        ]))
+    );
+
+    t.deepEqual(
+        Decode.oneOf([
+            Decode.string.map(Maybe.Just),
+            Decode.succeed(Maybe.Nothing)
+        ]).decode(undefined),
         Either.Right(Maybe.Nothing)
     );
 
+    const _0 /* Decoder<string> */ = Decode.oneOf([
+        Decode.string,
+        Decode.float.map(float => float.toFixed(2))
+    ]);
     t.deepEqual(
-        Decode.optional.of(Decode.string).decode(1),
-        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', 1))
+        _0.decode(null),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting a STRING', null),
+            Decode.Error.Failure('Expecting a FLOAT', null)
+        ]))
     );
-
     t.deepEqual(
-        Decode.optional.of(Decode.string).decode('str'),
-        Either.Right(Maybe.Just('str'))
+        _0.decode(false),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting a STRING', false),
+            Decode.Error.Failure('Expecting a FLOAT', false)
+        ]))
+    );
+    t.deepEqual(
+        _0.decode('123.45'),
+        Either.Right('123.45')
+    );
+    t.deepEqual(
+        _0.decode(234.567),
+        Either.Right('234.57')
     );
 });
-
-test.todo('Json.Decode.oneOf()');
 
 test.todo('Json.Decode.list()');
 
@@ -923,6 +948,30 @@ test.skip('Json.Decode.fromMaybe()', t => {
     t.deepEqual(
         Decode.optional.of(decoder).decode('1'),
         Either.Right(Maybe.Just(1))
+    );
+});
+
+test.todo('Json.Decode.optional');
+
+test('Json.Decode.optional.of()', t => {
+    t.deepEqual(
+        Decode.optional.of(Decode.string).decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
+    );
+
+    t.deepEqual(
+        Decode.optional.of(Decode.string).decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.of(Decode.string).decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', 1))
+    );
+
+    t.deepEqual(
+        Decode.optional.of(Decode.string).decode('str'),
+        Either.Right(Maybe.Just('str'))
     );
 });
 
