@@ -619,7 +619,68 @@ test('Json.Decode.oneOf()', t => {
     );
 });
 
-test.todo('Json.Decode.list()');
+test('Json.Decode.list()', t => {
+    const _0 /* Decoder<Array<string>> */ = Decode.list(Decode.string);
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting a LIST', null))
+    );
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting a LIST', {}))
+    );
+    t.deepEqual(
+        _0.decode([]),
+        Either.Right([])
+    );
+    t.deepEqual(
+        _0.decode([ 0 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', 0)
+        ))
+    );
+    t.deepEqual(
+        _0.decode([ '_0_', null ]),
+        Either.Left(Decode.Error.Index(
+            1,
+            Decode.Error.Failure('Expecting a STRING', null)
+        ))
+    );
+    t.deepEqual(
+        _0.decode([ '_0_', '_1_' ]),
+        Either.Right([ '_0_', '_1_' ])
+    );
+
+    const _1 /* Decoder<Array<Maybe<string>>> */ = Decode.list(Decode.optional.string);
+    t.deepEqual(
+        _1.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting a LIST', null))
+    );
+    t.deepEqual(
+        _1.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting a LIST', {}))
+    );
+    t.deepEqual(
+        _1.decode([]),
+        Either.Right([])
+    );
+    t.deepEqual(
+        _1.decode([ 0 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', 0)
+        ))
+    );
+    t.deepEqual(
+        _1.decode([ '_0_', null ]),
+        Either.Right([ Maybe.Just('_0_'), Maybe.Nothing ])
+    );
+    t.deepEqual(
+        _1.decode([ '_0_', '_1_' ]),
+        Either.Right([ Maybe.Just('_0_'), Maybe.Just('_1_') ])
+    );
+});
 
 test.todo('Json.Decode.dict()');
 

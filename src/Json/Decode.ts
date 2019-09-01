@@ -758,14 +758,6 @@ export abstract class Decoder<T> {
         throw new SyntaxError();
     }
 
-    public chainMaybe<R>(message: string, fn: (value: T) => Maybe<R>): Decoder<R> {
-        return this.chain((value: T): Decoder<R> => fromMaybe(message, fn(value)));
-    }
-
-    public chainEither<R>(fn: (value: T) => Either<string, R>): Decoder<R> {
-        return this.map(fn).chain(fromEither);
-    }
-
     public decodeJSON(input: string): Either<Error, T> {
         try {
             return this.decode(JSON.parse(input));
@@ -898,6 +890,35 @@ class OneOf<T> extends Decoder<T> {
         }
 
         return result.mapLeft(Error.OneOf);
+    }
+}
+
+class List<T> extends Decoder<Array<T>> {
+    constructor(private readonly decoder: Decoder<T>) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, Array<T>> {
+        if (!isArray(input)) {
+            return expecting(`${required ? 'a' : 'an OPTIONAL'} LIST`, input);
+        }
+
+        let result: Either<Error, Array<T>> = Right([]);
+
+        for (let index = 0; index < input.length; index++) {
+            result = result.chain((acc: Array<T>): Either<Error, Array<T>> => {
+                return this.decoder.decode(input[ index ]).mapBoth(
+                    (error: Error): Error => Error.Index(index, error),
+                    (value: T): Array<T> => {
+                        acc.push(value);
+
+                        return acc;
+                    }
+                );
+            });
+        }
+
+        return result;
     }
 }
 
@@ -1077,8 +1098,8 @@ export function oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
     return new OneOf(decoders);
 }
 
-export function list<T>(_decoder: Decoder<T>): Decoder<Array<T>> {
-    throw new SyntaxError();
+export function list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
+    return new List(decoder);
 }
 
 export function dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
