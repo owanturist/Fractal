@@ -574,12 +574,16 @@ class Path implements Decode {
         return this.of(lazy(callDecoder));
     }
 
-    public field(_name: string): Path {
-        throw new SyntaxError();
+    public field(name: string): Path {
+        return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+            return this.createDecoder(new RequiredField(name, decoder));
+        });
     }
 
-    public index(_position: number): Path {
-        throw new SyntaxError();
+    public index(position: number): Path {
+        return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+            return this.createDecoder(new RequiredIndex(position, decoder));
+        });
     }
 
     public at(_path: Array<string | number>): Path {
@@ -1193,8 +1197,20 @@ export function index(position: number): Path {
     return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new RequiredIndex(position, decoder));
 }
 
-export function at(_path: Array<string | number>): Path {
-    throw new SyntaxError();
+export function at(path: Array<string | number>): Path {
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+        let acc: Decoder<T> = decoder;
+
+        for (let index = path.length - 1; index >= 0; index--) {
+            const fragment: string | number = path[ index ];
+
+            acc = isString(fragment)
+                ? new RequiredField(fragment, acc)
+                : new RequiredIndex(fragment, acc);
+        }
+
+        return acc;
+    });
 }
 
 export function fromEither<T>(either: Either<string, T>): Decoder<T> {
