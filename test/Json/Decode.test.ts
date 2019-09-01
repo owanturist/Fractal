@@ -1,3 +1,5 @@
+// tslint:disable:max-line-length
+
 import test from 'ava';
 
 import Maybe from '../../src/Maybe';
@@ -65,6 +67,11 @@ test('Json.Decode.field().string', t => {
     );
 
     t.deepEqual(
+        Decode.field('_1').string.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_1\'', {}))
+    );
+
+    t.deepEqual(
         Decode.field('_1').string.decode({ _1: 1 }),
         Either.Left(Decode.Error.Field(
             '_1',
@@ -74,6 +81,31 @@ test('Json.Decode.field().string', t => {
 
     t.deepEqual(
         Decode.field('_1').string.decode({ _1: 'str' }),
+        Either.Right('str')
+    );
+});
+
+test('Json.Decode.index().string', t => {
+    t.deepEqual(
+        Decode.index(0).string.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0]', null))
+    );
+
+    t.deepEqual(
+        Decode.index(0).string.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting a longer ARRAY with an ELEMENT at [0] but only see 0 entries', []))
+    );
+
+    t.deepEqual(
+        Decode.index(0).string.decode([ 1 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        Decode.index(0).string.decode([ 'str' ]),
         Either.Right('str')
     );
 });

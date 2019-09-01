@@ -4,7 +4,8 @@ import {
     isInt,
     isFloat,
     isBoolean,
-    isObject
+    isObject,
+    isArray
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
@@ -849,23 +850,54 @@ class OptionalField<T> extends Decoder<Maybe<T>> {
     }
 
     public decodeAs(required: boolean, input: unknown): Either<Error, Maybe<T>> {
-        if (isObject(input)) {
-            if (this.name in input) {
-                return this.decoder
-                    .decode(input[ this.name ])
-                    .mapBoth(
-                        (error: Error): Error => Error.Field(this.name, error),
-                        Just
-                    );
-            }
-
-            return Right(Nothing);
+        if (!isObject(input)) {
+            return expecting(
+                `${required ? 'an' : 'an OPTIONAL'} OBJECT with an OPTIONAL FIELD named '${this.name}'`,
+                input
+            );
         }
 
-        return expecting(
-            `${required ? 'an' : 'an OPTIONAL'} OBJECT with an OPTIONAL FIELD named '${this.name}'`,
-            input
-        );
+        if (this.name in input) {
+            return this.decoder
+                .decode(input[ this.name ])
+                .mapBoth(
+                    (error: Error): Error => Error.Field(this.name, error),
+                    Just
+                );
+        }
+
+        return Right(Nothing);
+    }
+}
+
+class Index<T> extends Decoder<T> {
+    constructor(
+        private readonly index: number,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
+        if (!isArray(input)) {
+            return expecting(
+                `${required ? 'an' : 'an OPTIONAL'} ARRAY with an ELEMENT at [${this.index}]`,
+                input
+            );
+        }
+
+        const index = this.index < 0 ? input.length + this.index : this.index;
+
+        if (index < 0 || index >= input.length) {
+            return expecting(
+                `a longer ARRAY with an ELEMENT at [${this.index}] but only see ${input.length} entries`,
+                input
+            );
+        }
+
+        return this.decoder
+            .decode(input[ this.index ])
+            .mapLeft((error: Error): Error => Error.Index(this.index, error));
     }
 }
 
@@ -924,8 +956,8 @@ export function field(name: string): Path {
     return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new Field(name, decoder));
 }
 
-export function index(_position: number): Path {
-    throw new SyntaxError();
+export function index(position: number): Path {
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new Index(position, decoder));
 }
 
 export function at(_path: Array<string | number>): Path {
