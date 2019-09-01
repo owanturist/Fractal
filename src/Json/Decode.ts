@@ -483,7 +483,7 @@ class Succeed<T> extends Decoder<T> {
 
 interface Decode {
     string: Decoder<unknown>;
-    bool: Decoder<unknown>;
+    boolean: Decoder<unknown>;
     int: Decoder<unknown>;
     float: Decoder<unknown>;
 
@@ -519,8 +519,8 @@ class Path implements Decode {
         return this.of(string);
     }
 
-    public get bool(): Decoder<boolean> {
-        return this.of(bool);
+    public get boolean(): Decoder<boolean> {
+        return this.of(boolean);
     }
 
     public get int(): Decoder<number> {
@@ -596,8 +596,8 @@ class Optional implements Decode {
         return this.of(string);
     }
 
-    public get bool(): Decoder<Maybe<boolean>> {
-        return this.of(bool);
+    public get boolean(): Decoder<Maybe<boolean>> {
+        return this.of(boolean);
     }
 
     public get int(): Decoder<Maybe<number>> {
@@ -677,8 +677,8 @@ class OptionalPath implements Decode {
         return this.of(string);
     }
 
-    public get bool(): Decoder<Maybe<boolean>> {
-        return this.of(bool);
+    public get boolean(): Decoder<Maybe<boolean>> {
+        return this.of(boolean);
     }
 
     public get int(): Decoder<Maybe<number>> {
@@ -811,6 +811,24 @@ class Primitive<T> extends Decoder<T> {
         return this.check(input)
             ? Right(input)
             : expecting(`${required ? this.prefix : 'an OPTIONAL'} ${this.type}`, input);
+    }
+}
+
+class Encoder implements Value {
+    public constructor(private readonly value: unknown) {}
+
+    public encode(indent: number): string {
+        return JSON.stringify(this.value, null, indent);
+    }
+
+    public serialize(): unknown {
+        return this.value;
+    }
+}
+
+class Identity extends Decoder<Value> {
+    public decodeAs(_required: boolean, input: unknown): Either<Error, Value> {
+        return Right(new Encoder(input));
     }
 }
 
@@ -966,13 +984,13 @@ export const optional: Optional = new Optional(
 
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 
-export const bool: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
+export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
 
 export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
 
 export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 
-export const value: Decoder<Value> = null as any;
+export const value: Decoder<Value> = new Identity();
 
 export function fail(_message: string): Decoder<never> {
     throw new SyntaxError();

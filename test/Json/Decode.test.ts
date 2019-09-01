@@ -4,6 +4,7 @@ import test from 'ava';
 
 import Maybe from '../../src/Maybe';
 import Either from '../../src/Either';
+import Encode from '../../src/Json/Encode';
 import * as Decode from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
@@ -38,13 +39,156 @@ test('Json.Decode.string', t => {
     );
 });
 
-test.todo('Json.Decode.bool');
+test('Json.Decode.boolean', t => {
+    t.deepEqual(
+        Decode.boolean.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting a BOOLEAN', undefined))
+    );
 
-test.todo('Json.Decode.int');
+    t.deepEqual(
+        Decode.boolean.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting a BOOLEAN', null))
+    );
 
-test.todo('Json.Decode.float');
+    t.deepEqual(
+        Decode.boolean.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting a BOOLEAN', 'str'))
+    );
 
-test.todo('Json.Decode.value');
+    t.deepEqual(
+        Decode.boolean.decode(true),
+        Either.Right(true)
+    );
+
+    t.deepEqual(
+        Decode.boolean.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting a BOOLEAN', 1))
+    );
+
+    t.deepEqual(
+        Decode.boolean.decode(1.1),
+        Either.Left(Decode.Error.Failure('Expecting a BOOLEAN', 1.1))
+    );
+});
+
+test('Json.Decode.int', t => {
+    t.deepEqual(
+        Decode.int.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', undefined))
+    );
+
+    t.deepEqual(
+        Decode.int.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', null))
+    );
+
+    t.deepEqual(
+        Decode.int.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.int.decode(true),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', true))
+    );
+
+    t.deepEqual(
+        Decode.int.decode(1),
+        Either.Right(1)
+    );
+
+    t.deepEqual(
+        Decode.int.decode(1.1),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', 1.1))
+    );
+});
+
+test('Json.Decode.float', t => {
+    t.deepEqual(
+        Decode.float.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', undefined))
+    );
+
+    t.deepEqual(
+        Decode.float.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', null))
+    );
+
+    t.deepEqual(
+        Decode.float.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.float.decode(true),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', true))
+    );
+
+    t.deepEqual(
+        Decode.float.decode(1),
+        Either.Right(1)
+    );
+
+    t.deepEqual(
+        Decode.float.decode(1.1),
+        Either.Right(1.1)
+    );
+});
+
+test('Json.Decode.value', t => {
+    t.deepEqual(
+        Decode.value.decode(null),
+        Either.Right(Encode.nill)
+    );
+
+    t.deepEqual(
+        Decode.value.decode('str'),
+        Either.Right(Encode.string('str'))
+    );
+
+    t.deepEqual(
+        Decode.value.decode(true),
+        Either.Right(Encode.boolean(true))
+    );
+
+    t.deepEqual(
+        Decode.value.decode(1),
+        Either.Right(Encode.number(1))
+    );
+
+    t.deepEqual(
+        Decode.value.decode(1.1),
+        Either.Right(Encode.number(1.1))
+    );
+
+    t.deepEqual(
+        Decode.value.decode([]),
+        Either.Right(Encode.list([]))
+    );
+
+    t.deepEqual(
+        Decode.value.decode([ 0, '_1', false ]),
+        Either.Right(Encode.list([ Encode.number(0), Encode.string('_1'), Encode.boolean(false) ]))
+    );
+
+    t.deepEqual(
+        Decode.value.decode({}),
+        Either.Right(Encode.object({}))
+    );
+
+    t.deepEqual(
+        Decode.value.decode({
+            _0: 0,
+            _1: '_1',
+            _2: false
+        }),
+        Either.Right(Encode.object({
+            _0: Encode.number(0),
+            _1: Encode.string('_1'),
+            _2: Encode.boolean(false)
+        }))
+    );
+});
 
 test.todo('Json.Decode.fail()');
 
