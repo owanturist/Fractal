@@ -854,6 +854,32 @@ class Succeed<T> extends Decoder<T> {
     }
 }
 
+class Props<T> extends Decoder<T> {
+    constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
+        super();
+    }
+
+    public decodeAs(_required: boolean, input: unknown): Either<Error, T> {
+        let acc: Either<Error, T> = Right({} as T);
+
+        for (const key in this.config) {
+            if (this.config.hasOwnProperty(key)) {
+                acc = acc.chain((obj: T): Either<Error, T> => {
+                    return this.config[ key ].decode(input).map(
+                        (value: T[ Extract<keyof T, string> ]): T => {
+                            obj[ key ] = value;
+
+                            return obj;
+                        }
+                    );
+                });
+            }
+        }
+
+        return acc;
+    }
+}
+
 class Nullable<T> extends Decoder<Maybe<T>> {
     public constructor(private readonly decoder: Decoder<T>) {
         super();
@@ -1019,11 +1045,11 @@ export function fail(message: string): Decoder<never> {
 }
 
 export function succeed<T>(value: T): Decoder<T> {
-    return new Succeed(value)
+    return new Succeed(value);
 }
 
-export function props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
-    throw new SyntaxError();
+export function props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
+    return new Props(config);
 }
 
 export function oneOf<T>(_decoders: Array<Decoder<T>>): Decoder<T> {
