@@ -884,7 +884,97 @@ test('Json.Decode.keyValue(convertKey, decoder)', t => {
     );
 });
 
-test.todo('Json.Decode.dict()');
+test('Json.Decode.dict(decoder)', t => {
+    const _0 /* Decoder<{
+        [ key: string ]: number;
+    }> */ = Decode.dict(Decode.int);
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right({})
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0_',
+            Decode.Error.Failure('Expecting an INTEGER', '0')
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: 0,
+            _1_: null
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1_',
+            Decode.Error.Failure('Expecting an INTEGER', null)
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: 0,
+            _1_: 1
+        }),
+        Either.Right({
+            _0_: 0,
+            _1_: 1
+        })
+    );
+
+    const _1 /* Decoder<{
+        [ key: string ]: Maybe<number>;
+    }> */ = Decode.dict(Decode.optional.int);
+    t.deepEqual(
+        _1.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+    t.deepEqual(
+        _1.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+    t.deepEqual(
+        _1.decode({}),
+        Either.Right({})
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0_',
+            Decode.Error.Failure('Expecting an OPTIONAL INTEGER', '0')
+        ))
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: 0,
+            _1_: null
+        }),
+        Either.Right({
+            _0_: Maybe.Just(0),
+            _1_: Maybe.Nothing
+        })
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: 0,
+            _1_: 1
+        }),
+        Either.Right({
+            _0_: Maybe.Just(0),
+            _1_: Maybe.Just(1)
+        })
+    );
+});
 
 test.todo('Json.Decode.lazy()');
 

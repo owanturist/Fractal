@@ -1154,8 +1154,16 @@ export function keyValue<K, T>(
     return new KeyValue(args[ 0 ], args[ 1 ]);
 }
 
-export function dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
-    throw new SyntaxError();
+export function dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
+    return keyValue(decoder).map((pairs: Array<[ string, T ]>): {[ key: string ]: T } => {
+        const acc: {[ key: string ]: T } = {};
+
+        for (const [ key, value ] of pairs) {
+            acc[ key ] = value;
+        }
+
+        return acc;
+    });
 }
 
 export function lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
