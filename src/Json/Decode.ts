@@ -922,6 +922,43 @@ class List<T> extends Decoder<Array<T>> {
     }
 }
 
+class KeyValue<K, T> extends Decoder<Array<[ K, T ]>> {
+    constructor(
+        private readonly convertKey: (key: string) => Either<string, K>,
+        private readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, Array<[ K, T ]>> {
+        if (!isObject(input)) {
+            return expecting(`an${required ? ' ' : ' OPTIONAL '}OBJECT`, input);
+        }
+
+        let result: Either<Error, Array<[ K, T ]>> = Right([]);
+
+        for (const key in input) {
+            if (input.hasOwnProperty(key)) {
+                result = result.chain((acc: Array<[ K, T ]>): Either<Error, Array<[ K, T ]>> => {
+                    return Either.props({
+                        key: this.convertKey(key).mapLeft((message: string): Error => Error.Failure(message, key)),
+                        value: this.decoder.decode(input[ key ])
+                    }).mapBoth(
+                        (error: Error): Error => Error.Field(key, error),
+                        (pair: { key: K; value: T }): Array<[ K, T ]> => {
+                            acc.push([ pair.key, pair.value ]);
+
+                            return acc;
+                        }
+                    );
+                });
+            }
+        }
+
+        return result;
+    }
+}
+
 class Nullable<T> extends Decoder<Maybe<T>> {
     public constructor(private readonly decoder: Decoder<T>) {
         super();
@@ -1102,16 +1139,22 @@ export function list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
     return new List(decoder);
 }
 
-export function dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
-    throw new SyntaxError();
+export function keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
+export function keyValue<K, T>(
+    convertKey: (key: string) => Either<string, K>,
+    decoder: Decoder<T>
+): Decoder<Array<[ K, T ]>>;
+export function keyValue<K, T>(
+    ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
+): Decoder<Array<[ string, T ]>> | Decoder<Array<[ K, T ]>> {
+    if (args.length === 1) {
+        return new KeyValue(Right, args[ 0 ]);
+    }
+
+    return new KeyValue(args[ 0 ], args[ 1 ]);
 }
 
-export function keyValue<T>(_decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
-export function keyValue<K, T>(
-    _convertKey: (key: string) => Either<string, K>,
-    _decoder: Decoder<T>
-): Decoder<Array<[ K, T ]>>;
-export function keyValue(..._args: any): any {
+export function dict<T>(_decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
     throw new SyntaxError();
 }
 

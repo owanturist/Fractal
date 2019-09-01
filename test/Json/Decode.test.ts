@@ -190,7 +190,7 @@ test('Json.Decode.value', t => {
     );
 });
 
-test('Json.Decode.fail()', t => {
+test('Json.Decode.fail(message)', t => {
     t.deepEqual(
         Decode.fail('Some error').decode(undefined),
         Either.Left(Decode.Error.Failure('Some error', undefined))
@@ -222,7 +222,7 @@ test('Json.Decode.fail()', t => {
     );
 });
 
-test('Json.Decode.succeed()', t => {
+test('Json.Decode.succeed(value)', t => {
     t.deepEqual(
         Decode.succeed('str').decode(undefined),
         Either.Right('str')
@@ -254,7 +254,7 @@ test('Json.Decode.succeed()', t => {
     );
 });
 
-test('Json.Decode.props()', t => {
+test('Json.Decode.props(config)', t => {
     t.deepEqual(
         Decode.props({}).decode(undefined),
         Either.Right({})
@@ -568,7 +568,7 @@ test('Json.Decode.props()', t => {
     );
 });
 
-test('Json.Decode.oneOf()', t => {
+test('Json.Decode.oneOf(decoders)', t => {
     t.deepEqual(
         Decode.oneOf([]).decode(null),
         Either.Left(Decode.Error.OneOf([]))
@@ -619,7 +619,7 @@ test('Json.Decode.oneOf()', t => {
     );
 });
 
-test('Json.Decode.list()', t => {
+test('Json.Decode.list(decoder)', t => {
     const _0 /* Decoder<Array<string>> */ = Decode.list(Decode.string);
     t.deepEqual(
         _0.decode(null),
@@ -682,15 +682,215 @@ test('Json.Decode.list()', t => {
     );
 });
 
-test.todo('Json.Decode.dict()');
+test('Json.Decode.keyValue(decoder)', t => {
+    const _0 /* Decoder<Array<[ string, number ]>> */ = Decode.keyValue(Decode.int);
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right([])
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0_',
+            Decode.Error.Failure('Expecting an INTEGER', '0')
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: 0,
+            _1_: null
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1_',
+            Decode.Error.Failure('Expecting an INTEGER', null)
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: 0,
+            _1_: 1
+        }),
+        Either.Right<Array<[ string, number ]>>([
+            [ '_0_', 0 ],
+            [ '_1_', 1 ]
+        ])
+    );
 
-test.todo('Json.Decode.keyValue()');
+    const _1 /* Decoder<Array<[ string, Maybe<number> ]>> */ = Decode.keyValue(Decode.optional.int);
+    t.deepEqual(
+        _1.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+    t.deepEqual(
+        _1.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+    t.deepEqual(
+        _1.decode({}),
+        Either.Right([])
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0_',
+            Decode.Error.Failure('Expecting an OPTIONAL INTEGER', '0')
+        ))
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: 0,
+            _1_: null
+        }),
+        Either.Right<Array<[ string, Maybe<number> ]>>([
+            [ '_0_', Maybe.Just(0) ],
+            [ '_1_', Maybe.Nothing ]
+        ])
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: 0,
+            _1_: 1
+        }),
+        Either.Right<Array<[ string, Maybe<number> ]>>([
+            [ '_0_', Maybe.Just(0) ],
+            [ '_1_', Maybe.Just(1) ]
+        ])
+    );
+});
+
+test('Json.Decode.keyValue(convertKey, decoder)', t => {
+    const toDate = (str: string): Either<string, Date> => {
+        const date = new Date(str);
+
+        return isNaN(date.getTime())
+            ? Either.Left('Expecting a DATE')
+            : Either.Right(date);
+    };
+
+    const _0 /* Decoder<Array<[ Date, number ]>> */ = Decode.keyValue(toDate, Decode.int);
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right([])
+    );
+    t.deepEqual(
+        _0.decode({
+            _0_: '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0_',
+            Decode.Error.Failure('Expecting a DATE', '_0_')
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            '2019-09-02': '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '2019-09-02',
+            Decode.Error.Failure('Expecting an INTEGER', '0')
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            '2019-09-02': 0,
+            '2019-10-02': null
+        }),
+        Either.Left(Decode.Error.Field(
+            '2019-10-02',
+            Decode.Error.Failure('Expecting an INTEGER', null)
+        ))
+    );
+    t.deepEqual(
+        _0.decode({
+            '2019-09-02': 0,
+            '2019-10-02': 1
+        }),
+        Either.Right<Array<[ Date, number ]>>([
+            [ new Date(2019, 8, 2, 7), 0 ],
+            [ new Date(2019, 9, 2, 7), 1 ]
+        ])
+    );
+
+    const _1 /* Decoder<Array<[ Date, Maybe<number> ]>> */ = Decode.keyValue(toDate, Decode.optional.int);
+    t.deepEqual(
+        _1.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+    t.deepEqual(
+        _1.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+    t.deepEqual(
+        _1.decode({}),
+        Either.Right([])
+    );
+    t.deepEqual(
+        _1.decode({
+            _0_: '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0_',
+            Decode.Error.Failure('Expecting a DATE', '_0_')
+        ))
+    );
+    t.deepEqual(
+        _1.decode({
+            '2019-09-02': '0'
+        }),
+        Either.Left(Decode.Error.Field(
+            '2019-09-02',
+            Decode.Error.Failure('Expecting an OPTIONAL INTEGER', '0')
+        ))
+    );
+    t.deepEqual(
+        _1.decode({
+            '2019-09-02': 0,
+            '2019-10-02': null
+        }),
+        Either.Right<Array<[ Date, Maybe<number> ]>>([
+            [ new Date(2019, 8, 2, 7), Maybe.Just(0) ],
+            [ new Date(2019, 9, 2, 7), Maybe.Nothing ]
+        ])
+    );
+    t.deepEqual(
+        _1.decode({
+            '2019-09-02': 0,
+            '2019-10-02': 1
+        }),
+        Either.Right<Array<[ Date, Maybe<number> ]>>([
+            [ new Date(2019, 8, 2, 7), Maybe.Just(0) ],
+            [ new Date(2019, 9, 2, 7), Maybe.Just(1) ]
+        ])
+    );
+});
+
+test.todo('Json.Decode.dict()');
 
 test.todo('Json.Decode.lazy()');
 
 test.todo('Json.Decode.field()');
 
-test('Json.Decode.field().of()', t => {
+test('Json.Decode.field(name).of(decoder)', t => {
     t.deepEqual(
         Decode.field('_1').of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
@@ -715,7 +915,7 @@ test('Json.Decode.field().of()', t => {
     );
 });
 
-test('Json.Decode.optional.field().of()', t => {
+test('Json.Decode.optional.field(name).of(decoder)', t => {
     t.deepEqual(
         Decode.optional.field('_1').of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
@@ -748,7 +948,7 @@ test('Json.Decode.optional.field().of()', t => {
     );
 });
 
-test('Json.Decode.field().optional.of()', t => {
+test('Json.Decode.field(name).optional.of(decoder)', t => {
     t.deepEqual(
         Decode.field('_1').optional.of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
@@ -778,7 +978,7 @@ test('Json.Decode.field().optional.of()', t => {
     );
 });
 
-test('Json.Decode.optional.field().optional.of()', t => {
+test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
     t.deepEqual(
         Decode.optional.field('_1').optional.of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
@@ -810,7 +1010,7 @@ test('Json.Decode.optional.field().optional.of()', t => {
 
 test.todo('Json.Decode.index()');
 
-test('Json.Decode.index().of()', t => {
+test('Json.Decode.index(position).of(decoder)', t => {
     t.deepEqual(
         Decode.index(0).string.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
@@ -835,7 +1035,7 @@ test('Json.Decode.index().of()', t => {
     );
 });
 
-test('Json.Decode.optional.index().of()', t => {
+test('Json.Decode.optional.index(position).of(decoder)', t => {
     t.deepEqual(
         Decode.optional.index(0).of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
@@ -868,7 +1068,7 @@ test('Json.Decode.optional.index().of()', t => {
     );
 });
 
-test('Json.Decode.index().optional.of()', t => {
+test('Json.Decode.index(position).optional.of(decoder)', t => {
     t.deepEqual(
         Decode.index(0).optional.of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
@@ -898,7 +1098,7 @@ test('Json.Decode.index().optional.of()', t => {
     );
 });
 
-test('Json.Decode.optional.index().optional.of()', t => {
+test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
     t.deepEqual(
         Decode.optional.index(0).optional.of(Decode.string).decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
@@ -1014,7 +1214,7 @@ test.skip('Json.Decode.fromMaybe()', t => {
 
 test.todo('Json.Decode.optional');
 
-test('Json.Decode.optional.of()', t => {
+test('Json.Decode.optional.of(decoder)', t => {
     t.deepEqual(
         Decode.optional.of(Decode.string).decode(undefined),
         Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
@@ -1048,7 +1248,7 @@ test.todo('Json.Decode.Decoder.decode');
 
 test.todo('Json.Decode.Decoder.decodeJSON()');
 
-test('Json.Decode.Error.cata()', t => {
+test('Json.Decode.Error.cata(pattern)', t => {
     const pattern: Decode.Error.Pattern<string> = {
         Field(field: string, error: Decode.Error): string {
             return `"${field}" ${error.cata(pattern)}`;
@@ -1213,7 +1413,7 @@ test('Json.Decode.Error.cata()', t => {
     );
 });
 
-test('Json.Decode.Error.Failure.stringify()', t => {
+test('Json.Decode.Error.Failure.stringify(indent)', t => {
     t.is(
         Decode.Error.Failure('Message', null).stringify(0),
 `Problem with the given value:
@@ -1257,7 +1457,7 @@ Message`
     );
 });
 
-test('Json.Decode.Error.OneOf.stringify()', t => {
+test('Json.Decode.Error.OneOf.stringify(indent)', t => {
     t.is(
         Decode.Error.OneOf([]).stringify(0),
         'Ran into a Json.Decode.oneOf with no possibilities!'
@@ -1297,7 +1497,7 @@ Second message`
     );
 });
 
-test('Json.Decode.Error.Index.stringify()', t => {
+test('Json.Decode.Error.Index.stringify(indent)', t => {
     t.is(
         Decode.Error.Index(
             0,
@@ -1412,7 +1612,7 @@ Message`
     );
 });
 
-test('Json.Decode.Error.Field.stringify()', t => {
+test('Json.Decode.Error.Field.stringify(indent)', t => {
     t.is(
         Decode.Error.Field(
             'foo',
