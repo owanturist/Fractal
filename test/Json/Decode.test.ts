@@ -976,7 +976,124 @@ test('Json.Decode.dict(decoder)', t => {
     );
 });
 
-test.todo('Json.Decode.lazy()');
+test('Json.Decode.lazy(callDecoder)', t => {
+    interface Folder {
+        name: string;
+        children: Array<Folder>;
+    }
+
+    const _0: Decode.Decoder<Folder> = Decode.props({
+        name: Decode.field('n').string,
+        children: Decode.field('c').list(Decode.lazy(() => _0))
+    });
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            n: 'folder_0',
+            c: null
+        }),
+        Either.Left(Decode.Error.Field(
+            'c',
+            Decode.Error.Failure('Expecting a LIST', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            n: 'folder_0',
+            c: []
+        }),
+        Either.Right({
+            name: 'folder_0',
+            children: []
+        })
+    );
+
+    t.deepEqual(
+        _0.decode({
+            n: 'folder_0',
+            c: [{
+                n: 'folder_1_0',
+                c: [{
+                    n: 'folder_2_0',
+                    c: [{
+                        n: 'folder_3_0',
+                        c: [ null ]
+                    }]
+                }]
+            }, {
+                n: 'folder_1_1',
+                c: []
+            }]
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                'c',
+                Decode.Error.Index(
+                    0,
+                    Decode.Error.Field(
+                        'c',
+                        Decode.Error.Index(
+                            0,
+                            Decode.Error.Field(
+                                'c',
+                                Decode.Error.Index(
+                                    0,
+                                    Decode.Error.Field(
+                                        'c',
+                                        Decode.Error.Index(
+                                            0,
+                                            Decode.Error.Failure('Expecting an OBJECT', null)
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    );
+
+    t.deepEqual(
+        _0.decode({
+            n: 'folder_0',
+            c: [{
+                n: 'folder_1_0',
+                c: [{
+                    n: 'folder_2_0',
+                    c: [{
+                        n: 'folder_3_0',
+                        c: []
+                    }]
+                }]
+            }, {
+                n: 'folder_1_1',
+                c: []
+            }]
+        }),
+        Either.Right({
+            name: 'folder_0',
+            children: [{
+                name: 'folder_1_0',
+                children: [{
+                    name: 'folder_2_0',
+                    children: [{
+                        name: 'folder_3_0',
+                        children: []
+                    }]
+                }]
+            }, {
+                name: 'folder_1_1',
+                children: []
+            }]
+        })
+    );
+});
 
 test.todo('Json.Decode.field()');
 

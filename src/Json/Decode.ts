@@ -754,8 +754,8 @@ export abstract class Decoder<T> {
         return new Map(fn, this);
     }
 
-    public chain<R>(_fn: (value: T) => Decoder<R>): Decoder<R> {
-        throw new SyntaxError();
+    public chain<R>(fn: (value: T) => Decoder<R>): Decoder<R> {
+        return new Chain(fn, this);
     }
 
     public decodeJSON(input: string): Either<Error, T> {
@@ -787,6 +787,21 @@ class Map<T, R> extends Decoder<R> {
 
     public decodeAs(required: boolean, input: unknown): Either<Error, R> {
         return this.decoder.decodeAs(required, input).map(this.fn);
+    }
+}
+
+class Chain<T, R> extends Decoder<R> {
+    constructor(
+        private readonly fn: (value: T) => Decoder<R>,
+        protected readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: Value): Either<Error, R> {
+        return this.decoder.decodeAs(required, input).chain((value: T): Either<Error, R> => {
+            return this.fn(value).decode(input);
+        });
     }
 }
 
@@ -1166,8 +1181,8 @@ export function dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
     });
 }
 
-export function lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
-    throw new SyntaxError();
+export function lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
+    return succeed(null).chain(callDecoder);
 }
 
 export function field(name: string): Path {
