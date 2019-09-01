@@ -4,8 +4,7 @@ import {
     isInt,
     isFloat,
     isBoolean,
-    isObject,
-    identity
+    isObject
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import Either, { Left, Right } from '../Either';
@@ -510,7 +509,9 @@ class Path implements Decode {
     ) {}
 
     public get optional(): Optional {
-        return new Optional(this.createDecoder);
+        return new Optional(
+            <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => this.createDecoder(decoder).map(Just)
+        );
     }
 
     public get string(): Decoder<string> {
@@ -587,7 +588,7 @@ class Path implements Decode {
 
 class Optional implements Decode {
     public constructor(
-        private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<T>
+        private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
 
     public get string(): Decoder<Maybe<string>> {
@@ -611,7 +612,7 @@ class Optional implements Decode {
     }
 
     public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
-        return this.createDecoder(new Nullable(decoder));
+        return this.createDecoder(new Nullable(decoder)).map(Maybe.join);
     }
 
     public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
@@ -646,9 +647,9 @@ class Optional implements Decode {
     }
 
     public field(name: string): OptionalPath {
-        return new OptionalPath(
-            <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new OptionalField(name, decoder)
-        );
+        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return this.createDecoder(new OptionalField(name, decoder)).map(Maybe.join);
+        });
     }
 
     public index(_position: number): OptionalPath {
@@ -666,7 +667,7 @@ class OptionalPath implements Decode {
     ) {}
 
     public get optional(): Optional {
-        return optional;
+        return new Optional(this.createDecoder);
     }
 
     public get string(): Decoder<Maybe<string>> {
@@ -744,8 +745,8 @@ class OptionalPath implements Decode {
 }
 
 export abstract class Decoder<T> {
-    public map<R>(_fn: (value: T) => R): Decoder<R> {
-        throw new SyntaxError();
+    public map<R>(fn: (value: T) => R): Decoder<R> {
+        return new Map(fn, this);
     }
 
     public chain<R>(_fn: (value: T) => Decoder<R>): Decoder<R> {
@@ -777,6 +778,19 @@ export abstract class Decoder<T> {
     }
 
     public abstract decodeAs(required: boolean, input: unknown): Either<Error, T>;
+}
+
+class Map<T, R> extends Decoder<R> {
+    constructor(
+        private readonly fn: (value: T) => R,
+        protected readonly decoder: Decoder<T>
+    ) {
+        super();
+    }
+
+    public decodeAs(required: boolean, input: unknown): Either<Error, R> {
+        return this.decoder.decodeAs(required, input).map(this.fn);
+    }
 }
 
 class Primitive<T> extends Decoder<T> {
@@ -855,7 +869,9 @@ class OptionalField<T> extends Decoder<Maybe<T>> {
     }
 }
 
-export const optional: Optional = new Optional(identity);
+export const optional: Optional = new Optional(
+    <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
+);
 
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 
