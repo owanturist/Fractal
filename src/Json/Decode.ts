@@ -822,51 +822,69 @@ class Nullable<T> extends Decoder<Maybe<T>> {
     }
 }
 
-class Field<T> extends Decoder<T> {
+abstract class Field<T, R> extends Decoder<R> {
+    protected static readonly TYPE: string = 'OBJECT';
+
     constructor(
         private readonly name: string,
         private readonly decoder: Decoder<T>
     ) {
         super();
     }
-
-    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
-        if (isObject(input) && this.name in input) {
-            return this.decoder
-                .decode(input[ this.name ])
-                .mapLeft((error: Error): Error => Error.Field(this.name, error));
-        }
-
-        return expecting(`${required ? 'an' : 'an OPTIONAL'} OBJECT with a FIELD named '${this.name}'`, input);
-    }
-}
-
-class OptionalField<T> extends Decoder<Maybe<T>> {
-    constructor(
-        private readonly name: string,
-        private readonly decoder: Decoder<T>
-    ) {
-        super();
-    }
-
-    public decodeAs(required: boolean, input: unknown): Either<Error, Maybe<T>> {
+    public decodeAs(required: boolean, input: unknown): Either<Error, R> {
         if (!isObject(input)) {
             return expecting(
-                `${required ? 'an' : 'an OPTIONAL'} OBJECT with an OPTIONAL FIELD named '${this.name}'`,
+                `an${required ? ' ' : ' OPTIONAL '}${Field.TYPE}`,
                 input
             );
         }
 
-        if (this.name in input) {
-            return this.decoder
-                .decode(input[ this.name ])
-                .mapBoth(
-                    (error: Error): Error => Error.Field(this.name, error),
-                    Just
-                );
+        if (!(this.name in input)) {
+            return this.decodeMissedField(this.name, input);
         }
 
+        return this.decoder
+            .decode(input[ this.name ])
+            .mapBoth(
+                (error: Error): Error => Error.Field(this.name, error),
+                (value: T): R => this.mapSuccess(value)
+            );
+
+    }
+
+    protected abstract decodeMissedField(name: string, input: unknown): Either<Error, R>;
+
+    protected abstract mapSuccess(value: T): R;
+}
+
+class RequiredField<T> extends Field<T, T> {
+    constructor(name: string, decoder: Decoder<T>) {
+        super(name, decoder);
+    }
+
+    protected decodeMissedField(name: string, input: unknown): Either<Error, T> {
+        return expecting(
+            `an ${Field.TYPE} with a FIELD named '${name}'`,
+            input
+        );
+    }
+
+    protected mapSuccess(value: T): T {
+        return value;
+    }
+}
+
+class OptionalField<T> extends Field<T, Maybe<T>> {
+    constructor(name: string, decoder: Decoder<T>) {
+        super(name, decoder);
+    }
+
+    protected decodeMissedField(): Either<Error, Maybe<T>> {
         return Right(Nothing);
+    }
+
+    protected mapSuccess(value: T): Maybe<T> {
+        return Just(value);
     }
 }
 
@@ -953,7 +971,7 @@ export function lazy<T>(_callDecoder: () => Decoder<T>): Decoder<T> {
 }
 
 export function field(name: string): Path {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new Field(name, decoder));
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new RequiredField(name, decoder));
 }
 
 export function index(position: number): Path {
