@@ -832,6 +832,28 @@ class Identity extends Decoder<Value> {
     }
 }
 
+class Fail extends Decoder<never> {
+    constructor(private readonly message: string) {
+        super();
+    }
+
+    public decodeAs(_required: boolean, input: unknown): Either<Error, never> {
+        return Left(
+            Error.Failure(this.message, input)
+        );
+    }
+}
+
+class Succeed<T> extends Decoder<T> {
+    constructor(private readonly value: T) {
+        super();
+    }
+
+    public decodeAs(): Either<Error, T> {
+        return Right(this.value);
+    }
+}
+
 class Nullable<T> extends Decoder<Maybe<T>> {
     public constructor(private readonly decoder: Decoder<T>) {
         super();
@@ -992,12 +1014,12 @@ export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 
 export const value: Decoder<Value> = new Identity();
 
-export function fail(_message: string): Decoder<never> {
-    throw new SyntaxError();
+export function fail(message: string): Decoder<never> {
+    return new Fail(message);
 }
 
-export function succeed<T>(_value: T): Decoder<T> {
-    throw new SyntaxError();
+export function succeed<T>(value: T): Decoder<T> {
+    return new Succeed(value)
 }
 
 export function props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {

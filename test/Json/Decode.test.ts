@@ -190,9 +190,69 @@ test('Json.Decode.value', t => {
     );
 });
 
-test.todo('Json.Decode.fail()');
+test('Json.Decode.fail()', t => {
+    t.deepEqual(
+        Decode.fail('Some error').decode(undefined),
+        Either.Left(Decode.Error.Failure('Some error', undefined))
+    );
 
-test.todo('Json.Decode.succeed()');
+    t.deepEqual(
+        Decode.fail('Some error').decode(null),
+        Either.Left(Decode.Error.Failure('Some error', null))
+    );
+
+    t.deepEqual(
+        Decode.fail('Some error').decode('str'),
+        Either.Left(Decode.Error.Failure('Some error', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.fail('Some error').decode(true),
+        Either.Left(Decode.Error.Failure('Some error', true))
+    );
+
+    t.deepEqual(
+        Decode.fail('Some error').decode(1),
+        Either.Left(Decode.Error.Failure('Some error', 1))
+    );
+
+    t.deepEqual(
+        Decode.fail('Some error').decode(1.1),
+        Either.Left(Decode.Error.Failure('Some error', 1.1))
+    );
+});
+
+test('Json.Decode.succeed()', t => {
+    t.deepEqual(
+        Decode.succeed('str').decode(undefined),
+        Either.Right('str')
+    );
+
+    t.deepEqual(
+        Decode.succeed(false).decode(null),
+        Either.Right(false)
+    );
+
+    t.deepEqual(
+        Decode.succeed(1).decode('str'),
+        Either.Right(1)
+    );
+
+    t.deepEqual(
+        Decode.succeed(1.1).decode(true),
+        Either.Right(1.1)
+    );
+
+    t.deepEqual(
+        Decode.succeed(null).decode(1),
+        Either.Right(null)
+    );
+
+    t.deepEqual(
+        Decode.succeed([]).decode(1.1),
+        Either.Right([])
+    );
+});
 
 test.todo('Json.Decode.props()');
 
