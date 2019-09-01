@@ -653,8 +653,10 @@ class Optional implements Decode {
         });
     }
 
-    public index(_position: number): OptionalPath {
-        throw new SyntaxError();
+    public index(position: number): OptionalPath {
+        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return this.createDecoder(new OptionalIndex(position, decoder)).map(Maybe.join);
+        });
     }
 
     public at(_path: Array<string | number>): OptionalPath {
@@ -731,13 +733,15 @@ class OptionalPath implements Decode {
     }
 
     public field(name: string): OptionalPath {
-        return new OptionalPath(
-            <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => new OptionalField(name, decoder)
-        );
+        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return new OptionalField(name, decoder);
+        });
     }
 
-    public index(_position: number): OptionalPath {
-        throw new SyntaxError();
+    public index(position: number): OptionalPath {
+        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return new OptionalIndex(position, decoder);
+        });
     }
 
     public at(_path: Array<string | number>): OptionalPath {
@@ -823,7 +827,7 @@ class Nullable<T> extends Decoder<Maybe<T>> {
 }
 
 abstract class Field<T, R> extends Decoder<R> {
-    protected static readonly TYPE: string = 'OBJECT';
+    protected static readonly TYPE = 'OBJECT';
 
     constructor(
         private readonly name: string,
@@ -852,7 +856,7 @@ abstract class Field<T, R> extends Decoder<R> {
 
     }
 
-    protected abstract decodeMissedField(name: string, input: unknown): Either<Error, R>;
+    protected abstract decodeMissedField(name: string, input: {[ key: string ]: unknown }): Either<Error, R>;
 
     protected abstract mapSuccess(value: T): R;
 }
@@ -862,7 +866,7 @@ class RequiredField<T> extends Field<T, T> {
         super(name, decoder);
     }
 
-    protected decodeMissedField(name: string, input: unknown): Either<Error, T> {
+    protected decodeMissedField(name: string, input: {[ key: string ]: unknown }): Either<Error, T> {
         return expecting(
             `an ${Field.TYPE} with a FIELD named '${name}'`,
             input
@@ -888,34 +892,71 @@ class OptionalField<T> extends Field<T, Maybe<T>> {
     }
 }
 
-class Index<T> extends Decoder<T> {
+abstract class Index<T, R> extends Decoder<R> {
+    protected static readonly TYPE = 'ARRAY';
+
     constructor(
-        private readonly index: number,
+        private readonly position: number,
         private readonly decoder: Decoder<T>
     ) {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
+    public decodeAs(required: boolean, input: unknown): Either<Error, R> {
         if (!isArray(input)) {
             return expecting(
-                `${required ? 'an' : 'an OPTIONAL'} ARRAY with an ELEMENT at [${this.index}]`,
+                `an${required ? ' ' : ' OPTIONAL '}${Index.TYPE}`,
                 input
             );
         }
 
-        const index = this.index < 0 ? input.length + this.index : this.index;
+        const position = this.position < 0 ? input.length + this.position : this.position;
 
-        if (index < 0 || index >= input.length) {
-            return expecting(
-                `a longer ARRAY with an ELEMENT at [${this.index}] but only see ${input.length} entries`,
-                input
-            );
+        if (position < 0 || position >= input.length) {
+            return this.decodeMissedIndex(position, input);
         }
 
         return this.decoder
-            .decode(input[ this.index ])
-            .mapLeft((error: Error): Error => Error.Index(this.index, error));
+            .decode(input[ this.position ])
+            .mapBoth(
+                (error: Error): Error => Error.Index(this.position, error),
+                (value: T): R => this.mapSuccess(value)
+            );
+    }
+
+    protected abstract decodeMissedIndex(position: number, input: Array<unknown>): Either<Error, R>;
+
+    protected abstract mapSuccess(value: T): R;
+}
+
+class RequiredIndex<T> extends Index<T, T> {
+    constructor(position: number, decoder: Decoder<T>) {
+        super(position, decoder);
+    }
+
+    protected decodeMissedIndex(position: number, input: Array<unknown>): Either<Error, T> {
+        return expecting(
+            `an ARRAY with an ELEMENT at [${position}] but only see ${input.length} entries`,
+            input
+        );
+    }
+
+    protected mapSuccess(value: T): T {
+        return value;
+    }
+}
+
+class OptionalIndex<T> extends Index<T, Maybe<T>> {
+    constructor(position: number, decoder: Decoder<T>) {
+        super(position, decoder);
+    }
+
+    protected decodeMissedIndex(): Either<Error, Maybe<T>> {
+        return Right(Nothing);
+    }
+
+    protected mapSuccess(value: T): Maybe<T> {
+        return Just(value);
     }
 }
 
@@ -975,7 +1016,7 @@ export function field(name: string): Path {
 }
 
 export function index(position: number): Path {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new Index(position, decoder));
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new RequiredIndex(position, decoder));
 }
 
 export function at(_path: Array<string | number>): Path {

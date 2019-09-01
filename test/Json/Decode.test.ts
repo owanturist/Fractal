@@ -88,12 +88,12 @@ test('Json.Decode.field().string', t => {
 test('Json.Decode.index().string', t => {
     t.deepEqual(
         Decode.index(0).string.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0]', null))
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
     );
 
     t.deepEqual(
         Decode.index(0).string.decode([]),
-        Either.Left(Decode.Error.Failure('Expecting a longer ARRAY with an ELEMENT at [0] but only see 0 entries', []))
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0] but only see 0 entries', []))
     );
 
     t.deepEqual(
@@ -139,6 +139,39 @@ test('Json.Decode.optional.field().string', t => {
 
     t.deepEqual(
         Decode.optional.field('_1').string.decode({ _1: 'str' }),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.index().string', t => {
+    t.deepEqual(
+        Decode.optional.index(0).string.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).string.decode([]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).string.decode([ 1 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).string.decode([ null ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', null)
+        ))
+    );
+
+    t.deepEqual(
+        Decode.optional.index(0).string.decode([ 'str' ]),
         Either.Right(Maybe.Just('str'))
     );
 });
