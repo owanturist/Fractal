@@ -1337,88 +1337,6 @@ test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
 
 test.todo('Json.Decode.at()');
 
-test.skip('Json.Decode.fromEither()', t => {
-    const toDecimal = (str: string): Either<string, number> => {
-        const int = parseInt(str, 10);
-
-        return isNaN(int) ? Either.Left('error') : Either.Right(int);
-    };
-
-    const decoder /* Decoder<number> */ = Decode.string.map(toDecimal).chain(Decode.fromEither);
-
-    t.deepEqual(
-        decoder.decode('invalid'),
-        Either.Left(Decode.Error.Failure('error', 'invalid'))
-    );
-
-    t.deepEqual(
-        decoder.decode('1'),
-        Either.Right(1)
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode(undefined),
-        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL VALUE', undefined))
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode(null),
-        Either.Right(Maybe.Nothing)
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode('invalid'),
-        Either.Left(Decode.Error.Failure('error', 'invalid'))
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode('1'),
-        Either.Right(Maybe.Just(1))
-    );
-});
-
-test.skip('Json.Decode.fromMaybe()', t => {
-    const toDecimal = (str: string): Maybe<number> => {
-        const ing = parseInt(str, 10);
-
-        return isNaN(ing) ? Maybe.Nothing : Maybe.Just(ing);
-    };
-
-    const decoder /* Decoder<number> */ = Decode.string.chain(
-        str => Decode.fromMaybe('error', toDecimal(str))
-    );
-
-    t.deepEqual(
-        decoder.decode('invalid'),
-        Either.Left(Decode.Error.Failure('error', 'invalid'))
-    );
-
-    t.deepEqual(
-        decoder.decode('1'),
-        Either.Right(1)
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode(undefined),
-        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL VALUE', undefined))
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode(null),
-        Either.Right(Maybe.Nothing)
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode('invalid'),
-        Either.Left(Decode.Error.Failure('error', 'invalid'))
-    );
-
-    t.deepEqual(
-        Decode.optional.of(decoder).decode('1'),
-        Either.Right(Maybe.Just(1))
-    );
-});
-
 test.todo('Json.Decode.optional');
 
 test('Json.Decode.optional.of(decoder)', t => {
@@ -1454,6 +1372,88 @@ test.todo('Json.Decode.Decoder.fromMaybe()');
 test.todo('Json.Decode.Decoder.decode');
 
 test.todo('Json.Decode.Decoder.decodeJSON()');
+
+test('Json.Decode.fromEither()', t => {
+    const toDecimal = (str: string): Either<string, number> => {
+        const int = parseInt(str, 10);
+
+        return isNaN(int) ? Either.Left('error') : Either.Right(int);
+    };
+
+    const decoder /* Decoder<number> */ = Decode.string.map(toDecimal).chain(Decode.fromEither);
+
+    t.deepEqual(
+        decoder.decode('invalid'),
+        Either.Left(Decode.Error.Failure('error', 'invalid'))
+    );
+
+    t.deepEqual(
+        decoder.decode('1'),
+        Either.Right(1)
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode('invalid'),
+        Either.Left(Decode.Error.Failure('error', 'invalid'))
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode('1'),
+        Either.Right(Maybe.Just(1))
+    );
+});
+
+test('Json.Decode.fromMaybe()', t => {
+    const toDecimal = (str: string): Maybe<number> => {
+        const ing = parseInt(str, 10);
+
+        return isNaN(ing) ? Maybe.Nothing : Maybe.Just(ing);
+    };
+
+    const decoder /* Decoder<number> */ = Decode.string.chain(
+        str => Decode.fromMaybe('error', toDecimal(str))
+    );
+
+    t.deepEqual(
+        decoder.decode('invalid'),
+        Either.Left(Decode.Error.Failure('error', 'invalid'))
+    );
+
+    t.deepEqual(
+        decoder.decode('1'),
+        Either.Right(1)
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode('invalid'),
+        Either.Left(Decode.Error.Failure('error', 'invalid'))
+    );
+
+    t.deepEqual(
+        Decode.optional.of(decoder).decode('1'),
+        Either.Right(Maybe.Just(1))
+    );
+});
 
 test('Json.Decode.Error.cata(pattern)', t => {
     const pattern: Decode.Error.Pattern<string> = {

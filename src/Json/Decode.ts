@@ -689,8 +689,8 @@ class OptionalPath implements Decode {
         return this.of(float);
     }
 
-    public get value(): Decoder<Value> {
-        throw new SyntaxError();
+    public get value(): Decoder<Maybe<Value>> {
+        return this.of(value);
     }
 
     public props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
@@ -1197,10 +1197,10 @@ export function at(_path: Array<string | number>): Path {
     throw new SyntaxError();
 }
 
-export function fromEither<T>(_either: Either<string, T>): Decoder<T> {
-    throw new SyntaxError();
+export function fromEither<T>(either: Either<string, T>): Decoder<T> {
+    return either.fold(fail, succeed);
 }
 
-export function fromMaybe<T>(_message: string, _maybe: Maybe<T>): Decoder<T> {
-    throw new SyntaxError();
+export function fromMaybe<T>(message: string, maybe: Maybe<T>): Decoder<T> {
+    return maybe.toEither(message).pipe(fromEither);
 }
