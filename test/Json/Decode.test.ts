@@ -1983,7 +1983,33 @@ test('Json.Decode.Decoder.chain(fn)', t => {
     );
 });
 
-test.todo('Json.Decode.Decoder.decodeJSON()');
+test('Json.Decode.Decoder.decodeJSON()', t => {
+    const decoder = Decode.props({
+        _0: Decode.field('__0__').string,
+        _1: Decode.field('__1__').int
+    });
+
+    t.deepEqual(
+        decoder.decodeJSON('undefined'),
+        Either.Left(Decode.Error.Failure('This is not valid JSON! Unexpected token u in JSON at position 0', 'undefined'))
+    );
+
+    t.deepEqual(
+        decoder.decodeJSON('{"__0__":1}'),
+        Either.Left(Decode.Error.Field(
+            '__0__',
+            Decode.Error.Failure('Expecting a STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        decoder.decodeJSON('{"__0__":"str","__1__":123}'),
+        Either.Right({
+            _0: 'str',
+            _1: 123
+        })
+    );
+});
 
 test('Json.Decode.fromEither(either)', t => {
     const toDecimal = (str: string): Either<string, number> => {
