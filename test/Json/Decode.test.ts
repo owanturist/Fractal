@@ -1629,8 +1629,6 @@ test('Json.Decode.index(position).optional.of(decoder)', t => {
     );
 });
 
-test.todo('Json.Decode.at()');
-
 test('Json.Decode.at(path).of(decoder)', t => {
     const _0 /* Decoder<string> */ = Decode.at([ '_0', 1, '_2', 3 ]).of(Decode.string);
 
@@ -1821,6 +1819,212 @@ test('Json.Decode.at(path).of(decoder)', t => {
             }]
         }),
         Either.Right('final')
+    );
+});
+
+test('Json.Decode.at(path).{`of` shortcuts}', t => {
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).string.decode([{
+            __1__: 'str'
+        }]),
+        Either.Right('str'),
+        'Json.Decode.at(path).string'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).boolean.decode([{
+            __1__: true
+        }]),
+        Either.Right(true),
+        'Json.Decode.at(path).boolean'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).int.decode([{
+            __1__: 1
+        }]),
+        Either.Right(1),
+        'Json.Decode.at(path).int'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).float.decode([{
+            __1__: 1.23
+        }]),
+        Either.Right(1.23),
+        'Json.Decode.at(path).float'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).value.decode([{
+            __1__: [ 1, null, false, {} ]
+        }]).map(value => value.serialize()),
+        Either.Right([ 1, null, false, {} ]),
+        'Json.Decode.at(path).value'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).props({
+            _0: Decode.field('_0_').string,
+            _1: Decode.field('_1_').int
+        }).decode([{
+            __1__: {
+                _0_: 'str',
+                _1_: 123
+            }
+        }]),
+        Either.Right({
+            _0: 'str',
+            _1: 123
+        }),
+        'Json.Decode.at(path).props(config)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).list(Decode.int).decode([{
+            __1__: [ 3, 2, 1, 0 ]
+        }]),
+        Either.Right([ 3, 2, 1, 0 ]),
+        'Json.Decode.at(path).list(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).keyValue(Decode.boolean).decode([{
+            __1__: {
+                _0: true,
+                _1: false,
+                _2: false
+            }
+        }]),
+        Either.Right<Array<[ string, boolean ]>>([
+            [ '_0', true ],
+            [ '_1', false ],
+            [ '_2', false ]
+        ]),
+        'Json.Decode.at(path).keyValue(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).keyValue(str => Right(Number(str.replace('_', ''))), Decode.boolean).decode([{
+            __1__: {
+                _0: true,
+                _1: false,
+                _2: false
+            }
+        }]),
+        Either.Right<Array<[ number, boolean ]>>([
+            [ 0, true ],
+            [ 1, false ],
+            [ 2, false ]
+        ]),
+        'Json.Decode.at(path).keyValue(convertKey, decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).dict(Decode.float).decode([{
+            __1__: {
+                _0: 1.23,
+                _1: 4.56,
+                _2: 7.89
+            }
+        }]),
+        Either.Right({
+            _0: 1.23,
+            _1: 4.56,
+            _2: 7.89
+        }),
+        'Json.Decode.at(path).dict(decoder)'
+    );
+
+    const _0 /* Decoder<boolean> */ = Decode.at([ 0, '__1__' ]).oneOf([
+        Decode.boolean,
+        Decode.int.map(x => x > 0)
+    ]);
+
+    t.deepEqual(
+        _0.decode([{
+            __1__: false
+        }]),
+        Either.Right(false),
+        'Json.Decode.at(path).oneOf(decoders)'
+    );
+    t.deepEqual(
+        _0.decode([{
+            __1__: 10
+        }]),
+        Either.Right(true),
+        'Json.Decode.at(path).oneOf(decoders)'
+    );
+
+    const _1: Decode.Decoder<string> = Decode.at([ 0, '__1__' ]).lazy(() => Decode.oneOf([
+        _1,
+        Decode.string
+    ]));
+
+    t.deepEqual(
+        _1.decode([{
+            __1__: '_1'
+        }]),
+        Either.Right('_1'),
+        'Json.Decode.at(path).lazy(callDecoder)'
+    );
+    t.deepEqual(
+        _1.decode([{
+            __1__: [{
+                __1__: '_2'
+            }]
+        }]),
+        Either.Right('_2'),
+        'Json.Decode.at(path).lazy(callDecoder)'
+    );
+    t.deepEqual(
+        _1.decode([{
+            __1__: [{
+                __1__: [{
+                    __1__: '_3'
+                }]
+            }]
+        }]),
+        Either.Right('_3'),
+        'Json.Decode.at(path).lazy(callDecoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).field('__2__').of(Decode.string).decode([{
+            __1__: {
+                __2__: 'str'
+            }
+        }]),
+        Either.Right('str'),
+        'Json.Decode.at(path).field(name).of(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).index(2).of(Decode.string).decode([{
+            __1__: [ null, null, 'str' ]
+        }]),
+        Either.Right('str'),
+        'Json.Decode.at(path).index(position).of(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).at([ '__2__', 3 ]).of(Decode.string).decode([{
+            __1__: {
+                __2__: [ null, null, null, 'str' ]
+            }
+        }]),
+        Either.Right('str'),
+        'Json.Decode.at(path).at(path).of(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).at([ 2, '__3__' ]).of(Decode.string).decode([{
+            __1__: [ null, null, {
+                __3__: 'str'
+            }]
+        }]),
+        Either.Right('str'),
+        'Json.Decode.at(path).at(path).of(decoder)'
     );
 });
 
