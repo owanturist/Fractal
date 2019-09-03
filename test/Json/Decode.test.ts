@@ -1100,6 +1100,11 @@ test('Json.Decode.field(name).of(decoder)', t => {
     const _0 /* Decode<string> */ = Decode.field('_1').of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -1375,6 +1380,96 @@ test('Json.Decode.field(name).optional.of(decoder)', t => {
 
     t.deepEqual(
         _0.decode({ _1: 'str' }),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.field(name).optional.field(name).of(decoder)', t => {
+    const _0 /* Decode<Maybe<string>> */ = Decode.field('_1').optional.field('_2').of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_1\'', {}))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: null
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an OBJECT', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: []
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an OBJECT', [])
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: {}
+        }),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: {
+                _2: null
+            }
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Field(
+                '_2',
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: {
+                _2: 1
+            }
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Field(
+                '_2',
+                Decode.Error.Failure('Expecting a STRING', 1)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: {
+                _2: 'str'
+            }
+        }),
         Either.Right(Maybe.Just('str'))
     );
 });
