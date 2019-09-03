@@ -1474,6 +1474,90 @@ test('Json.Decode.field(name).optional.field(name).of(decoder)', t => {
     );
 });
 
+test('Json.Decode.field(name).optional.index(position).of(decoder)', t => {
+    const _0 /* Decode<Maybe<string>> */ = Decode.field('_1').optional.index(2).of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_1\'', {}))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: null
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an ARRAY', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: {}
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an ARRAY', {})
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: []
+        }),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: [ null, null, null ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Index(
+                2,
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: [ null, null, 1 ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Index(
+                2,
+                Decode.Error.Failure('Expecting a STRING', 1)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: [ null, null, 'str' ]
+        }),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
 test('Json.Decode.index(position).of(decoder)', t => {
     const _0 /* Decoder<string> */ = Decode.index(0).string;
 
