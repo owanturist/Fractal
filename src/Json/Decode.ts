@@ -663,8 +663,8 @@ class Optional implements Decode {
         });
     }
 
-    public at(_path: Array<string | number>): OptionalPath {
-        throw new SyntaxError();
+    public at(path: Array<string | number>): OptionalPath {
+        return optionalAt(path);
     }
 }
 
@@ -748,8 +748,8 @@ class OptionalPath implements Decode {
         });
     }
 
-    public at(_path: Array<string | number>): OptionalPath {
-        throw new SyntaxError();
+    public at(path: Array<string | number>): OptionalPath {
+        return optionalAt(path);
     }
 }
 
@@ -1207,6 +1207,22 @@ export function at(path: Array<string | number>): Path {
             acc = isString(fragment)
                 ? new RequiredField(fragment, acc)
                 : new RequiredIndex(fragment, acc);
+        }
+
+        return acc;
+    });
+}
+
+export function optionalAt(path: Array<string | number>): OptionalPath {
+    return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+        let acc: Decoder<Maybe<T>> = decoder.map(Just);
+
+        for (let index = path.length - 1; index >= 0; index--) {
+            const fragment: string | number = path[ index ];
+
+            acc = isString(fragment)
+                ? new OptionalField(fragment, acc).map(Maybe.join)
+                : new OptionalIndex(fragment, acc).map(Maybe.join);
         }
 
         return acc;
