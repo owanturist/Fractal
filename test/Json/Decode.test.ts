@@ -1351,6 +1351,8 @@ test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
     );
 });
 
+test.todo('Json.Decode.at()');
+
 test('Json.Decode.at(path).of(decoder)', t => {
     const _0 /* Decoder<string> */ = Decode.at([ '_0', 1, '_2', 3 ]).of(Decode.string);
 
@@ -1950,7 +1952,36 @@ test('Json.Decode.Decoder.map(fn)', t => {
     );
 });
 
-test.todo('Json.Decode.Decoder.chain()');
+test('Json.Decode.Decoder.chain(fn)', t => {
+    const _0 = Decode.float.chain(
+        x => x > 0 ? Decode.succeed(x.toFixed(2)) : Decode.fail('msg')
+    );
+
+    t.deepEqual(
+        _0.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.field('foo').of(_0).decode({
+            foo: 'str'
+        }),
+        Either.Left(Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Expecting a FLOAT', 'str')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode(-1.234),
+        Either.Left(Decode.Error.Failure('msg', -1.234))
+    );
+
+    t.deepEqual(
+        _0.decode(1.234),
+        Either.Right('1.23')
+    );
+});
 
 test.todo('Json.Decode.Decoder.decodeJSON()');
 
