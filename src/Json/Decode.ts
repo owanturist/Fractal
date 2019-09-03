@@ -660,7 +660,9 @@ class Optional implements Decode {
     }
 
     public at(path: Array<string | number>): OptionalPath {
-        return optionalAt(path);
+        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return this.createDecoder(optionalAt(path, decoder)).map(Maybe.join);
+        });
     }
 }
 
@@ -741,7 +743,9 @@ class OptionalPath implements Decode {
     }
 
     public at(path: Array<string | number>): OptionalPath {
-        return optionalAt(path);
+        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return optionalAt(path, decoder);
+        });
     }
 
     public get optional(): Optional {
@@ -1207,20 +1211,18 @@ function requiredAt<T>(path: Array<string | number>, decoder: Decoder<T>): Decod
     return acc;
 }
 
-function optionalAt(path: Array<string | number>): OptionalPath {
-    return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-        let acc: Decoder<Maybe<T>> = decoder.map(Just);
+function optionalAt<T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<Maybe<T>> {
+    let acc: Decoder<Maybe<T>> = decoder.map(Just);
 
-        for (let index = path.length - 1; index >= 0; index--) {
-            const fragment: string | number = path[ index ];
+    for (let index = path.length - 1; index >= 0; index--) {
+        const fragment: string | number = path[ index ];
 
-            acc = isString(fragment)
-                ? new OptionalField(fragment, acc).map(Maybe.join)
-                : new OptionalIndex(fragment, acc).map(Maybe.join);
-        }
+        acc = isString(fragment)
+            ? new OptionalField(fragment, acc).map(Maybe.join)
+            : new OptionalIndex(fragment, acc).map(Maybe.join);
+    }
 
-        return acc;
-    });
+    return acc;
 }
 
 export function at(path: Array<string | number>): Path {
