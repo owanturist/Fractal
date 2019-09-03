@@ -1546,12 +1546,6 @@ test('Json.Decode.at(path).of(decoder)', t => {
 
 test('Json.Decode.optional.at(path).of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.at([ '_0', 1, '_2', 3 ]).of(Decode.string);
-    // const _0 /* Decoder<Maybe<string>> */ = Decode
-    //     .optional.field('_0')
-    //     .optional.index(1)
-    //     .optional.field('_2')
-    //     .optional.index(3)
-    //     .of(Decode.string);
 
     t.deepEqual(
         _0.decode(null),
@@ -1930,7 +1924,31 @@ test('Json.Decode.optional.of(decoder)', t => {
     );
 });
 
-test.todo('Json.Decode.Decoder.map()');
+test('Json.Decode.Decoder.map(fn)', t => {
+    const _0 = Decode.int.map(x => ({ positive: x > 0 }));
+
+    t.deepEqual(
+        _0.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.field('foo').of(_0).decode({
+            foo: 'str'
+        }),
+        Either.Left(Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Expecting an INTEGER', 'str')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode(10),
+        Either.Right({
+            positive: true
+        })
+    );
+});
 
 test.todo('Json.Decode.Decoder.chain()');
 

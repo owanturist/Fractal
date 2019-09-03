@@ -586,8 +586,8 @@ class Path implements Decode {
         });
     }
 
-    public at(_path: Array<string | number>): Path {
-        throw new SyntaxError();
+    public at(path: Array<string | number>): Path {
+        return at(path);
     }
 }
 
