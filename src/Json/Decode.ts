@@ -497,8 +497,6 @@ interface Decode {
     keyValue<T>(decoder: Decoder<T>): Decoder<unknown>;
     keyValue<K, T>(convertKey: (key: string) => Either<string, K>, decoder: Decoder<T>): Decoder<unknown>;
 
-    lazy<T>(callDecoder: () => Decoder<T>): Decoder<unknown>;
-
     field(key: string): unknown;
     index(position: number): unknown;
     at(path: Array<string | number>): unknown;
@@ -598,6 +596,10 @@ class Optional implements Decode {
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
 
+    public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return this.createDecoder(new Nullable(decoder)).map(Maybe.join);
+    }
+
     public get string(): Decoder<Maybe<string>> {
         return this.of(string);
     }
@@ -618,20 +620,8 @@ class Optional implements Decode {
         return this.of(props(config));
     }
 
-    public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
-        return this.createDecoder(new Nullable(decoder)).map(Maybe.join);
-    }
-
-    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
-        return this.of(oneOf(decoders));
-    }
-
     public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
         return this.of(list(decoder));
-    }
-
-    public dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
-        return this.of(dict(decoder));
     }
 
     public keyValue<T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
@@ -649,8 +639,12 @@ class Optional implements Decode {
         return this.of(keyValue(args[ 0 ], args[ 1 ]));
     }
 
-    public lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
-        return this.of(lazy(callDecoder));
+    public dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
+        return this.of(dict(decoder));
+    }
+
+    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
+        return this.of(oneOf(decoders));
     }
 
     public field(name: string): OptionalPath {
@@ -675,8 +669,8 @@ class OptionalPath implements Decode {
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
 
-    public get optional(): Optional {
-        return new Optional(this.createDecoder);
+    public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return this.createDecoder(decoder);
     }
 
     public get string(): Decoder<Maybe<string>> {
@@ -703,20 +697,8 @@ class OptionalPath implements Decode {
         return this.of(props(config));
     }
 
-    public of<T>(decoder: Decoder<T>): Decoder<Maybe<T>> {
-        return this.createDecoder(decoder);
-    }
-
-    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
-        return this.of(oneOf(decoders));
-    }
-
     public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
         return this.of(list(decoder));
-    }
-
-    public dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
-        return this.of(dict(decoder));
     }
 
     public keyValue<T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
@@ -732,6 +714,14 @@ class OptionalPath implements Decode {
         }
 
         return this.of(keyValue(args[ 0 ], args[ 1 ]));
+    }
+
+    public dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T }>> {
+        return this.of(dict(decoder));
+    }
+
+    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
+        return this.of(oneOf(decoders));
     }
 
     public lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
@@ -752,6 +742,10 @@ class OptionalPath implements Decode {
 
     public at(path: Array<string | number>): OptionalPath {
         return optionalAt(path);
+    }
+
+    public get optional(): Optional {
+        return new Optional(this.createDecoder);
     }
 }
 
