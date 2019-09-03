@@ -3,8 +3,7 @@
 import test from 'ava';
 
 import Maybe from '../../src/Maybe';
-import Either from '../../src/Either';
-import Encode from '../../src/Json/Encode';
+import Either, { Right } from '../../src/Either';
 import * as Decode from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
@@ -136,44 +135,46 @@ test('Json.Decode.float', t => {
 });
 
 test('Json.Decode.value', t => {
+    const serializeValue = (value: Decode.Value): unknown => value.serialize();
+
     t.deepEqual(
-        Decode.value.decode(null),
-        Either.Right(Encode.nill)
+        Decode.value.decode(null).map(serializeValue),
+        Either.Right(null)
     );
 
     t.deepEqual(
-        Decode.value.decode('str'),
-        Either.Right(Encode.string('str'))
+        Decode.value.decode('str').map(serializeValue),
+        Either.Right('str')
     );
 
     t.deepEqual(
-        Decode.value.decode(true),
-        Either.Right(Encode.boolean(true))
+        Decode.value.decode(true).map(serializeValue),
+        Either.Right(true)
     );
 
     t.deepEqual(
-        Decode.value.decode(1),
-        Either.Right(Encode.number(1))
+        Decode.value.decode(1).map(serializeValue),
+        Either.Right(1)
     );
 
     t.deepEqual(
-        Decode.value.decode(1.1),
-        Either.Right(Encode.number(1.1))
+        Decode.value.decode(1.1).map(serializeValue),
+        Either.Right(1.1)
     );
 
     t.deepEqual(
-        Decode.value.decode([]),
-        Either.Right(Encode.list([]))
+        Decode.value.decode([]).map(serializeValue),
+        Either.Right([])
     );
 
     t.deepEqual(
-        Decode.value.decode([ 0, '_1', false ]),
-        Either.Right(Encode.list([ Encode.number(0), Encode.string('_1'), Encode.boolean(false) ]))
+        Decode.value.decode([ 0, '_1', false ]).map(serializeValue),
+        Either.Right([ 0, '_1', false ])
     );
 
     t.deepEqual(
-        Decode.value.decode({}),
-        Either.Right(Encode.object({}))
+        Decode.value.decode({}).map(serializeValue),
+        Either.Right({})
     );
 
     t.deepEqual(
@@ -181,12 +182,12 @@ test('Json.Decode.value', t => {
             _0: 0,
             _1: '_1',
             _2: false
-        }),
-        Either.Right(Encode.object({
-            _0: Encode.number(0),
-            _1: Encode.string('_1'),
-            _2: Encode.boolean(false)
-        }))
+        }).map(serializeValue),
+        Either.Right({
+            _0: 0,
+            _1: '_1',
+            _2: false
+        })
     );
 });
 
@@ -568,57 +569,6 @@ test('Json.Decode.props(config)', t => {
     );
 });
 
-test('Json.Decode.oneOf(decoders)', t => {
-    t.deepEqual(
-        Decode.oneOf([]).decode(null),
-        Either.Left(Decode.Error.OneOf([]))
-    );
-
-    t.deepEqual(
-        Decode.oneOf([
-            Decode.string
-        ]).decode(null),
-        Either.Left(Decode.Error.OneOf([
-            Decode.Error.Failure('Expecting a STRING', null)
-        ]))
-    );
-
-    t.deepEqual(
-        Decode.oneOf([
-            Decode.string.map(Maybe.Just),
-            Decode.succeed(Maybe.Nothing)
-        ]).decode(undefined),
-        Either.Right(Maybe.Nothing)
-    );
-
-    const _0 /* Decoder<string> */ = Decode.oneOf([
-        Decode.string,
-        Decode.float.map(float => float.toFixed(2))
-    ]);
-    t.deepEqual(
-        _0.decode(null),
-        Either.Left(Decode.Error.OneOf([
-            Decode.Error.Failure('Expecting a STRING', null),
-            Decode.Error.Failure('Expecting a FLOAT', null)
-        ]))
-    );
-    t.deepEqual(
-        _0.decode(false),
-        Either.Left(Decode.Error.OneOf([
-            Decode.Error.Failure('Expecting a STRING', false),
-            Decode.Error.Failure('Expecting a FLOAT', false)
-        ]))
-    );
-    t.deepEqual(
-        _0.decode('123.45'),
-        Either.Right('123.45')
-    );
-    t.deepEqual(
-        _0.decode(234.567),
-        Either.Right('234.57')
-    );
-});
-
 test('Json.Decode.list(decoder)', t => {
     const _0 /* Decoder<Array<string>> */ = Decode.list(Decode.string);
     t.deepEqual(
@@ -976,6 +926,57 @@ test('Json.Decode.dict(decoder)', t => {
     );
 });
 
+test('Json.Decode.oneOf(decoders)', t => {
+    t.deepEqual(
+        Decode.oneOf([]).decode(null),
+        Either.Left(Decode.Error.OneOf([]))
+    );
+
+    t.deepEqual(
+        Decode.oneOf([
+            Decode.string
+        ]).decode(null),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting a STRING', null)
+        ]))
+    );
+
+    t.deepEqual(
+        Decode.oneOf([
+            Decode.string.map(Maybe.Just),
+            Decode.succeed(Maybe.Nothing)
+        ]).decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+
+    const _0 /* Decoder<string> */ = Decode.oneOf([
+        Decode.string,
+        Decode.float.map(float => float.toFixed(2))
+    ]);
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting a STRING', null),
+            Decode.Error.Failure('Expecting a FLOAT', null)
+        ]))
+    );
+    t.deepEqual(
+        _0.decode(false),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting a STRING', false),
+            Decode.Error.Failure('Expecting a FLOAT', false)
+        ]))
+    );
+    t.deepEqual(
+        _0.decode('123.45'),
+        Either.Right('123.45')
+    );
+    t.deepEqual(
+        _0.decode(234.567),
+        Either.Right('234.57')
+    );
+});
+
 test('Json.Decode.lazy(callDecoder)', t => {
     interface Folder {
         name: string;
@@ -1095,8 +1096,6 @@ test('Json.Decode.lazy(callDecoder)', t => {
     );
 });
 
-test.todo('Json.Decode.field()');
-
 test('Json.Decode.field(name).of(decoder)', t => {
     const _0 /* Decode<string> */ = Decode.field('_1').of(Decode.string);
 
@@ -1124,38 +1123,199 @@ test('Json.Decode.field(name).of(decoder)', t => {
     );
 });
 
-test('Json.Decode.optional.field(name).of(decoder)', t => {
-    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.field('_1').of(Decode.string);
-
+test('Json.Decode.field(name).{`of` shortcuts}', t => {
     t.deepEqual(
-        _0.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+        Decode.field('__0__').string.decode({
+            __0__: 'str'
+        }),
+        Either.Right('str'),
+        'Json.Decode.field(name).string'
     );
 
     t.deepEqual(
-        _0.decode({}),
-        Either.Right(Maybe.Nothing)
+        Decode.field('__0__').boolean.decode({
+            __0__: true
+        }),
+        Either.Right(true),
+        'Json.Decode.field(name).boolean'
     );
 
     t.deepEqual(
-        _0.decode({ _1: 1 }),
-        Either.Left(Decode.Error.Field(
-            '_1',
-            Decode.Error.Failure('Expecting a STRING', 1)
-        ))
+        Decode.field('__0__').int.decode({
+            __0__: 1
+        }),
+        Either.Right(1),
+        'Json.Decode.field(name).int'
     );
 
     t.deepEqual(
-        _0.decode({ _1: null }),
-        Either.Left(Decode.Error.Field(
-            '_1',
-            Decode.Error.Failure('Expecting a STRING', null)
-        ))
+        Decode.field('__0__').float.decode({
+            __0__: 1.23
+        }),
+        Either.Right(1.23),
+        'Json.Decode.field(name).float'
     );
 
     t.deepEqual(
-        _0.decode({ _1: 'str' }),
-        Either.Right(Maybe.Just('str'))
+        Decode.field('__0__').value.decode({
+            __0__: [ 1, null, false, {} ]
+        }).map(value => value.serialize()),
+        Either.Right([ 1, null, false, {} ]),
+        'Json.Decode.field(name).value'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').props({
+            _0: Decode.field('_0_').string,
+            _1: Decode.field('_1_').int
+        }).decode({
+            __0__: {
+                _0_: 'str',
+                _1_: 123
+            }
+        }),
+        Either.Right({
+            _0: 'str',
+            _1: 123
+        }),
+        'Json.Decode.field(name).props(config)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').list(Decode.int).decode({
+            __0__: [ 3, 2, 1, 0 ]
+        }),
+        Either.Right([ 3, 2, 1, 0 ]),
+        'Json.Decode.field(name).list(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').keyValue(Decode.boolean).decode({
+            __0__: {
+                _0: true,
+                _1: false,
+                _2: false
+            }
+        }),
+        Either.Right<Array<[ string, boolean ]>>([
+            [ '_0', true ],
+            [ '_1', false ],
+            [ '_2', false ]
+        ]),
+        'Json.Decode.field(name).keyValue(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').keyValue(str => Right(Number(str.replace('_', ''))), Decode.boolean).decode({
+            __0__: {
+                _0: true,
+                _1: false,
+                _2: false
+            }
+        }),
+        Either.Right<Array<[ number, boolean ]>>([
+            [ 0, true ],
+            [ 1, false ],
+            [ 2, false ]
+        ]),
+        'Json.Decode.field(name).keyValue(convertKey, decoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').dict(Decode.float).decode({
+            __0__: {
+                _0: 1.23,
+                _1: 4.56,
+                _2: 7.89
+            }
+        }),
+        Either.Right({
+            _0: 1.23,
+            _1: 4.56,
+            _2: 7.89
+        }),
+        'Json.Decode.field(name).dict(decoder)'
+    );
+
+    const _0 /* Decoder<boolean> */ = Decode.field('__0__').oneOf([
+        Decode.boolean,
+        Decode.int.map(x => x > 0)
+    ]);
+
+    t.deepEqual(
+        _0.decode({
+            __0__: false
+        }),
+        Either.Right(false),
+        'Json.Decode.field(name).oneOf(decoders)'
+    );
+    t.deepEqual(
+        _0.decode({
+            __0__: 10
+        }),
+        Either.Right(true),
+        'Json.Decode.field(name).oneOf(decoders)'
+    );
+
+    const _1: Decode.Decoder<string> = Decode.field('__0__').lazy(() => Decode.oneOf([
+        _1,
+        Decode.string
+    ]));
+
+    t.deepEqual(
+        _1.decode({
+            __0__: '_0'
+        }),
+        Either.Right('_0'),
+        'Json.Decode.field(name).lazy(callDecoder)'
+    );
+    t.deepEqual(
+        _1.decode({
+            __0__: {
+                __0__: '_1'
+            }
+        }),
+        Either.Right('_1'),
+        'Json.Decode.field(name).lazy(callDecoder)'
+    );
+    t.deepEqual(
+        _1.decode({
+            __0__: {
+                __0__: {
+                    __0__: '_3'
+                }
+            }
+        }),
+        Either.Right('_3'),
+        'Json.Decode.field(name).lazy(callDecoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').field('__1__').of(Decode.string).decode({
+            __0__: {
+                __1__: 'str'
+            }
+        }),
+        Either.Right('str'),
+        'Json.Decode.field(name).field(name).of(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').index(1).of(Decode.string).decode({
+            __0__: [ 'str0', 'str1' ]
+        }),
+        Either.Right('str1'),
+        'Json.Decode.field(name).index(position).of(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').at([ 1, '__2__' ]).of(Decode.string).decode({
+            __0__: [ null, {
+                __2__: 'str'
+            }]
+        }),
+        Either.Right('str'),
+        'Json.Decode.field(name).at(path).of(decoder)'
     );
 });
 
@@ -1168,39 +1328,17 @@ test('Json.Decode.field(name).optional.of(decoder)', t => {
     );
 
     t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', []))
+    );
+
+    t.deepEqual(
         _0.decode({}),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_1\'', {}))
     );
 
     t.deepEqual(
-        _0.decode({ _1: 1 }),
-        Either.Left(Decode.Error.Field(
-            '_1',
-            Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
-        ))
-    );
-
-    t.deepEqual(
         _0.decode({ _1: null }),
-        Either.Right(Maybe.Nothing)
-    );
-
-    t.deepEqual(
-        _0.decode({ _1: 'str' }),
-        Either.Right(Maybe.Just('str'))
-    );
-});
-
-test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
-    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.field('_1').optional.of(Decode.string);
-
-    t.deepEqual(
-        _0.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
-    );
-
-    t.deepEqual(
-        _0.decode({}),
         Either.Right(Maybe.Nothing)
     );
 
@@ -1210,11 +1348,6 @@ test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
             '_1',
             Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
         ))
-    );
-
-    t.deepEqual(
-        _0.decode({ _1: null }),
-        Either.Right(Maybe.Nothing)
     );
 
     t.deepEqual(
@@ -1922,6 +2055,73 @@ test('Json.Decode.optional.of(decoder)', t => {
 
     t.deepEqual(
         Decode.optional.of(Decode.string).decode('str'),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.field(name).of(decoder)', t => {
+    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.field('_1').of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: 1 }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: null }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a STRING', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: 'str' }),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
+    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.field('_1').optional.of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: 1 }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: null }),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: 'str' }),
         Either.Right(Maybe.Just('str'))
     );
 });

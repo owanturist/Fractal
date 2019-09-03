@@ -487,10 +487,10 @@ interface Decode {
     int: Decoder<unknown>;
     float: Decoder<unknown>;
 
-    props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<unknown>;
     of<T>(decoder: Decoder<T>): Decoder<unknown>;
     oneOf<T>(decoders: Array<Decoder<T>>): Decoder<unknown>;
 
+    props<O>(_config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<unknown>;
     list<T>(decoder: Decoder<T>): Decoder<unknown>;
     dict<T>(decoder: Decoder<T>): Decoder<unknown>;
 
@@ -509,10 +509,8 @@ class Path implements Decode {
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<T>
     ) {}
 
-    public get optional(): Optional {
-        return new Optional(
-            <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => this.createDecoder(decoder).map(Just)
-        );
+    public of<T>(decoder: Decoder<T>): Decoder<T> {
+        return this.createDecoder(decoder);
     }
 
     public get string(): Decoder<string> {
@@ -539,20 +537,8 @@ class Path implements Decode {
         return this.of(props(config));
     }
 
-    public of<T>(decoder: Decoder<T>): Decoder<T> {
-        return this.createDecoder(decoder);
-    }
-
-    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
-        return this.of(oneOf(decoders));
-    }
-
     public list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
         return this.of(list(decoder));
-    }
-
-    public dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
-        return this.of(dict(decoder));
     }
 
     public keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
@@ -568,6 +554,14 @@ class Path implements Decode {
         }
 
         return this.of(keyValue(args[ 0 ], args[ 1 ]));
+    }
+
+    public dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> {
+        return this.of(dict(decoder));
+    }
+
+    public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T> {
+        return this.of(oneOf(decoders));
     }
 
     public lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
@@ -587,7 +581,15 @@ class Path implements Decode {
     }
 
     public at(path: Array<string | number>): Path {
-        return at(path);
+        return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+            return this.createDecoder(requiredAt(path, decoder));
+        });
+    }
+
+    public get optional(): Optional {
+        return new Optional(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+            return this.createDecoder(decoder).map(Just);
+        });
     }
 }
 
@@ -1197,23 +1199,21 @@ export function index(position: number): Path {
     return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new RequiredIndex(position, decoder));
 }
 
-export function at(path: Array<string | number>): Path {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
-        let acc: Decoder<T> = decoder;
+function requiredAt<T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<T> {
+    let acc: Decoder<T> = decoder;
 
-        for (let index = path.length - 1; index >= 0; index--) {
-            const fragment: string | number = path[ index ];
+    for (let index = path.length - 1; index >= 0; index--) {
+        const fragment: string | number = path[ index ];
 
-            acc = isString(fragment)
-                ? new RequiredField(fragment, acc)
-                : new RequiredIndex(fragment, acc);
-        }
+        acc = isString(fragment)
+            ? new RequiredField(fragment, acc)
+            : new RequiredIndex(fragment, acc);
+    }
 
-        return acc;
-    });
+    return acc;
 }
 
-export function optionalAt(path: Array<string | number>): OptionalPath {
+function optionalAt(path: Array<string | number>): OptionalPath {
     return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
         let acc: Decoder<Maybe<T>> = decoder.map(Just);
 
@@ -1227,6 +1227,10 @@ export function optionalAt(path: Array<string | number>): OptionalPath {
 
         return acc;
     });
+}
+
+export function at(path: Array<string | number>): Path {
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => requiredAt(path, decoder));
 }
 
 export function fromEither<T>(either: Either<string, T>): Decoder<T> {
