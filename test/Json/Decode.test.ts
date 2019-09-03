@@ -1597,46 +1597,6 @@ test('Json.Decode.index(position).{`of` shortcuts}', t => {
     );
 });
 
-test('Json.Decode.optional.index(position).of(decoder)', t => {
-    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.index(0).of(Decode.string);
-
-    t.deepEqual(
-        _0.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
-    );
-
-    t.deepEqual(
-        _0.decode({}),
-        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
-    );
-
-    t.deepEqual(
-        _0.decode([]),
-        Either.Right(Maybe.Nothing)
-    );
-
-    t.deepEqual(
-        _0.decode([ null ]),
-        Either.Left(Decode.Error.Index(
-            0,
-            Decode.Error.Failure('Expecting a STRING', null)
-        ))
-    );
-
-    t.deepEqual(
-        _0.decode([ 1 ]),
-        Either.Left(Decode.Error.Index(
-            0,
-            Decode.Error.Failure('Expecting a STRING', 1)
-        ))
-    );
-
-    t.deepEqual(
-        _0.decode([ 'str' ]),
-        Either.Right(Maybe.Just('str'))
-    );
-});
-
 test('Json.Decode.index(position).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.index(0).optional.of(Decode.string);
 
@@ -1648,38 +1608,6 @@ test('Json.Decode.index(position).optional.of(decoder)', t => {
     t.deepEqual(
         _0.decode([]),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0] but only see 0 entries', []))
-    );
-
-    t.deepEqual(
-        _0.decode([ 1 ]),
-        Either.Left(Decode.Error.Index(
-            0,
-            Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
-        ))
-    );
-
-    t.deepEqual(
-        _0.decode([ null ]),
-        Either.Right(Maybe.Nothing)
-    );
-
-    t.deepEqual(
-        _0.decode([ 'str' ]),
-        Either.Right(Maybe.Just('str'))
-    );
-});
-
-test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
-    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.index(0).optional.of(Decode.string);
-
-    t.deepEqual(
-        _0.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
-    );
-
-    t.deepEqual(
-        _0.decode([]),
-        Either.Right(Maybe.Nothing)
     );
 
     t.deepEqual(
@@ -2339,6 +2267,83 @@ test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
 
     t.deepEqual(
         _0.decode({ _1: 'str' }),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.index(position).of(decoder)', t => {
+    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.index(0).of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([ null ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ 1 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ 'str' ]),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
+    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.index(0).optional.of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([ null ]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([ 1 ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ 'str' ]),
         Either.Right(Maybe.Just('str'))
     );
 });
