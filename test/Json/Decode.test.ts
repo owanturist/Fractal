@@ -1351,6 +1351,11 @@ test('Json.Decode.field(name).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.field('_1').optional.of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -1363,6 +1368,14 @@ test('Json.Decode.field(name).optional.of(decoder)', t => {
     t.deepEqual(
         _0.decode({}),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_1\'', {}))
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: undefined }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -1409,6 +1422,16 @@ test('Json.Decode.field(name).optional.field(name).of(decoder)', t => {
 
     t.deepEqual(
         _0.decode({
+            _1: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an OBJECT', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
             _1: null
         }),
         Either.Left(Decode.Error.Field(
@@ -1432,6 +1455,21 @@ test('Json.Decode.field(name).optional.field(name).of(decoder)', t => {
             _1: {}
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: {
+                _2: undefined
+            }
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Field(
+                '_2',
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        ))
     );
 
     t.deepEqual(
@@ -1499,6 +1537,16 @@ test('Json.Decode.field(name).optional.index(position).of(decoder)', t => {
 
     t.deepEqual(
         _0.decode({
+            _1: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
             _1: null
         }),
         Either.Left(Decode.Error.Field(
@@ -1522,6 +1570,19 @@ test('Json.Decode.field(name).optional.index(position).of(decoder)', t => {
             _1: []
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: [ null, null, undefined ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Index(
+                2,
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        ))
     );
 
     t.deepEqual(
@@ -1583,6 +1644,16 @@ test('Json.Decode.field(name).optional.at(path).of(decoder)', t => {
 
     t.deepEqual(
         _0.decode({
+            _1: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
             _1: null
         }),
         Either.Left(Decode.Error.Field(
@@ -1606,6 +1677,19 @@ test('Json.Decode.field(name).optional.at(path).of(decoder)', t => {
             _1: []
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: [ null, null, undefined ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Index(
+                2,
+                Decode.Error.Failure('Expecting an OBJECT', undefined)
+            )
+        ))
     );
 
     t.deepEqual(
@@ -1639,6 +1723,24 @@ test('Json.Decode.field(name).optional.at(path).of(decoder)', t => {
             _1: [ null, null, {}]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _1: [ null, null, {
+                _3: undefined
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Index(
+                2,
+                Decode.Error.Field(
+                    '_3',
+                    Decode.Error.Failure('Expecting a STRING', undefined)
+                )
+            )
+        ))
     );
 
     t.deepEqual(
@@ -1909,6 +2011,11 @@ test('Json.Decode.index(position).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.index(0).optional.of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
     );
@@ -1927,6 +2034,14 @@ test('Json.Decode.index(position).optional.of(decoder)', t => {
     );
 
     t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+        ))
+    );
+
+    t.deepEqual(
         _0.decode([ null ]),
         Either.Right(Maybe.Nothing)
     );
@@ -1936,6 +2051,363 @@ test('Json.Decode.index(position).optional.of(decoder)', t => {
         Either.Right(Maybe.Just('str'))
     );
 });
+
+test('Json.Decode.index(position).optional.field(name).of(decoder)', t => {
+    const _0 /* Decode<Maybe<string>> */ = Decode.index(0).optional.field('_1').of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0] but only see 0 entries', []))
+    );
+
+    t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OBJECT', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ null ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OBJECT', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([[]]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OBJECT', [])
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{}]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: undefined
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: undefined
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: null
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: 1
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting a STRING', 1)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: 'str'
+        }]),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.index(position).optional.index(position).of(decoder)', t => {
+    const _0 /* Decode<Maybe<string>> */ = Decode.index(0).optional.index(1).of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0] but only see 0 entries', []))
+    );
+
+    t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ null ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an ARRAY', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{}]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an ARRAY', {})
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([[]]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([[ null, undefined ]]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([[ null, null ]]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([[ null, 1 ]]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Expecting a STRING', 1)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([[ null, 'str' ]]),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.index(position).optional.at(path).of(decoder)', t => {
+    const _0 /* Decode<Maybe<string>> */ = Decode.index(0).optional.at([ '_1', 2 ]).of(Decode.string);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [0] but only see 0 entries', []))
+    );
+
+    t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OBJECT', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ null ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OBJECT', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([[]]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OBJECT', [])
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{}]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: undefined
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting an ARRAY', undefined)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: null
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting an ARRAY', null)
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: {}
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Failure('Expecting an ARRAY', {})
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: []
+        }]),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: [ null, null, undefined ]
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Index(
+                    2,
+                    Decode.Error.Failure('Expecting a STRING', undefined)
+                )
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: [ null, null, null ]
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Index(
+                    2,
+                    Decode.Error.Failure('Expecting a STRING', null)
+                )
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: [ null, null, 1 ]
+        }]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Field(
+                '_1',
+                Decode.Error.Index(
+                    2,
+                    Decode.Error.Failure('Expecting a STRING', 1)
+                )
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([{
+            _1: [ null, null, 'str' ]
+        }]),
+        Either.Right(Maybe.Just('str'))
+    );
+})
 
 test('Json.Decode.at(path).of(decoder)', t => {
     const _0 /* Decoder<string> */ = Decode.at([ '_0', 1, '_2', 3 ]).of(Decode.string);
@@ -2340,6 +2812,11 @@ test('Json.Decode.at(path).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.at([ '_0', 1, '_2', 3 ]).optional.of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -2352,6 +2829,16 @@ test('Json.Decode.at(path).optional.of(decoder)', t => {
     t.deepEqual(
         _0.decode({}),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_0\'', {}))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -2381,6 +2868,19 @@ test('Json.Decode.at(path).optional.of(decoder)', t => {
         Either.Left(Decode.Error.Field(
             '_0',
             Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [1] but only see 1 entries', [ 0 ])
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, undefined ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Expecting an OBJECT', undefined)
+            )
         ))
     );
 
@@ -2419,6 +2919,24 @@ test('Json.Decode.at(path).optional.of(decoder)', t => {
             Decode.Error.Index(
                 1,
                 Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'_2\'', {})
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, {
+                _2: undefined
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Field(
+                    '_2',
+                    Decode.Error.Failure('Expecting an ARRAY', undefined)
+                )
             )
         ))
     );
@@ -2472,6 +2990,27 @@ test('Json.Decode.at(path).optional.of(decoder)', t => {
                 Decode.Error.Field(
                     '_2',
                     Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [3] but only see 3 entries', [ 0, 1, 2 ])
+                )
+            )
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, {
+                _2: [ 0, 1, 2, undefined ]
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Field(
+                    '_2',
+                    Decode.Error.Index(
+                        3,
+                        Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+                    )
                 )
             )
         ))
@@ -2668,6 +3207,11 @@ test('Json.Decode.optional.field(name).of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.field('_1').of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -2680,6 +3224,14 @@ test('Json.Decode.optional.field(name).of(decoder)', t => {
     t.deepEqual(
         _0.decode({}),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: undefined }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a STRING', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -2708,6 +3260,11 @@ test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.field('_1').optional.of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -2720,6 +3277,14 @@ test('Json.Decode.optional.field(name).optional.of(decoder)', t => {
     t.deepEqual(
         _0.decode({}),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({ _1: undefined }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -2745,6 +3310,11 @@ test('Json.Decode.optional.index(position).of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.index(0).of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
     );
@@ -2757,6 +3327,14 @@ test('Json.Decode.optional.index(position).of(decoder)', t => {
     t.deepEqual(
         _0.decode([]),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting a STRING', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -2785,6 +3363,11 @@ test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.index(0).optional.of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
     );
@@ -2797,6 +3380,22 @@ test('Json.Decode.optional.index(position).optional.of(decoder)', t => {
     t.deepEqual(
         _0.decode([]),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ undefined ]),
+        Either.Left(Decode.Error.Index(
+            0,
+            Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -2822,6 +3421,11 @@ test('Json.Decode.optional.at(path).of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.at([ '_0', 1, '_2', 3 ]).of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -2834,6 +3438,16 @@ test('Json.Decode.optional.at(path).of(decoder)', t => {
     t.deepEqual(
         _0.decode({}),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -2861,6 +3475,19 @@ test('Json.Decode.optional.at(path).of(decoder)', t => {
             _0: [ 0 ]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, undefined ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Expecting an OBJECT', undefined)
+            )
+        ))
     );
 
     t.deepEqual(
@@ -2894,6 +3521,24 @@ test('Json.Decode.optional.at(path).of(decoder)', t => {
             _0: [ 0, {} ]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, {
+                _2: undefined
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Field(
+                    '_2',
+                    Decode.Error.Failure('Expecting an ARRAY', undefined)
+                )
+            )
+        ))
     );
 
     t.deepEqual(
@@ -2939,6 +3584,27 @@ test('Json.Decode.optional.at(path).of(decoder)', t => {
             }]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, {
+                _2: [ 0, 1, 2, undefined ]
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Field(
+                    '_2',
+                    Decode.Error.Index(
+                        3,
+                        Decode.Error.Failure('Expecting a STRING', undefined)
+                    )
+                )
+            )
+        ))
     );
 
     t.deepEqual(
@@ -2997,6 +3663,11 @@ test('Json.Decode.optional.at(path).optional.of(decoder)', t => {
     const _0 /* Decoder<Maybe<string>> */ = Decode.optional.at([ '_0', 1, '_2', 3 ]).optional.of(Decode.string);
 
     t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+    );
+
+    t.deepEqual(
         _0.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
@@ -3007,8 +3678,28 @@ test('Json.Decode.optional.at(path).optional.of(decoder)', t => {
     );
 
     t.deepEqual(
+        _0.decode({
+            _0: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
+    );
+
+    t.deepEqual(
         _0.decode({}),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: undefined
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Failure('Expecting an ARRAY', undefined)
+        ))
     );
 
     t.deepEqual(
@@ -3036,6 +3727,19 @@ test('Json.Decode.optional.at(path).optional.of(decoder)', t => {
             _0: [ 0 ]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, undefined ]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Failure('Expecting an OBJECT', undefined)
+            )
+        ))
     );
 
     t.deepEqual(
@@ -3069,6 +3773,24 @@ test('Json.Decode.optional.at(path).optional.of(decoder)', t => {
             _0: [ 0, {} ]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, {
+                _2: undefined
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Field(
+                    '_2',
+                    Decode.Error.Failure('Expecting an ARRAY', undefined)
+                )
+            )
+        ))
     );
 
     t.deepEqual(
@@ -3114,6 +3836,27 @@ test('Json.Decode.optional.at(path).optional.of(decoder)', t => {
             }]
         }),
         Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: [ 0, {
+                _2: [ 0, 1, 2, undefined ]
+            }]
+        }),
+        Either.Left(Decode.Error.Field(
+            '_0',
+            Decode.Error.Index(
+                1,
+                Decode.Error.Field(
+                    '_2',
+                    Decode.Error.Index(
+                        3,
+                        Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined)
+                    )
+                )
+            )
+        ))
     );
 
     t.deepEqual(
