@@ -168,7 +168,7 @@ namespace Internal {
     }
 }
 
-const expecting = <T>(type: string, source: unknown): Either<Error, T> => {
+const expecting = (type: string, source: unknown): Either<Error, never> => {
     return Left(
         Error.Failure(`Expecting ${type}`, source)
     );
@@ -613,7 +613,7 @@ class List<T> extends Decoder<Array<T>> {
 
     protected decodeAs(input: unknown, required: boolean): Either<Error, Array<T>> {
         if (!isArray(input)) {
-            return expecting(`${required ? 'a' : 'an OPTIONAL'} LIST`, input);
+            return expecting(`an${required ? ' ' : ' OPTIONAL '}ARRAY`, input);
         }
 
         let result: Either<Error, Array<T>> = Right([]);
@@ -678,7 +678,7 @@ class Nullable<T> extends Decoder<Maybe<T>> {
     }
 
     protected decodeAs(input: unknown): Either<Error, Maybe<T>> {
-        return input === null
+        return input == null
             ? Right(Nothing)
             : Decoder.decodeAs(this.decoder, input, false).map(Just);
     }
@@ -687,18 +687,19 @@ class Nullable<T> extends Decoder<Maybe<T>> {
 abstract class Field<T, R> extends Decoder<R> {
     protected static readonly TYPE = 'OBJECT';
 
-    constructor(
+    protected constructor(
         private readonly name: string,
         private readonly decoder: Decoder<T>
     ) {
         super();
     }
-    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
+    protected decodeAs(input: unknown): Either<Error, R> {
+        if (input == null) {
+            return this.decodeNullable(input);
+        }
+
         if (!isObject(input)) {
-            return expecting(
-                `an${required ? ' ' : ' OPTIONAL '}${Field.TYPE}`,
-                input
-            );
+            return this.decodeNotObject(input);
         }
 
         if (!(this.name in input)) {
@@ -714,21 +715,30 @@ abstract class Field<T, R> extends Decoder<R> {
 
     }
 
+    protected abstract decodeNullable(input: unknown): Either<Error, R>;
+
+    protected abstract decodeNotObject(input: unknown): Either<Error, R>;
+
     protected abstract decodeMissedField(name: string, input: {[ key: string ]: unknown }): Either<Error, R>;
 
     protected abstract mapSuccess(value: T): R;
 }
 
 class RequiredField<T> extends Field<T, T> {
-    constructor(name: string, decoder: Decoder<T>) {
+    public constructor(name: string, decoder: Decoder<T>) {
         super(name, decoder);
     }
 
+    protected decodeNullable(input: unknown): Either<Error, T> {
+        return expecting(`an ${Field.TYPE}`, input);
+    }
+
+    protected decodeNotObject(input: unknown): Either<Error, T> {
+        return this.decodeNullable(input);
+    }
+
     protected decodeMissedField(name: string, input: {[ key: string ]: unknown }): Either<Error, T> {
-        return expecting(
-            `an ${Field.TYPE} with a FIELD named '${name}'`,
-            input
-        );
+        return expecting(`an ${Field.TYPE} with a FIELD named '${name}'`, input);
     }
 
     protected mapSuccess(value: T): T {
@@ -737,12 +747,20 @@ class RequiredField<T> extends Field<T, T> {
 }
 
 class OptionalField<T> extends Field<T, Maybe<T>> {
-    constructor(name: string, decoder: Decoder<T>) {
+    public constructor(name: string, decoder: Decoder<T>) {
         super(name, decoder);
     }
 
-    protected decodeMissedField(): Either<Error, Maybe<T>> {
+    protected decodeNullable(): Either<Error, Maybe<T>> {
         return Right(Nothing);
+    }
+
+    protected decodeNotObject(input: unknown): Either<Error, Maybe<T>> {
+        return expecting(`an OPTIONAL ${Field.TYPE}`, input);
+    }
+
+    protected decodeMissedField(): Either<Error, Maybe<T>> {
+        return this.decodeNullable();
     }
 
     protected mapSuccess(value: T): Maybe<T> {
@@ -753,19 +771,20 @@ class OptionalField<T> extends Field<T, Maybe<T>> {
 abstract class Index<T, R> extends Decoder<R> {
     protected static readonly TYPE = 'ARRAY';
 
-    constructor(
+    protected constructor(
         private readonly position: number,
         private readonly decoder: Decoder<T>
     ) {
         super();
     }
 
-    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
+    protected decodeAs(input: unknown): Either<Error, R> {
+        if (input == null) {
+            return this.decodeNullable(input);
+        }
+
         if (!isArray(input)) {
-            return expecting(
-                `an${required ? ' ' : ' OPTIONAL '}${Index.TYPE}`,
-                input
-            );
+            return this.decodeNotArray(input);
         }
 
         const position = this.position < 0 ? input.length + this.position : this.position;
@@ -782,14 +801,26 @@ abstract class Index<T, R> extends Decoder<R> {
             );
     }
 
+    protected abstract decodeNullable(input: unknown): Either<Error, R>;
+
+    protected abstract decodeNotArray(input: unknown): Either<Error, R>;
+
     protected abstract decodeMissedIndex(position: number, input: Array<unknown>): Either<Error, R>;
 
     protected abstract mapSuccess(value: T): R;
 }
 
 class RequiredIndex<T> extends Index<T, T> {
-    constructor(position: number, decoder: Decoder<T>) {
+    public constructor(position: number, decoder: Decoder<T>) {
         super(position, decoder);
+    }
+
+    protected decodeNullable(input: unknown): Either<Error, T> {
+        return expecting(`an ${Index.TYPE}`, input);
+    }
+
+    protected decodeNotArray(input: unknown): Either<Error, T> {
+        return this.decodeNullable(input);
     }
 
     protected decodeMissedIndex(position: number, input: Array<unknown>): Either<Error, T> {
@@ -805,12 +836,20 @@ class RequiredIndex<T> extends Index<T, T> {
 }
 
 class OptionalIndex<T> extends Index<T, Maybe<T>> {
-    constructor(position: number, decoder: Decoder<T>) {
+    public constructor(position: number, decoder: Decoder<T>) {
         super(position, decoder);
     }
 
-    protected decodeMissedIndex(): Either<Error, Maybe<T>> {
+    protected decodeNullable(): Either<Error, Maybe<T>> {
         return Right(Nothing);
+    }
+
+    protected decodeNotArray(input: unknown): Either<Error, Maybe<T>> {
+        return expecting(`an OPTIONAL ${Index.TYPE}`, input);
+    }
+
+    protected decodeMissedIndex(): Either<Error, Maybe<T>> {
+        return this.decodeNullable();
     }
 
     protected mapSuccess(value: T): Maybe<T> {
