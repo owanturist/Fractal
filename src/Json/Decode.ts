@@ -43,6 +43,14 @@ export namespace Error {
 }
 
 namespace Internal {
+    function wrapFieldName(name: string): string {
+        if (/^[a-z_][0-9a-z_]*$/i.test(name)) {
+            return `.${name}`;
+        }
+
+        return `['${name}']`;
+    }
+
     export class Field extends Error {
         constructor(
             private readonly field: string,
@@ -62,7 +70,7 @@ namespace Internal {
         protected stringifyWithContext(indent: number, context: Array<string>): string {
             return Error.stringifyWithContext(this.error, indent, [
                 ...context,
-                isValidPropertyName(this.field) ? `.${this.field}` : `['${this.field}']`
+                wrapFieldName(this.field)
             ]);
         }
     }
@@ -159,8 +167,6 @@ namespace Internal {
         }
     }
 }
-
-const isValidPropertyName = (name: string): boolean => /^[a-z_][0-9a-z_]*$/i.test(name);
 
 const expecting = <T>(type: string, source: unknown): Either<Error, T> => {
     return Left(
@@ -438,6 +444,10 @@ class OptionalPath implements Decode {
 }
 
 export abstract class Decoder<T> {
+    protected static decodeAs<T>(decoder: Decoder<T>, input: unknown, required: boolean) {
+        return decoder.decodeAs(input, required);
+    }
+
     public map<R>(fn: (value: T) => R): Decoder<R> {
         return new Map(fn, this);
     }
@@ -459,10 +469,10 @@ export abstract class Decoder<T> {
     }
 
     public decode(input: unknown): Either<Error, T> {
-        return this.decodeAs(true, input);
+        return this.decodeAs(input, true);
     }
 
-    public abstract decodeAs(required: boolean, input: unknown): Either<Error, T>;
+    protected abstract decodeAs(input: unknown, required: boolean): Either<Error, T>;
 }
 
 class Map<T, R> extends Decoder<R> {
@@ -473,8 +483,8 @@ class Map<T, R> extends Decoder<R> {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, R> {
-        return this.decoder.decodeAs(required, input).map(this.fn);
+    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
+        return Decoder.decodeAs(this.decoder, input, required).map(this.fn);
     }
 }
 
@@ -486,8 +496,8 @@ class Chain<T, R> extends Decoder<R> {
         super();
     }
 
-    public decodeAs(required: boolean, input: Value): Either<Error, R> {
-        return this.decoder.decodeAs(required, input).chain((value: T): Either<Error, R> => {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
+        return Decoder.decodeAs(this.decoder, input, required).chain((value: T): Either<Error, R> => {
             return this.fn(value).decode(input);
         });
     }
@@ -502,7 +512,7 @@ class Primitive<T> extends Decoder<T> {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, T> {
         return this.check(input)
             ? Right(input)
             : expecting(`${required ? this.prefix : 'an OPTIONAL'} ${this.type}`, input);
@@ -522,7 +532,7 @@ class Encoder implements Value {
 }
 
 class Identity extends Decoder<Value> {
-    public decodeAs(_required: boolean, input: unknown): Either<Error, Value> {
+    protected decodeAs(input: unknown): Either<Error, Value> {
         return Right(new Encoder(input));
     }
 }
@@ -532,7 +542,7 @@ class Fail extends Decoder<never> {
         super();
     }
 
-    public decodeAs(_required: boolean, input: unknown): Either<Error, never> {
+    protected decodeAs(input: unknown): Either<Error, never> {
         return Left(
             Error.Failure(this.message, input)
         );
@@ -544,7 +554,7 @@ class Succeed<T> extends Decoder<T> {
         super();
     }
 
-    public decodeAs(): Either<Error, T> {
+    protected decodeAs(): Either<Error, T> {
         return Right(this.value);
     }
 }
@@ -554,7 +564,7 @@ class Props<T> extends Decoder<T> {
         super();
     }
 
-    public decodeAs(_required: boolean, input: unknown): Either<Error, T> {
+    protected decodeAs(input: unknown): Either<Error, T> {
         let acc: Either<Error, T> = Right({} as T);
 
         for (const key in this.config) {
@@ -579,12 +589,12 @@ class OneOf<T> extends Decoder<T> {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, T> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, T> {
         let result: Either<Array<Error>, T> = Left([]);
 
         for (const decoder of this.decoders) {
             result = result.orElse((acc: Array<Error>): Either<Array<Error>, T> => {
-                return decoder.decodeAs(required, input).mapLeft((error: Error): Array<Error> => {
+                return Decoder.decodeAs(decoder, input, required).mapLeft((error: Error): Array<Error> => {
                     acc.push(error);
 
                     return acc;
@@ -601,7 +611,7 @@ class List<T> extends Decoder<Array<T>> {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, Array<T>> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, Array<T>> {
         if (!isArray(input)) {
             return expecting(`${required ? 'a' : 'an OPTIONAL'} LIST`, input);
         }
@@ -633,7 +643,7 @@ class KeyValue<K, T> extends Decoder<Array<[ K, T ]>> {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, Array<[ K, T ]>> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, Array<[ K, T ]>> {
         if (!isObject(input)) {
             return expecting(`an${required ? ' ' : ' OPTIONAL '}OBJECT`, input);
         }
@@ -667,10 +677,10 @@ class Nullable<T> extends Decoder<Maybe<T>> {
         super();
     }
 
-    public decodeAs(_required: boolean, input: unknown): Either<Error, Maybe<T>> {
+    protected decodeAs(input: unknown): Either<Error, Maybe<T>> {
         return input === null
             ? Right(Nothing)
-            : this.decoder.decodeAs(false, input).map(Just);
+            : Decoder.decodeAs(this.decoder, input, false).map(Just);
     }
 }
 
@@ -683,7 +693,7 @@ abstract class Field<T, R> extends Decoder<R> {
     ) {
         super();
     }
-    public decodeAs(required: boolean, input: unknown): Either<Error, R> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
         if (!isObject(input)) {
             return expecting(
                 `an${required ? ' ' : ' OPTIONAL '}${Field.TYPE}`,
@@ -750,7 +760,7 @@ abstract class Index<T, R> extends Decoder<R> {
         super();
     }
 
-    public decodeAs(required: boolean, input: unknown): Either<Error, R> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
         if (!isArray(input)) {
             return expecting(
                 `an${required ? ' ' : ' OPTIONAL '}${Index.TYPE}`,
