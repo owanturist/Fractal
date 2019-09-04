@@ -466,7 +466,7 @@ export abstract class Decoder<T> {
 }
 
 class Map<T, R> extends Decoder<R> {
-    constructor(
+    public constructor(
         private readonly fn: (value: T) => R,
         protected readonly decoder: Decoder<T>
     ) {
@@ -479,7 +479,7 @@ class Map<T, R> extends Decoder<R> {
 }
 
 class Chain<T, R> extends Decoder<R> {
-    constructor(
+    public constructor(
         private readonly fn: (value: T) => Decoder<R>,
         protected readonly decoder: Decoder<T>
     ) {

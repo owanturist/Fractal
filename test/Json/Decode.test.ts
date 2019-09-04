@@ -4808,7 +4808,19 @@ test('Json.Decode.optional.at(path).optional.of(decoder)', t => {
  */
 
 test('Json.Decode.Decoder.map(fn)', t => {
-    const _0 = Decode.int.map(x => ({ positive: x > 0 }));
+    const _0 /* Decoder<{
+        positive: boolean;
+    }> */ = Decode.int.map(x => ({ positive: x > 0 }));
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an INTEGER', null))
+    );
 
     t.deepEqual(
         _0.decode('str'),
@@ -4831,11 +4843,57 @@ test('Json.Decode.Decoder.map(fn)', t => {
             positive: true
         })
     );
+
+    const _1 /* Decoder<Maybe<{
+        positive: boolean;
+    }>> */ = Decode.optional.int.map(o => o.map(x => ({ positive: x > 0 })));
+
+    t.deepEqual(
+        _1.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL INTEGER', undefined))
+    );
+
+    t.deepEqual(
+        _1.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _1.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL INTEGER', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.field('foo').of(_1).decode({
+            foo: 'str'
+        }),
+        Either.Left(Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Expecting an OPTIONAL INTEGER', 'str')
+        ))
+    );
+
+    t.deepEqual(
+        _1.decode(10),
+        Either.Right(Maybe.Just({
+            positive: true
+        }))
+    );
 });
 
 test('Json.Decode.Decoder.chain(fn)', t => {
-    const _0 = Decode.float.chain(
+    const _0 /* Decoder<string> */ = Decode.float.chain(
         x => x > 0 ? Decode.succeed(x.toFixed(2)) : Decode.fail('msg')
+    );
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting a FLOAT', null))
     );
 
     t.deepEqual(
@@ -4860,6 +4918,45 @@ test('Json.Decode.Decoder.chain(fn)', t => {
 
     t.deepEqual(
         _0.decode(1.234),
+        Either.Right('1.23')
+    );
+
+    const _1 /* Decoder<string> */ = Decode.optional.float.chain(o => o.map(
+        x => x > 0 ? Decode.succeed(x.toFixed(2)) : Decode.fail('msg')
+    ).getOrElse(Decode.succeed('')));
+
+    t.deepEqual(
+        _1.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL FLOAT', undefined))
+    );
+
+    t.deepEqual(
+        _1.decode(null),
+        Either.Right('')
+    );
+
+    t.deepEqual(
+        _1.decode('str'),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL FLOAT', 'str'))
+    );
+
+    t.deepEqual(
+        Decode.field('foo').of(_1).decode({
+            foo: 'str'
+        }),
+        Either.Left(Decode.Error.Field(
+            'foo',
+            Decode.Error.Failure('Expecting an OPTIONAL FLOAT', 'str')
+        ))
+    );
+
+    t.deepEqual(
+        _1.decode(-1.234),
+        Either.Left(Decode.Error.Failure('msg', -1.234))
+    );
+
+    t.deepEqual(
+        _1.decode(1.234),
         Either.Right('1.23')
     );
 });
