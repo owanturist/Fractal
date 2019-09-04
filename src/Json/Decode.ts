@@ -68,10 +68,7 @@ namespace Internal {
         }
 
         protected stringifyWithContext(indent: number, context: Array<string>): string {
-            return Error.stringifyWithContext(this.error, indent, [
-                ...context,
-                wrapFieldName(this.field)
-            ]);
+            return Error.stringifyWithContext(this.error, indent, [ ...context, wrapFieldName(this.field) ]);
         }
     }
 
@@ -263,13 +260,13 @@ class Path implements Decode {
 
     public field(name: string): Path {
         return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
-            return this.createDecoder(new RequiredField(name, decoder));
+            return this.createDecoder(Field.required(name, decoder));
         });
     }
 
     public index(position: number): Path {
         return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
-            return this.createDecoder(new RequiredIndex(position, decoder));
+            return this.createDecoder(Index.required(position, decoder));
         });
     }
 
@@ -344,13 +341,13 @@ class Optional implements Decode {
 
     public field(name: string): OptionalPath {
         return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-            return this.createDecoder(new OptionalField(name, decoder)).map(Maybe.join);
+            return this.createDecoder(Field.optional(name, decoder)).map(Maybe.join);
         });
     }
 
     public index(position: number): OptionalPath {
         return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-            return this.createDecoder(new OptionalIndex(position, decoder)).map(Maybe.join);
+            return this.createDecoder(Index.optional(position, decoder)).map(Maybe.join);
         });
     }
 
@@ -427,13 +424,13 @@ class OptionalPath implements Decode {
 
     public field(name: string): OptionalPath {
         return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-            return new OptionalField(name, decoder);
+            return Field.optional(name, decoder);
         });
     }
 
     public index(position: number): OptionalPath {
         return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-            return new OptionalIndex(position, decoder);
+            return Index.optional(position, decoder);
         });
     }
 
@@ -690,6 +687,14 @@ class Nullable<T> extends Decoder<Maybe<T>> {
 }
 
 abstract class Field<T, R> extends Decoder<R> {
+    public static required<T>(name: string, decoder: Decoder<T>): Decoder<T> {
+        return new RequiredField(name, decoder);
+    }
+
+    public static optional<T>(name: string, decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return new OptionalField(name, decoder);
+    }
+
     protected static readonly TYPE = 'OBJECT';
 
     protected constructor(
@@ -777,6 +782,14 @@ class OptionalField<T> extends Field<T, Maybe<T>> {
 }
 
 abstract class Index<T, R> extends Decoder<R> {
+    public static required<T>(position: number, decoder: Decoder<T>): Decoder<T> {
+        return new RequiredIndex(position, decoder);
+    }
+
+    public static optional<T>(position: number, decoder: Decoder<T>): Decoder<Maybe<T>> {
+        return new OptionalIndex(position, decoder);
+    }
+
     protected static readonly TYPE = 'ARRAY';
 
     protected constructor(
@@ -932,11 +945,11 @@ export function lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
 }
 
 export function field(name: string): Path {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new RequiredField(name, decoder));
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => Field.required(name, decoder));
 }
 
 export function index(position: number): Path {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => new RequiredIndex(position, decoder));
+    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => Index.required(position, decoder));
 }
 
 function requiredAt<T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<T> {
@@ -946,8 +959,8 @@ function requiredAt<T>(path: Array<string | number>, decoder: Decoder<T>): Decod
         const fragment: string | number = path[ index ];
 
         acc = isString(fragment)
-            ? new RequiredField(fragment, acc)
-            : new RequiredIndex(fragment, acc);
+            ? Field.required(fragment, acc)
+            : Index.required(fragment, acc);
     }
 
     return acc;
@@ -960,8 +973,8 @@ function optionalAt<T>(path: Array<string | number>, decoder: Decoder<T>): Decod
         const fragment: string | number = path[ index ];
 
         acc = isString(fragment)
-            ? new OptionalField(fragment, acc).map(Maybe.join)
-            : new OptionalIndex(fragment, acc).map(Maybe.join);
+            ? Field.optional(fragment, acc).map(Maybe.join)
+            : Index.optional(fragment, acc).map(Maybe.join);
     }
 
     return acc;
