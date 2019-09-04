@@ -3,8 +3,8 @@
 import test from 'ava';
 
 import Maybe from '../../src/Maybe';
-import Either, { Right } from '../../src/Either';
-import * as Decode from '../../src/Json/Decode';
+import Either from '../../src/Either';
+import Decode from '../../src/Json/Decode';
 
 test('Json.Decode.string', t => {
     t.deepEqual(
@@ -1418,7 +1418,7 @@ test('Json.Decode.field(name).{`of` shortcuts}', t => {
     );
 
     t.deepEqual(
-        Decode.field('__0__').keyValue(str => Right(Number(str.replace('_', ''))), Decode.boolean).decode({
+        Decode.field('__0__').keyValue(str => Either.Right(Number(str.replace('_', ''))), Decode.boolean).decode({
             __0__: {
                 _0: true,
                 _1: false,
@@ -2073,7 +2073,7 @@ test('Json.Decode.index(position).{`of` shortcuts}', t => {
     );
 
     t.deepEqual(
-        Decode.index(0).keyValue(str => Right(Number(str.replace('_', ''))), Decode.boolean).decode([{
+        Decode.index(0).keyValue(str => Either.Right(Number(str.replace('_', ''))), Decode.boolean).decode([{
             _0: true,
             _1: false,
             _2: false
@@ -2821,7 +2821,7 @@ test('Json.Decode.at(path).{`of` shortcuts}', t => {
     );
 
     t.deepEqual(
-        Decode.at([ 0, '__1__' ]).keyValue(str => Right(Number(str.replace('_', ''))), Decode.boolean).decode([{
+        Decode.at([ 0, '__1__' ]).keyValue(str => Either.Right(Number(str.replace('_', ''))), Decode.boolean).decode([{
             __1__: {
                 _0: true,
                 _1: false,
