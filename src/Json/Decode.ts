@@ -185,6 +185,7 @@ interface Decode {
     of<T>(decoder: Decoder<T>): Decoder<unknown>;
     oneOf<T>(decoders: Array<Decoder<T>>): Decoder<unknown>;
 
+    props<O extends {}>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<unknown>;
     list<T>(decoder: Decoder<T>): Decoder<unknown>;
     dict<T>(decoder: Decoder<T>): Decoder<unknown>;
 
@@ -225,7 +226,7 @@ class Path implements Decode {
         return this.of(value);
     }
 
-    public props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
+    public props<O extends {}>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
         return this.of(props(config));
     }
 
@@ -310,6 +311,10 @@ class Optional implements Decode {
         return this.of(float);
     }
 
+    public props<O extends {}>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
+        return this.of(props(config));
+    }
+
     public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
         return this.of(list(decoder));
     }
@@ -385,7 +390,7 @@ class OptionalPath implements Decode {
         return this.of(value);
     }
 
-    public props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
+    public props<O extends {}>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<Maybe<O>> {
         return this.of(props(config));
     }
 
@@ -564,13 +569,13 @@ class Props<T> extends Decoder<T> {
         super();
     }
 
-    protected decodeAs(input: unknown): Either<Error, T> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, T> {
         let acc: Either<Error, T> = Right({} as T);
 
         for (const key in this.config) {
             if (this.config.hasOwnProperty(key)) {
                 acc = acc.chain((obj: T): Either<Error, T> => {
-                    return this.config[ key ].decode(input).map(
+                    return Decoder.decodeAs(this.config[ key ], input, required).map(
                         (value: T[ Extract<keyof T, string> ]): T => {
                             obj[ key ] = value;
 
@@ -693,17 +698,17 @@ abstract class Field<T, R> extends Decoder<R> {
     ) {
         super();
     }
-    protected decodeAs(input: unknown): Either<Error, R> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
         if (input == null) {
-            return this.decodeNullable(input);
+            return this.decodeNullable(input, required);
         }
 
         if (!isObject(input)) {
-            return this.decodeNotObject(input);
+            return this.decodeNotObject(input, required);
         }
 
         if (!(this.name in input)) {
-            return this.decodeMissedField(this.name, input);
+            return this.decodeMissedField(this.name, input, required);
         }
 
         return this.decoder
@@ -715,11 +720,11 @@ abstract class Field<T, R> extends Decoder<R> {
 
     }
 
-    protected abstract decodeNullable(input: unknown): Either<Error, R>;
+    protected abstract decodeNullable(input: unknown, required: boolean): Either<Error, R>;
 
-    protected abstract decodeNotObject(input: unknown): Either<Error, R>;
+    protected abstract decodeNotObject(input: unknown, required: boolean): Either<Error, R>;
 
-    protected abstract decodeMissedField(name: string, input: {[ key: string ]: unknown }): Either<Error, R>;
+    protected abstract decodeMissedField(name: string, input: object, required: boolean): Either<Error, R>;
 
     protected abstract mapSuccess(value: T): R;
 }
@@ -729,16 +734,19 @@ class RequiredField<T> extends Field<T, T> {
         super(name, decoder);
     }
 
-    protected decodeNullable(input: unknown): Either<Error, T> {
-        return expecting(`an ${Field.TYPE}`, input);
+    protected decodeNullable(input: unknown, required: boolean): Either<Error, T> {
+        return expecting(`an${required ? ' ' : ' OPTIONAL '}${Field.TYPE}`, input);
     }
 
-    protected decodeNotObject(input: unknown): Either<Error, T> {
-        return this.decodeNullable(input);
+    protected decodeNotObject(input: unknown, required: boolean): Either<Error, T> {
+        return this.decodeNullable(input, required);
     }
 
-    protected decodeMissedField(name: string, input: {[ key: string ]: unknown }): Either<Error, T> {
-        return expecting(`an ${Field.TYPE} with a FIELD named '${name}'`, input);
+    protected decodeMissedField(name: string, input: object, required: boolean): Either<Error, T> {
+        return expecting(
+            `an${required ? ' ' : ' OPTIONAL '}${Field.TYPE} with a FIELD named '${name}'`,
+            input
+        );
     }
 
     protected mapSuccess(value: T): T {
@@ -778,19 +786,19 @@ abstract class Index<T, R> extends Decoder<R> {
         super();
     }
 
-    protected decodeAs(input: unknown): Either<Error, R> {
+    protected decodeAs(input: unknown, required: boolean): Either<Error, R> {
         if (input == null) {
-            return this.decodeNullable(input);
+            return this.decodeNullable(input, required);
         }
 
         if (!isArray(input)) {
-            return this.decodeNotArray(input);
+            return this.decodeNotArray(input, required);
         }
 
         const position = this.position < 0 ? input.length + this.position : this.position;
 
         if (position < 0 || position >= input.length) {
-            return this.decodeMissedIndex(position, input);
+            return this.decodeMissedIndex(position, input, required);
         }
 
         return this.decoder
@@ -801,11 +809,11 @@ abstract class Index<T, R> extends Decoder<R> {
             );
     }
 
-    protected abstract decodeNullable(input: unknown): Either<Error, R>;
+    protected abstract decodeNullable(input: unknown, required: boolean): Either<Error, R>;
 
-    protected abstract decodeNotArray(input: unknown): Either<Error, R>;
+    protected abstract decodeNotArray(input: unknown, required: boolean): Either<Error, R>;
 
-    protected abstract decodeMissedIndex(position: number, input: Array<unknown>): Either<Error, R>;
+    protected abstract decodeMissedIndex(position: number, input: Array<unknown>, required: boolean): Either<Error, R>;
 
     protected abstract mapSuccess(value: T): R;
 }
@@ -815,17 +823,18 @@ class RequiredIndex<T> extends Index<T, T> {
         super(position, decoder);
     }
 
-    protected decodeNullable(input: unknown): Either<Error, T> {
-        return expecting(`an ${Index.TYPE}`, input);
+    protected decodeNullable(input: unknown, required: boolean): Either<Error, T> {
+        return expecting(`an${required ? ' ' : ' OPTIONAL '}${Index.TYPE}`, input);
     }
 
-    protected decodeNotArray(input: unknown): Either<Error, T> {
-        return this.decodeNullable(input);
+    protected decodeNotArray(input: unknown, required: boolean): Either<Error, T> {
+        return this.decodeNullable(input, required);
     }
 
-    protected decodeMissedIndex(position: number, input: Array<unknown>): Either<Error, T> {
+    protected decodeMissedIndex(position: number, input: Array<unknown>, required: boolean): Either<Error, T> {
         return expecting(
-            `an ARRAY with an ELEMENT at [${position}] but only see ${input.length} entries`,
+            `an${required ? ' ' : ' OPTIONAL '}ARRAY`
+            + ` with an ELEMENT at [${position}] but only see ${input.length} entries`,
             input
         );
     }
@@ -879,7 +888,7 @@ export function succeed<T>(value: T): Decoder<T> {
     return new Succeed(value);
 }
 
-export function props<O>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
+export function props<O extends {}>(config: {[ K in keyof O ]: Decoder<O[ K ]>}): Decoder<O> {
     return new Props(config);
 }
 

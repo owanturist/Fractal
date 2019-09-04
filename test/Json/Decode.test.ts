@@ -256,111 +256,113 @@ test('Json.Decode.succeed(value)', t => {
 });
 
 test('Json.Decode.props(config)', t => {
+    const _0 /* Decoder<{}> */ = Decode.props({});
+
     t.deepEqual(
-        Decode.props({}).decode(undefined),
+        _0.decode(undefined),
         Either.Right({})
     );
 
     t.deepEqual(
-        Decode.props({}).decode(null),
+        _0.decode(null),
         Either.Right({})
     );
 
     t.deepEqual(
-        Decode.props({}).decode('str'),
+        _0.decode('str'),
         Either.Right({})
     );
 
     t.deepEqual(
-        Decode.props({}).decode(true),
+        _0.decode(true),
         Either.Right({})
     );
 
     t.deepEqual(
-        Decode.props({}).decode(1),
+        _0.decode(1),
         Either.Right({})
     );
 
     t.deepEqual(
-        Decode.props({}).decode(1.1),
+        _0.decode(1.1),
         Either.Right({})
     );
 
-    const _0 /* Decoder<{
+    const _1 /* Decoder<{
         _0_: string
     }> */ = Decode.props({
         _0_: Decode.string
     });
     t.deepEqual(
-        _0.decode(undefined),
+        _1.decode(undefined),
         Either.Left(Decode.Error.Failure('Expecting a STRING', undefined))
     );
     t.deepEqual(
-        _0.decode(null),
+        _1.decode(null),
         Either.Left(Decode.Error.Failure('Expecting a STRING', null))
     );
     t.deepEqual(
-        _0.decode(1),
+        _1.decode(1),
         Either.Left(Decode.Error.Failure('Expecting a STRING', 1))
     );
     t.deepEqual(
-        _0.decode('str'),
+        _1.decode('str'),
         Either.Right({
             _0_: 'str'
         })
     );
 
-    const _1 /* Decoder<{
+    const _2 /* Decoder<{
         _0_: Maybe<string>
     }> */ = Decode.props({
         _0_: Decode.optional.string
     });
     t.deepEqual(
-        _1.decode(1),
+        _2.decode(1),
         Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', 1))
     );
     t.deepEqual(
-        _1.decode(undefined),
+        _2.decode(undefined),
         Either.Right({
             _0_: Maybe.Nothing
         })
     );
     t.deepEqual(
-        _1.decode(null),
+        _2.decode(null),
         Either.Right({
             _0_: Maybe.Nothing
         })
     );
     t.deepEqual(
-        _1.decode('str'),
+        _2.decode('str'),
         Either.Right({
             _0_: Maybe.Just('str')
         })
     );
 
-    const _2 /* Decoder<{
+    const _3 /* Decoder<{
         _0_: string
     }> */ = Decode.props({
         _0_: Decode.field('__0__').of(Decode.string)
     });
     t.deepEqual(
-        _2.decode(1),
+        _3.decode(1),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', 1))
     );
     t.deepEqual(
-        _2.decode(undefined),
+        _3.decode(undefined),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
     );
     t.deepEqual(
-        _2.decode(null),
+        _3.decode(null),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
     t.deepEqual(
-        _2.decode({}),
+        _3.decode({}),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'__0__\'', {}))
     );
     t.deepEqual(
-        _2.decode({
+        _3.decode({
             __0__: undefined
         }),
         Either.Left(
@@ -371,7 +373,7 @@ test('Json.Decode.props(config)', t => {
         )
     );
     t.deepEqual(
-        _2.decode({
+        _3.decode({
             __0__: null
         }),
         Either.Left(
@@ -382,7 +384,7 @@ test('Json.Decode.props(config)', t => {
         )
     );
     t.deepEqual(
-        _2.decode({
+        _3.decode({
             __0__: 1
         }),
         Either.Left(
@@ -393,119 +395,62 @@ test('Json.Decode.props(config)', t => {
         )
     );
     t.deepEqual(
-        _2.decode({
+        _3.decode({
             __0__: 'str'
         }),
         Either.Right({
             _0_: 'str'
-        })
-    );
-
-    const _3 /* Decoder<{
-        _0_: Maybe<string>
-    }> */ = Decode.props({
-        _0_: Decode.optional.field('__0__').of(Decode.string)
-    });
-    t.deepEqual(
-        _3.decode(1),
-        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
-    );
-    t.deepEqual(
-        _3.decode(undefined),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
-    );
-    t.deepEqual(
-        _3.decode(null),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
-    );
-    t.deepEqual(
-        _3.decode({}),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
-    );
-    t.deepEqual(
-        _3.decode({
-            __0__: undefined
-        }),
-        Either.Left(
-            Decode.Error.Field(
-                '__0__',
-                Decode.Error.Failure('Expecting a STRING', undefined)
-            )
-        )
-    );
-    t.deepEqual(
-        _3.decode({
-            __0__: null
-        }),
-        Either.Left(
-            Decode.Error.Field(
-                '__0__',
-                Decode.Error.Failure('Expecting a STRING', null)
-            )
-        )
-    );
-    t.deepEqual(
-        _3.decode({
-            __0__: 1
-        }),
-        Either.Left(
-            Decode.Error.Field(
-                '__0__',
-                Decode.Error.Failure('Expecting a STRING', 1)
-            )
-        )
-    );
-    t.deepEqual(
-        _3.decode({
-            __0__: 'str'
-        }),
-        Either.Right({
-            _0_: Maybe.Just('str')
         })
     );
 
     const _4 /* Decoder<{
         _0_: Maybe<string>
     }> */ = Decode.props({
-        _0_: Decode.field('__0__').optional.of(Decode.string)
+        _0_: Decode.optional.field('__0__').of(Decode.string)
     });
     t.deepEqual(
         _4.decode(1),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT', 1))
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
     );
     t.deepEqual(
         _4.decode(undefined),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
     );
     t.deepEqual(
         _4.decode(null),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
     );
     t.deepEqual(
         _4.decode({}),
-        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'__0__\'', {}))
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
     );
     t.deepEqual(
         _4.decode({
             __0__: undefined
         }),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        )
     );
     t.deepEqual(
         _4.decode({
             __0__: null
         }),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        )
     );
     t.deepEqual(
         _4.decode({
@@ -514,7 +459,7 @@ test('Json.Decode.props(config)', t => {
         Either.Left(
             Decode.Error.Field(
                 '__0__',
-                Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+                Decode.Error.Failure('Expecting a STRING', 1)
             )
         )
     );
@@ -530,33 +475,27 @@ test('Json.Decode.props(config)', t => {
     const _5 /* Decoder<{
         _0_: Maybe<string>
     }> */ = Decode.props({
-        _0_: Decode.optional.field('__0__').optional.of(Decode.string)
+        _0_: Decode.field('__0__').optional.of(Decode.string)
     });
     t.deepEqual(
         _5.decode(1),
-        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', 1))
     );
     t.deepEqual(
         _5.decode(undefined),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', undefined))
     );
     t.deepEqual(
         _5.decode(null),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT', null))
     );
     t.deepEqual(
         _5.decode({}),
-        Either.Right({
-            _0_: Maybe.Nothing
-        })
+        Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'__0__\'', {}))
     );
     t.deepEqual(
         _5.decode({
-            __0__: null
+            __0__: undefined
         }),
         Either.Right({
             _0_: Maybe.Nothing
@@ -564,7 +503,7 @@ test('Json.Decode.props(config)', t => {
     );
     t.deepEqual(
         _5.decode({
-            __0__: undefined
+            __0__: null
         }),
         Either.Right({
             _0_: Maybe.Nothing
@@ -590,16 +529,82 @@ test('Json.Decode.props(config)', t => {
         })
     );
 
-    const _6 = Decode.props({
+    const _6 /* Decoder<{
+        _0_: Maybe<string>
+    }> */ = Decode.props({
+        _0_: Decode.optional.field('__0__').optional.of(Decode.string)
+    });
+    t.deepEqual(
+        _6.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
+    );
+    t.deepEqual(
+        _6.decode(undefined),
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
+    );
+    t.deepEqual(
+        _6.decode(null),
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
+    );
+    t.deepEqual(
+        _6.decode({}),
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: null
+        }),
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: undefined
+        }),
+        Either.Right({
+            _0_: Maybe.Nothing
+        })
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: 1
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+            )
+        )
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: 'str'
+        }),
+        Either.Right({
+            _0_: Maybe.Just('str')
+        })
+    );
+
+    const _7 /* Decoder<{
+        _0_: string;
+        _1_: number;
+    }> */ = Decode.props({
         _0_: Decode.field('__0__').string,
         _1_: Decode.field('__1__').int
     });
     t.deepEqual(
-        _6.decode({}),
+        _7.decode({}),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'__0__\'', {}))
     );
     t.deepEqual(
-        _6.decode({
+        _7.decode({
             __0__: 0
         }),
         Either.Left(
@@ -610,7 +615,7 @@ test('Json.Decode.props(config)', t => {
         )
     );
     t.deepEqual(
-        _6.decode({
+        _7.decode({
             __0__: 'str'
         }),
         Either.Left(Decode.Error.Failure('Expecting an OBJECT with a FIELD named \'__1__\'', {
@@ -618,7 +623,7 @@ test('Json.Decode.props(config)', t => {
         }))
     );
     t.deepEqual(
-        _6.decode({
+        _7.decode({
             __0__: 'str',
             __1__: 1.1
         }),
@@ -630,7 +635,7 @@ test('Json.Decode.props(config)', t => {
         )
     );
     t.deepEqual(
-        _6.decode({
+        _7.decode({
             __0__: 'str',
             __1__: 1
         }),
@@ -3804,6 +3809,393 @@ test('Json.Decode.optional.float', t => {
     );
 });
 
+test('Json.Decode.optional.props(config)', t => {
+    const _0 /* Decoder<Maybe<{}>> */ = Decode.optional.props({});
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode('str'),
+        Either.Right(Maybe.Just({}))
+    );
+
+    t.deepEqual(
+        _0.decode(true),
+        Either.Right(Maybe.Just({}))
+    );
+
+    t.deepEqual(
+        _0.decode(1),
+        Either.Right(Maybe.Just({}))
+    );
+
+    t.deepEqual(
+        _0.decode(1.1),
+        Either.Right(Maybe.Just({}))
+    );
+
+    const _1 /* Decoder<Maybe<{
+        _0_: string;
+    }>> */ = Decode.optional.props({
+        _0_: Decode.string
+    });
+    t.deepEqual(
+        _1.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _1.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _1.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', 1))
+    );
+    t.deepEqual(
+        _1.decode('str'),
+        Either.Right(Maybe.Just({
+            _0_: 'str'
+        }))
+    );
+
+    const _2 /* Decoder<Maybe<{
+        _0_: Maybe<string>;
+    }>> */ = Decode.optional.props({
+        _0_: Decode.optional.string
+    });
+    t.deepEqual(
+        _2.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _2.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _2.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', 1))
+    );
+    t.deepEqual(
+        _2.decode('str'),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Just('str')
+        }))
+    );
+
+    const _3 /* Decoder<Maybe<{
+        _0_: string;
+    }>> */ = Decode.optional.props({
+        _0_: Decode.field('__0__').of(Decode.string)
+    });
+    t.deepEqual(
+        _3.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
+    );
+    t.deepEqual(
+        _3.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _3.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _3.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT with a FIELD named \'__0__\'', {}))
+    );
+    t.deepEqual(
+        _3.decode({
+            __0__: undefined
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        )
+    );
+    t.deepEqual(
+        _3.decode({
+            __0__: null
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        )
+    );
+    t.deepEqual(
+        _3.decode({
+            __0__: 1
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', 1)
+            )
+        )
+    );
+    t.deepEqual(
+        _3.decode({
+            __0__: 'str'
+        }),
+        Either.Right(Maybe.Just({
+            _0_: 'str'
+        }))
+    );
+
+    const _4 /* Decoder<Maybe<{
+        _0_: Maybe<string>
+    }>> */ = Decode.optional.props({
+        _0_: Decode.optional.field('__0__').of(Decode.string)
+    });
+    t.deepEqual(
+        _4.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
+    );
+    t.deepEqual(
+        _4.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _4.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _4.decode({}),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Nothing
+        }))
+    );
+    t.deepEqual(
+        _4.decode({
+            __0__: undefined
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', undefined)
+            )
+        )
+    );
+    t.deepEqual(
+        _4.decode({
+            __0__: null
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', null)
+            )
+        )
+    );
+    t.deepEqual(
+        _4.decode({
+            __0__: 1
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', 1)
+            )
+        )
+    );
+    t.deepEqual(
+        _4.decode({
+            __0__: 'str'
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Just('str')
+        }))
+    );
+
+    const _5 /* Decoder<Maybe<{
+        _0_: Maybe<string>
+    }>> */ = Decode.optional.props({
+        _0_: Decode.field('__0__').optional.of(Decode.string)
+    });
+    t.deepEqual(
+        _5.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _5.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _5.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
+    );
+    t.deepEqual(
+        _5.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT with a FIELD named \'__0__\'', {}))
+    );
+    t.deepEqual(
+        _5.decode({
+            __0__: undefined
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Nothing
+        }))
+    );
+    t.deepEqual(
+        _5.decode({
+            __0__: null
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Nothing
+        }))
+    );
+    t.deepEqual(
+        _5.decode({
+            __0__: 1
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+            )
+        )
+    );
+    t.deepEqual(
+        _5.decode({
+            __0__: 'str'
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Just('str')
+        }))
+    );
+
+    const _6 /* Decoder<Maybe<{
+        _0_: Maybe<string>
+    }>> */ = Decode.optional.props({
+        _0_: Decode.optional.field('__0__').optional.of(Decode.string)
+    });
+    t.deepEqual(
+        _6.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _6.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _6.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', 1))
+    );
+    t.deepEqual(
+        _6.decode({}),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Nothing
+        }))
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: null
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Nothing
+        }))
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: undefined
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Nothing
+        }))
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: 1
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting an OPTIONAL STRING', 1)
+            )
+        )
+    );
+    t.deepEqual(
+        _6.decode({
+            __0__: 'str'
+        }),
+        Either.Right(Maybe.Just({
+            _0_: Maybe.Just('str')
+        }))
+    );
+
+    const _7 /* Decoder<Maybe<{
+        _0_: string;
+        _1_: number;
+    }>> */ = Decode.optional.props({
+        _0_: Decode.field('__0__').string,
+        _1_: Decode.field('__1__').int
+    });
+    t.deepEqual(
+        _7.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _7.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+    t.deepEqual(
+        _7.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT with a FIELD named \'__0__\'', {}))
+    );
+    t.deepEqual(
+        _7.decode({
+            __0__: 0
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__0__',
+                Decode.Error.Failure('Expecting a STRING', 0)
+            )
+        )
+    );
+    t.deepEqual(
+        _7.decode({
+            __0__: 'str'
+        }),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT with a FIELD named \'__1__\'', {
+            __0__: 'str'
+        }))
+    );
+    t.deepEqual(
+        _7.decode({
+            __0__: 'str',
+            __1__: 1.1
+        }),
+        Either.Left(
+            Decode.Error.Field(
+                '__1__',
+                Decode.Error.Failure('Expecting an INTEGER', 1.1)
+            )
+        )
+    );
+    t.deepEqual(
+        _7.decode({
+            __0__: 'str',
+            __1__: 1
+        }),
+        Either.Right(Maybe.Just({
+            _0_: 'str',
+            _1_: 1
+        }))
+    );
+});
+
 test('Json.Decode.optional.list(decoder)', t => {
     const _0 /* Decoder<Maybe<Array<number>>> */ = Decode.optional.list(Decode.int);
 
@@ -4142,12 +4534,6 @@ test('Json.Decode.optional.{impossibles}', t => {
         typeof (Decode.optional as any).value,
         'undefined',
         '`.optional.value` is impossible'
-    );
-
-    t.is(
-        typeof (Decode.optional as any).props,
-        'undefined',
-        '`.optional.props` is impossible'
     );
 
     t.is(
