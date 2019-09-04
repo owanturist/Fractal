@@ -3655,7 +3655,433 @@ test('Json.Decode.optional.of(decoder)', t => {
     );
 });
 
-test('Json.Decode.optional.{`of` shortcuts}', t => {
+test('Json.Decode.optional.string', t => {
+    const _0 /* Decoder<Maybe<string>> */ = Decode.optional.string;
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL STRING', 1))
+    );
+
+    t.deepEqual(
+        _0.decode('str'),
+        Either.Right(Maybe.Just('str'))
+    );
+});
+
+test('Json.Decode.optional.boolean', t => {
+    const _0 /* Decoder<Maybe<boolean>> */ = Decode.optional.boolean;
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL BOOLEAN', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL BOOLEAN', 1))
+    );
+
+    t.deepEqual(
+        _0.decode(true),
+        Either.Right(Maybe.Just(true))
+    );
+});
+
+test('Json.Decode.optional.int', t => {
+    const _0 /* Decoder<Maybe<number>> */ = Decode.optional.int;
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL INTEGER', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(1.1),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL INTEGER', 1.1))
+    );
+
+    t.deepEqual(
+        _0.decode(1),
+        Either.Right(Maybe.Just(1))
+    );
+});
+
+test('Json.Decode.optional.float', t => {
+    const _0 /* Decoder<Maybe<number>> */ = Decode.optional.float;
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL FLOAT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(false),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL FLOAT', false))
+    );
+
+    t.deepEqual(
+        _0.decode(1.23),
+        Either.Right(Maybe.Just(1.23))
+    );
+});
+
+test('Json.Decode.optional.list(decoder)', t => {
+    const _0 /* Decoder<Maybe<Array<number>>> */ = Decode.optional.list(Decode.int);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL LIST', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing),
+        'Json.Decode.optional.list(decoder)'
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL LIST', {}))
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Right(Maybe.Just([]))
+    );
+
+    t.deepEqual(
+        _0.decode([ 1, 3, undefined ]),
+        Either.Left(Decode.Error.Index(
+            2,
+            Decode.Error.Failure('Expecting an INTEGER', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ 1, 3, null ]),
+        Either.Left(Decode.Error.Index(
+            2,
+            Decode.Error.Failure('Expecting an INTEGER', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ 1, 3, '2' ]),
+        Either.Left(Decode.Error.Index(
+            2,
+            Decode.Error.Failure('Expecting an INTEGER', '2')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode([ 3, 2, 1, 0 ]),
+        Either.Right(Maybe.Just([ 3, 2, 1, 0 ]))
+    );
+});
+
+test('Json.Decode.optional.keyValue(decoder)', t => {
+    const _0 /* Decoder<Maybe<Array<[ string, boolean ]>>> */ = Decode.optional.keyValue(Decode.boolean);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', []))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right(Maybe.Just([]))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: undefined,
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a BOOLEAN', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: null,
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a BOOLEAN', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: 'false',
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a BOOLEAN', 'false')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: false,
+            _2: false
+        }),
+        Either.Right(Maybe.Just<Array<[ string, boolean ]>>([
+            [ '_0', true ],
+            [ '_1', false ],
+            [ '_2', false ]
+        ]))
+    );
+});
+
+test('Json.Decode.optional.keyValue(convertKey, decoder)', t => {
+    const _0 /* Decoder<Maybe<Array<[ number, boolean ]>>> */ = Decode.optional.keyValue(
+        key => {
+            const num = Number(key.replace('_', ''));
+
+            return isNaN(num) ? Either.Left(`Key '${key}' could not be converted to number`) : Either.Right(num);
+        },
+        Decode.boolean
+    );
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', []))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right(Maybe.Just([]))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: undefined,
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a BOOLEAN', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: null,
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a BOOLEAN', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: 'false',
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a BOOLEAN', 'false')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _wrong: false,
+            _2: false
+        }),
+        Either.Left(Decode.Error.Field(
+            '_wrong',
+            Decode.Error.Failure('Key \'_wrong\' could not be converted to number', '_wrong')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: true,
+            _1: false,
+            _2: false
+        }),
+        Either.Right(Maybe.Just<Array<[ number, boolean ]>>([
+            [ 0, true ],
+            [ 1, false ],
+            [ 2, false ]
+        ]))
+    );
+});
+
+test('Json.Decode.optional.dict(decoder)', t => {
+    const _0 /* Decoder<Maybe<{[ key: string ]: number }>> */ = Decode.optional.dict(Decode.float);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', undefined))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an OPTIONAL OBJECT', []))
+    );
+
+    t.deepEqual(
+        _0.decode({}),
+        Either.Right(Maybe.Just({}))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: 1.23,
+            _1: undefined,
+            _2: 7.89
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a FLOAT', undefined)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: 1.23,
+            _1: null,
+            _2: 7.89
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a FLOAT', null)
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: 1.23,
+            _1: 'false',
+            _2: 7.89
+        }),
+        Either.Left(Decode.Error.Field(
+            '_1',
+            Decode.Error.Failure('Expecting a FLOAT', 'false')
+        ))
+    );
+
+    t.deepEqual(
+        _0.decode({
+            _0: 1.23,
+            _1: 4.56,
+            _2: 7.89
+        }),
+        Either.Right(Maybe.Just({
+            _0: 1.23,
+            _1: 4.56,
+            _2: 7.89
+        }))
+    );
+});
+
+test('Json.Decode.optional.oneOf(decoders)', t => {
+    const _0 /* Decoder<Maybe<boolean>> */ = Decode.optional.oneOf([
+        Decode.boolean,
+        Decode.int.map(x => x > 0)
+    ]);
+
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting an OPTIONAL BOOLEAN', undefined),
+            Decode.Error.Failure('Expecting an OPTIONAL INTEGER', undefined)
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode('str'),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting an OPTIONAL BOOLEAN', 'str'),
+            Decode.Error.Failure('Expecting an OPTIONAL INTEGER', 'str')
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode(false),
+        Either.Right(Maybe.Just(false))
+    );
+
+    t.deepEqual(
+        _0.decode(10),
+        Either.Right(Maybe.Just(true))
+    );
+});
+
+test('Json.Decode.optional.{impossibles}', t => {
     t.is(
         typeof (Decode.optional as any).optional,
         'undefined',
@@ -3669,112 +4095,15 @@ test('Json.Decode.optional.{`of` shortcuts}', t => {
     );
 
     t.is(
+        typeof (Decode.optional as any).props,
+        'undefined',
+        '`.optional.props` is impossible'
+    );
+
+    t.is(
         typeof (Decode.optional as any).lazy,
         'undefined',
         '`.optional.lazy(callDecoder)` is impossible'
-    );
-
-    t.deepEqual(
-        Decode.optional.string.decode('str'),
-        Either.Right(Maybe.Just('str')),
-        'Json.Decode.optional.string'
-    );
-
-    t.deepEqual(
-        Decode.optional.boolean.decode(true),
-        Either.Right(Maybe.Just(true)),
-        'Json.Decode.optional.boolean'
-    );
-
-    t.deepEqual(
-        Decode.optional.int.decode(1),
-        Either.Right(Maybe.Just(1)),
-        'Json.Decode.optional.int'
-    );
-
-    t.deepEqual(
-        Decode.optional.float.decode(1.23),
-        Either.Right(Maybe.Just(1.23)),
-        'Json.Decode.optional.float'
-    );
-
-    t.deepEqual(
-        Decode.optional.props({
-            _0: Decode.field('_0_').string,
-            _1: Decode.field('_1_').int
-        }).decode({
-            _0_: 'str',
-            _1_: 123
-        }),
-        Either.Right(Maybe.Just({
-            _0: 'str',
-            _1: 123
-        })),
-        'Json.Decode.optional.props(config)'
-    );
-
-    t.deepEqual(
-        Decode.optional.list(Decode.int).decode([ 3, 2, 1, 0 ]),
-        Either.Right(Maybe.Just([ 3, 2, 1, 0 ])),
-        'Json.Decode.optional.list(decoder)'
-    );
-
-    t.deepEqual(
-        Decode.optional.keyValue(Decode.boolean).decode({
-            _0: true,
-            _1: false,
-            _2: false
-        }),
-        Either.Right(Maybe.Just<Array<[ string, boolean ]>>([
-            [ '_0', true ],
-            [ '_1', false ],
-            [ '_2', false ]
-        ])),
-        'Json.Decode.optional.keyValue(decoder)'
-    );
-
-    t.deepEqual(
-        Decode.optional.keyValue(str => Right(Number(str.replace('_', ''))), Decode.boolean).decode({
-            _0: true,
-            _1: false,
-            _2: false
-        }),
-        Either.Right(Maybe.Just<Array<[ number, boolean ]>>([
-            [ 0, true ],
-            [ 1, false ],
-            [ 2, false ]
-        ])),
-        'Json.Decode.optional.keyValue(convertKey, decoder)'
-    );
-
-    t.deepEqual(
-        Decode.optional.dict(Decode.float).decode({
-            _0: 1.23,
-            _1: 4.56,
-            _2: 7.89
-        }),
-        Either.Right(Maybe.Just({
-            _0: 1.23,
-            _1: 4.56,
-            _2: 7.89
-        })),
-        'Json.Decode.optional.dict(decoder)'
-    );
-
-    const _0 /* Decoder<boolean> */ = Decode.optional.oneOf([
-        Decode.boolean,
-        Decode.int.map(x => x > 0)
-    ]);
-
-    t.deepEqual(
-        _0.decode(false),
-        Either.Right(Maybe.Just(false)),
-        'Json.Decode.optional.oneOf(decoders)'
-    );
-    t.deepEqual(
-        _0.decode(10),
-        Either.Right(Maybe.Just(true)),
-        'Json.Decode.optional.oneOf(decoders)'
     );
 });
 
