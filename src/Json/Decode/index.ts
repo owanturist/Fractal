@@ -7,10 +7,10 @@ import {
     isObject,
     isArray,
     cons
-} from '../Basics';
-import Maybe, { Nothing, Just } from '../Maybe';
-import Either, { Left, Right } from '../Either';
-import Encode from './Encode';
+} from '../../Basics';
+import Maybe, { Nothing, Just } from '../../Maybe';
+import Either, { Left, Right } from '../../Either';
+import Encode from '../Encode';
 
 export namespace Decode {
     export abstract class Error {
