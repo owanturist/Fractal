@@ -1,36 +1,87 @@
 import {
-    Cata,
     cons
 } from '../../../Basics';
+import {
+    Error as IError,
+    Pattern
+} from './index';
 
 const wrapFieldName = (name: string): string => {
-    if (/^[a-z_][0-9a-z_]*$/i.test(name)) {
+    if (/^[a-z$_][0-9a-z$_]*$/i.test(name)) {
         return `.${name}`;
     }
 
     return `['${name}']`;
 };
 
-export abstract class Error {
-    protected static stringifyWithContext(error: Error, indent: number, context: Array<string>): string {
-        return error.stringifyWithContext(indent, context);
-    }
+const stringify = (error: IError, indent: number, context: Array<string>): string => error.cata({
+    OneOf(errors: Array<IError>): string {
+        if (errors.length === 0) {
+            return 'Ran into a Json.Decode.oneOf with no possibilities'
+                + (context.length === 0 ? '!' : ' at _' + context.join(''));
+        }
 
+        if (errors.length === 1) {
+            return stringify(errors[ 0 ], indent, context);
+        }
+
+        const starter = context.length === 0
+            ? 'Json.Decode.oneOf'
+            : 'The Json.Decode.oneOf at _' + context.join('');
+
+        const lines = [
+            `${starter} failed in the following ${errors.length} ways`
+        ];
+
+        for (let index = 0; index < errors.length; ++index) {
+            lines.push(
+                `\n(${index + 1}) ` + errors[ index ].stringify(indent)
+            );
+        }
+
+        return lines.join('\n\n');
+    },
+
+    Field(name: string, errorFromField: IError): string {
+        return stringify(errorFromField, indent, [ ...context, wrapFieldName(name) ]);
+    },
+
+    Index(position: number, errorFromIndex: IError): string {
+        return stringify(errorFromIndex, indent, [ ...context, `[${position}]` ]);
+    },
+
+    Failure(message: string, source: unknown): string {
+        const introduction = context.length === 0
+            ? 'Problem with the given value:\n\n'
+            : 'Problem with the value at _' + context.join('') + ':\n\n';
+
+        return introduction
+            + '    ' + JSON.stringify(source, null, indent).replace(/\n/g, '\n    ')
+            + `\n\n${message}`;
+    }
+});
+
+abstract class Error implements IError {
     public abstract cata<R>(pattern: Pattern<R>): R;
 
     public stringify(indent: number): string {
-        return this.stringifyWithContext(indent, []);
+        return stringify(this, indent, []);
     }
-
-    protected abstract stringifyWithContext(indent: number, context: Array<string>): string;
 }
 
-export type Pattern<R> = Cata<{
-    Field(name: string, error: Error): R;
-    Index(position: number, error: Error): R;
-    OneOf(errors: Array<Error>): R;
-    Failure(message: string, source: unknown): R;
-}>;
+export const OneOf: (errors: Array<IError>) => IError = cons(class OneOf extends Error {
+    public constructor(private readonly errors: Array<IError>) {
+        super();
+    }
+
+    public cata<R>(pattern: Pattern<R>): R {
+        if (typeof pattern.OneOf === 'function') {
+            return pattern.OneOf(this.errors);
+        }
+
+        return (pattern._ as () => R)();
+    }
+});
 
 /**
  * Something useful
@@ -38,122 +89,53 @@ export type Pattern<R> = Cata<{
  * @param name opa
  * @param error apa
  */
-export const Field: (name: string, error: Error) => Error = cons(class Field extends Error {
+export const Field: (name: string, error: IError) => IError = cons(class Field extends Error {
     public constructor(
-        private readonly field: string,
-        private readonly error: Error
+        private readonly name: string,
+        private readonly error: IError
     ) {
         super();
     }
 
     public cata<R>(pattern: Pattern<R>): R {
         if (typeof pattern.Field === 'function') {
-            return pattern.Field(this.field, this.error);
+            return pattern.Field(this.name, this.error);
         }
 
         return (pattern._ as () => R)();
     }
+});
 
-    protected stringifyWithContext(indent: number, context: Array<string>): string {
-        return Error.stringifyWithContext(this.error, indent, [ ...context, wrapFieldName(this.field) ]);
+export const Index: (position: number, error: IError) => IError = cons(class Index extends Error {
+    public constructor(
+        private readonly position: number,
+        private readonly error: IError
+    ) {
+        super();
+    }
+
+    public cata<R>(pattern: Pattern<R>): R {
+        if (typeof pattern.Index === 'function') {
+            return pattern.Index(this.position, this.error);
+        }
+
+        return (pattern._ as () => R)();
     }
 });
 
-export const Index: (position: number, error: Error) => Error = cons(
-    class Index extends Error {
-        public constructor(
-            private readonly index: number,
-            private readonly error: Error
-        ) {
-            super();
-        }
-
-        public cata<R>(pattern: Pattern<R>): R {
-            if (typeof pattern.Index === 'function') {
-                return pattern.Index(this.index, this.error);
-            }
-
-            return (pattern._ as () => R)();
-        }
-
-        protected stringifyWithContext(indent: number, context: Array<string>): string {
-            return Error.stringifyWithContext(this.error, indent, [ ...context, `[${this.index}]` ]);
-        }
+export const Failure: (message: string, source: unknown) => IError = cons(class Failure extends Error {
+    public constructor(
+        private readonly message: string,
+        private readonly source: unknown
+    ) {
+        super();
     }
-);
 
-export const OneOf: (errors: Array<Error>) => Error = cons(
-    class OneOf extends Error {
-        public constructor(private readonly errors: Array<Error>) {
-            super();
+    public cata<R>(pattern: Pattern<R>): R {
+        if (typeof pattern.Failure === 'function') {
+            return pattern.Failure(this.message, this.source);
         }
 
-        public cata<R>(pattern: Pattern<R>): R {
-            if (typeof pattern.OneOf === 'function') {
-                return pattern.OneOf(this.errors);
-            }
-
-            return (pattern._ as () => R)();
-        }
-
-        protected stringifyWithContext(indent: number, context: Array<string>): string {
-            switch (this.errors.length) {
-                case 0: {
-                    return 'Ran into a Json.Decode.oneOf with no possibilities'
-                        + (context.length === 0 ? '!' : ' at _' + context.join(''));
-                }
-
-                case 1: {
-                    return Error.stringifyWithContext(this.errors[ 0 ], indent, context);
-                }
-
-                default: {
-                    const starter = context.length === 0
-                        ? 'Json.Decode.oneOf'
-                        : 'The Json.Decode.oneOf at _' + context.join('');
-
-                    const lines = [
-                        `${starter} failed in the following ${this.errors.length} ways`
-                    ];
-
-                    for (let index = 0; index < this.errors.length; ++index) {
-                        lines.push(
-                            `\n(${index + 1}) ` + this.errors[ index ].stringify(indent)
-                        );
-                    }
-
-                    return lines.join('\n\n');
-                }
-            }
-        }
+        return (pattern._ as () => R)();
     }
-);
-
-export const Failure: (message: string, source: unknown) => Error = cons(
-    class Failure extends Error {
-        public constructor(
-            private readonly message: string,
-            private readonly source: unknown
-        ) {
-            super();
-        }
-
-        public cata<R>(pattern: Pattern<R>): R {
-            if (typeof pattern.Failure === 'function') {
-                return pattern.Failure(this.message, this.source);
-            }
-
-            return (pattern._ as () => R)();
-        }
-
-        protected stringifyWithContext(indent: number, context: Array<string>): string {
-            const introduction = context.length === 0
-                ? 'Problem with the given value:\n\n'
-                : 'Problem with the value at _' + context.join('') + ':\n\n';
-
-            return introduction
-                + '    ' + JSON.stringify(this.source, null, indent).replace(/\n/g, '\n    ')
-                + `\n\n${this.message}`;
-        }
-    }
-);
+});
