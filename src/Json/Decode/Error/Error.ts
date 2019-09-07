@@ -51,13 +51,19 @@ const stringify = (error: IError, indent: number, context: Array<string>): strin
     },
 
     Failure(message: string, source: unknown): string {
-        const introduction = context.length === 0
-            ? 'Problem with the given value:\n\n'
-            : 'Problem with the value at _' + context.join('') + ':\n\n';
+        return [
+            context.length === 0
+                ? 'Problem with the given value:\n\n'
+                : 'Problem with the value at _' + context.join('') + ':\n\n',
 
-        return introduction
-            + '    ' + JSON.stringify(source, null, indent).replace(/\n/g, '\n    ')
-            + `\n\n${message}`;
+            '    ',
+
+            typeof source === 'undefined'
+                ? 'undefined'
+                : JSON.stringify(source, null, indent).replace(/\n/g, '\n    '),
+
+            `\n\n${message}`
+        ].join('');
     }
 });
 
@@ -83,12 +89,6 @@ export const OneOf: (errors: Array<IError>) => IError = cons(class OneOf extends
     }
 });
 
-/**
- * Something useful
- *
- * @param name opa
- * @param error apa
- */
 export const Field: (name: string, error: IError) => IError = cons(class Field extends Error {
     public constructor(
         private readonly name: string,
