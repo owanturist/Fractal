@@ -4,15 +4,6 @@ import {
 
 import * as _ from './Error';
 
-export {
-    OneOf,
-    Field,
-    Index,
-    Failure
-} from './Error';
-
-export type Pattern<R> = Error.Pattern<R>;
-
 export interface Error {
     cata<R>(pattern: Pattern<R>): R;
 
@@ -28,12 +19,18 @@ export namespace Error {
     }>;
 
     export const OneOf = _.OneOf;
-
     export const Field = _.Field;
-
     export const Index = _.Index;
-
     export const Failure = _.Failure;
 }
+
+export type Pattern<R> = Error.Pattern<R>;
+
+export {
+    OneOf,
+    Field,
+    Index,
+    Failure
+} from './Error';
 
 export default Error;

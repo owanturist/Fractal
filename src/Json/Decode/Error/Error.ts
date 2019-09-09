@@ -53,10 +53,10 @@ const stringify = (error: IError, indent: number, context: Array<string>): strin
     Failure(message: string, source: unknown): string {
         return [
             context.length === 0
-                ? 'Problem with the given value:\n\n'
-                : 'Problem with the value at _' + context.join('') + ':\n\n',
+                ? 'Problem with the given value'
+                : 'Problem with the value at _' + context.join(''),
 
-            '    ',
+            ':\n\n    ',
 
             typeof source === 'undefined'
                 ? 'undefined'
