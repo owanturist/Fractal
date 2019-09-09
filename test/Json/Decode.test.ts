@@ -255,8 +255,8 @@ test('Json.Decode.succeed(value)', t => {
     );
 });
 
-test('Json.Decode.props(config)', t => {
-    const _0 /* Decoder<{}> */ = Decode.props({});
+test('Json.Decode.shape(object)', t => {
+    const _0 /* Decoder<{}> */ = Decode.shape({});
 
     t.deepEqual(
         _0.decode(undefined),
@@ -290,7 +290,7 @@ test('Json.Decode.props(config)', t => {
 
     const _1 /* Decoder<{
         _0_: string
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.string
     });
     t.deepEqual(
@@ -314,7 +314,7 @@ test('Json.Decode.props(config)', t => {
 
     const _2 /* Decoder<{
         _0_: Maybe<string>
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.optional.string
     });
     t.deepEqual(
@@ -342,7 +342,7 @@ test('Json.Decode.props(config)', t => {
 
     const _3 /* Decoder<{
         _0_: string
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.field('__0__').of(Decode.string)
     });
     t.deepEqual(
@@ -405,7 +405,7 @@ test('Json.Decode.props(config)', t => {
 
     const _4 /* Decoder<{
         _0_: Maybe<string>
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.optional.field('__0__').of(Decode.string)
     });
     t.deepEqual(
@@ -474,7 +474,7 @@ test('Json.Decode.props(config)', t => {
 
     const _5 /* Decoder<{
         _0_: Maybe<string>
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.field('__0__').optional.of(Decode.string)
     });
     t.deepEqual(
@@ -531,7 +531,7 @@ test('Json.Decode.props(config)', t => {
 
     const _6 /* Decoder<{
         _0_: Maybe<string>
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.optional.field('__0__').optional.of(Decode.string)
     });
     t.deepEqual(
@@ -595,7 +595,7 @@ test('Json.Decode.props(config)', t => {
     const _7 /* Decoder<{
         _0_: string;
         _1_: number;
-    }> */ = Decode.props({
+    }> */ = Decode.shape({
         _0_: Decode.field('__0__').string,
         _1_: Decode.field('__1__').int
     });
@@ -1156,7 +1156,7 @@ test('Json.Decode.lazy(callDecoder)', t => {
         children: Array<Folder>;
     }
 
-    const _0: Decode.Decoder<Folder> = Decode.props({
+    const _0: Decode.Decoder<Folder> = Decode.shape({
         name: Decode.field('n').string,
         children: Decode.field('c').list(Decode.lazy(() => _0))
     });
@@ -1377,7 +1377,7 @@ test('Json.Decode.field(name).{`of` shortcuts}', t => {
     );
 
     t.deepEqual(
-        Decode.field('__0__').props({
+        Decode.field('__0__').shape({
             _0: Decode.field('_0_').string,
             _1: Decode.field('_1_').int
         }).decode({
@@ -1390,7 +1390,7 @@ test('Json.Decode.field(name).{`of` shortcuts}', t => {
             _0: 'str',
             _1: 123
         }),
-        'Json.Decode.field(name).props(config)'
+        'Json.Decode.field(name).shape(object)'
     );
 
     t.deepEqual(
@@ -2036,7 +2036,7 @@ test('Json.Decode.index(position).{`of` shortcuts}', t => {
     );
 
     t.deepEqual(
-        Decode.index(0).props({
+        Decode.index(0).shape({
             _0: Decode.field('_0_').string,
             _1: Decode.field('_1_').int
         }).decode([{
@@ -2047,7 +2047,7 @@ test('Json.Decode.index(position).{`of` shortcuts}', t => {
             _0: 'str',
             _1: 123
         }),
-        'Json.Decode.index(position).props(config)'
+        'Json.Decode.index(position).shape(object)'
     );
 
     t.deepEqual(
@@ -2780,7 +2780,7 @@ test('Json.Decode.at(path).{`of` shortcuts}', t => {
     );
 
     t.deepEqual(
-        Decode.at([ 0, '__1__' ]).props({
+        Decode.at([ 0, '__1__' ]).shape({
             _0: Decode.field('_0_').string,
             _1: Decode.field('_1_').int
         }).decode([{
@@ -2793,7 +2793,7 @@ test('Json.Decode.at(path).{`of` shortcuts}', t => {
             _0: 'str',
             _1: 123
         }),
-        'Json.Decode.at(path).props(config)'
+        'Json.Decode.at(path).shape(object)'
     );
 
     t.deepEqual(
@@ -3809,8 +3809,8 @@ test('Json.Decode.optional.float', t => {
     );
 });
 
-test('Json.Decode.optional.props(config)', t => {
-    const _0 /* Decoder<Maybe<{}>> */ = Decode.optional.props({});
+test('Json.Decode.optional.shape(object)', t => {
+    const _0 /* Decoder<Maybe<{}>> */ = Decode.optional.shape({});
 
     t.deepEqual(
         _0.decode(undefined),
@@ -3844,7 +3844,7 @@ test('Json.Decode.optional.props(config)', t => {
 
     const _1 /* Decoder<Maybe<{
         _0_: string;
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.string
     });
     t.deepEqual(
@@ -3868,7 +3868,7 @@ test('Json.Decode.optional.props(config)', t => {
 
     const _2 /* Decoder<Maybe<{
         _0_: Maybe<string>;
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.optional.string
     });
     t.deepEqual(
@@ -3892,7 +3892,7 @@ test('Json.Decode.optional.props(config)', t => {
 
     const _3 /* Decoder<Maybe<{
         _0_: string;
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.field('__0__').of(Decode.string)
     });
     t.deepEqual(
@@ -3955,7 +3955,7 @@ test('Json.Decode.optional.props(config)', t => {
 
     const _4 /* Decoder<Maybe<{
         _0_: Maybe<string>
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.optional.field('__0__').of(Decode.string)
     });
     t.deepEqual(
@@ -4020,7 +4020,7 @@ test('Json.Decode.optional.props(config)', t => {
 
     const _5 /* Decoder<Maybe<{
         _0_: Maybe<string>
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.field('__0__').optional.of(Decode.string)
     });
     t.deepEqual(
@@ -4077,7 +4077,7 @@ test('Json.Decode.optional.props(config)', t => {
 
     const _6 /* Decoder<Maybe<{
         _0_: Maybe<string>
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.optional.field('__0__').optional.of(Decode.string)
     });
     t.deepEqual(
@@ -4137,7 +4137,7 @@ test('Json.Decode.optional.props(config)', t => {
     const _7 /* Decoder<Maybe<{
         _0_: string;
         _1_: number;
-    }>> */ = Decode.optional.props({
+    }>> */ = Decode.optional.shape({
         _0_: Decode.field('__0__').string,
         _1_: Decode.field('__1__').int
     });
@@ -5297,7 +5297,7 @@ test('Json.Decode.Decoder.chain(fn)', t => {
 });
 
 test('Json.Decode.Decoder.decodeJSON()', t => {
-    const decoder = Decode.props({
+    const decoder = Decode.shape({
         _0: Decode.field('__0__').string,
         _1: Decode.field('__1__').int
     });

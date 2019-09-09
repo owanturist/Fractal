@@ -14,7 +14,7 @@ interface Common {
     of<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
     oneOf<T>(decoders: Array<_.Decoder<T>>): _.Decoder<unknown>;
 
-    props<T extends {}>(config: {[ K in keyof T ]: _.Decoder<T[ K ]>}): _.Decoder<unknown>;
+    shape<T extends {}>(object: {[ K in keyof T ]: _.Decoder<T[ K ]>}): _.Decoder<unknown>;
     list<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
     dict<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
 
@@ -59,7 +59,7 @@ export namespace Decode {
         of<T>(decoder: Decoder<T>): Decoder<T>;
         oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T>;
 
-        props<T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T>;
+        shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T>;
         list<T>(decoder: Decoder<T>): Decoder<Array<T>>;
         dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}>;
 
@@ -88,7 +88,7 @@ export namespace Decode {
         of<T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
         oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
 
-        props<T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
+        shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
         list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>>;
         dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T}>>;
 
@@ -114,7 +114,7 @@ export namespace Decode {
         of<T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
         oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
 
-        props<T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
+        shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
         list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>>;
         dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T}>>;
 
@@ -136,7 +136,7 @@ export namespace Decode {
     export const float = _.float;
     export const fail = _.fail;
     export const succeed = _.succeed;
-    export const props = _.props;
+    export const shape = _.shape;
     export const oneOf = _.oneOf;
     export const list = _.list;
     export const keyValue = _.keyValue;
@@ -175,7 +175,7 @@ export {
     float,
     fail,
     succeed,
-    props,
+    shape,
     oneOf,
     list,
     keyValue,

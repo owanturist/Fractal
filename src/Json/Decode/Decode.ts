@@ -77,8 +77,8 @@ class Path implements IPath {
         return this.of(value);
     }
 
-    public props<T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> {
-        return this.of(props(config));
+    public shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> {
+        return this.of(shape(object));
     }
 
     public list<T>(decoder: Decoder<T>): Decoder<Array<T>> {
@@ -166,8 +166,8 @@ class OptionalPath implements IOptionalPath {
         return this.of(value);
     }
 
-    public props<T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>> {
-        return this.of(props(config));
+    public shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>> {
+        return this.of(shape(object));
     }
 
     public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
@@ -249,8 +249,8 @@ class Optional implements IOptional {
         return this.of(float);
     }
 
-    public props<T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>> {
-        return this.of(props(config));
+    public shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>> {
+        return this.of(shape(object));
     }
 
     public list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>> {
@@ -365,18 +365,18 @@ class Succeed<T> extends Decoder<T> {
     }
 }
 
-class Props<T> extends Decoder<T> {
-    public constructor(private readonly config: {[ K in keyof T ]: Decoder<T[ K ]>}) {
+class Shape<T> extends Decoder<T> {
+    public constructor(private readonly object: {[ K in keyof T ]: Decoder<T[ K ]>}) {
         super();
     }
 
     protected decodeAs(input: unknown, required: boolean): Either<Error, T> {
         let acc: Either<Error, T> = Right({} as T);
 
-        for (const key in this.config) {
-            if (this.config.hasOwnProperty(key)) {
+        for (const key in this.object) {
+            if (this.object.hasOwnProperty(key)) {
                 acc = acc.chain((obj: T): Either<Error, T> => {
-                    return Decoder.decodeAs(this.config[ key ], input, required).map(
+                    return Decoder.decodeAs(this.object[ key ], input, required).map(
                         (value: T[ Extract<keyof T, string> ]): T => {
                             obj[ key ] = value;
 
@@ -755,7 +755,7 @@ export const fail = (message: string): Decoder<never> => new Fail(message);
 
 export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
 
-export const props = <T extends {}>(config: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Props(config);
+export const shape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Shape(object);
 
 export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders);
 
