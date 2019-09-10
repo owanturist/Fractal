@@ -108,6 +108,10 @@ class Path implements IPath {
         return this.of(oneOf(decoders));
     }
 
+    public enums<T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<T> {
+        return this.of(enums(config));
+    }
+
     public lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
         return this.of(lazy(callDecoder));
     }
@@ -197,6 +201,10 @@ class OptionalPath implements IOptionalPath {
         return this.of(oneOf(decoders));
     }
 
+    public enums<T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>> {
+        return this.of(enums(config));
+    }
+
     public lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
         return this.of(lazy(callDecoder));
     }
@@ -278,6 +286,10 @@ class Optional implements IOptional {
 
     public oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>> {
         return this.of(oneOf(decoders));
+    }
+
+    public enums<T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>> {
+        return this.of(enums(config));
     }
 
     public field(name: string): IOptionalPath {
@@ -410,6 +422,31 @@ class OneOf<T> extends Decoder<T> {
         }
 
         return result.mapLeft(Error.OneOf);
+    }
+}
+
+class Enums<T> extends Decoder<T> {
+    public constructor(private readonly config: Array<[ string | number | boolean | null, T ]>) {
+        super();
+    }
+
+    protected decodeAs(input: unknown, required: boolean): Either<Error, T> {
+        const errors: Array<Error> = [];
+
+        for (const [ expected, value ] of this.config) {
+            if (expected === input || expected !== expected && input !== input) {
+                return Right(value);
+            }
+
+            const exp = typeof expected === 'string' ? `"${expected}"` : expected;
+
+            errors.push(Error.Failure(
+                `Expecting${required ? ' ' : ' an OPTIONAL '}\`${exp}\``,
+                input
+            ));
+        }
+
+        return Left(Error.OneOf(errors));
     }
 }
 
@@ -757,8 +794,6 @@ export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
 
 export const shape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Shape(object);
 
-export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders);
-
 export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder);
 
 export function keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
@@ -787,6 +822,10 @@ export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => 
         return acc;
     });
 };
+
+export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders);
+
+export const enums = <T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<T> => new Enums(config);
 
 export const lazy = <T>(callDecoder: () => Decoder<T>): Decoder<T> => {
     return succeed(null).chain(callDecoder);

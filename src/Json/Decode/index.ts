@@ -11,9 +11,6 @@ interface Common {
     int: _.Decoder<unknown>;
     float: _.Decoder<unknown>;
 
-    of<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
-    oneOf<T>(decoders: Array<_.Decoder<T>>): _.Decoder<unknown>;
-
     shape<T extends {}>(object: {[ K in keyof T ]: _.Decoder<T[ K ]>}): _.Decoder<unknown>;
     list<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
     dict<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
@@ -21,9 +18,13 @@ interface Common {
     keyValue<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
     keyValue<K, T>(convertKey: (key: string) => Either<string, K>, decoder: _.Decoder<T>): _.Decoder<unknown>;
 
-    field(key: string): unknown;
-    index(position: number): unknown;
-    at(path: Array<string | number>): unknown;
+    of<T>(decoder: _.Decoder<T>): _.Decoder<unknown>;
+    oneOf<T>(decoders: Array<_.Decoder<T>>): _.Decoder<unknown>;
+    enums<T>(config: Array<[ string | number | boolean | null, T ]>): _.Decoder<unknown>;
+
+    field(key: string): Common;
+    index(position: number): Common;
+    at(path: Array<string | number>): Common;
 }
 
 interface Required extends Common {
@@ -56,9 +57,6 @@ export namespace Decode {
 
         optional: Optional;
 
-        of<T>(decoder: Decoder<T>): Decoder<T>;
-        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T>;
-
         shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T>;
         list<T>(decoder: Decoder<T>): Decoder<Array<T>>;
         dict<T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}>;
@@ -68,6 +66,10 @@ export namespace Decode {
             convertKey: (key: string) => Either<string, K>,
             decoder: Decoder<T>
         ): Decoder<Array<[ K, T ]>>;
+
+        of<T>(decoder: Decoder<T>): Decoder<T>;
+        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<T>;
+        enums<T>(config: Array<[ string | number | boolean | null, T ]>): _.Decoder<T>;
 
         lazy<T>(callDecoder: () => Decoder<T>): Decoder<T>;
 
@@ -85,9 +87,6 @@ export namespace Decode {
 
         optional: Optional;
 
-        of<T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
-        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
-
         shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
         list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>>;
         dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T}>>;
@@ -97,6 +96,10 @@ export namespace Decode {
             convertKey: (key: string) => Either<string, K>,
             decoder: Decoder<T>
         ): Decoder<Maybe<Array<[ K, T ]>>>;
+
+        of<T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
+        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
+        enums<T>(config: Array<[ string | number | boolean | null, T ]>): _.Decoder<Maybe<T>>;
 
         lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>>;
 
@@ -111,9 +114,6 @@ export namespace Decode {
         int: Decoder<Maybe<number>>;
         float: Decoder<Maybe<number>>;
 
-        of<T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
-        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
-
         shape<T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
         list<T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>>;
         dict<T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T}>>;
@@ -123,6 +123,10 @@ export namespace Decode {
             convertKey: (key: string) => Either<string, K>,
             decoder: Decoder<T>
         ): Decoder<Maybe<Array<[ K, T ]>>>;
+
+        of<T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
+        oneOf<T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
+        enums<T>(config: Array<[ string | number | boolean | null, T ]>): _.Decoder<Maybe<T>>;
 
         field(key: string): OptionalPath;
         index(position: number): OptionalPath;
@@ -137,10 +141,11 @@ export namespace Decode {
     export const fail = _.fail;
     export const succeed = _.succeed;
     export const shape = _.shape;
-    export const oneOf = _.oneOf;
     export const list = _.list;
     export const keyValue = _.keyValue;
     export const dict = _.dict;
+    export const oneOf = _.oneOf;
+    export const enums = _.enums;
     export const lazy = _.lazy;
     export const field = _.field;
     export const index = _.index;
@@ -176,10 +181,11 @@ export {
     fail,
     succeed,
     shape,
-    oneOf,
     list,
     keyValue,
     dict,
+    oneOf,
+    enums,
     lazy,
     field,
     index,

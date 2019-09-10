@@ -1150,6 +1150,107 @@ test('Json.Decode.oneOf(decoders)', t => {
     );
 });
 
+test('Json.Decode.enums(config)', t => {
+    t.deepEqual(
+        Decode.enums([]).decode(undefined),
+        Either.Left(Decode.Error.OneOf([]))
+    );
+
+    t.deepEqual(
+        Decode.enums([]).decode(null),
+        Either.Left(Decode.Error.OneOf([]))
+    );
+
+    const _0 /* Decoder<Date> */ = Decode.enums([
+        [ 'foo', new Date(2000, 3, 10) ]
+    ]);
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting `"foo"`', undefined)
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting `"foo"`', null)
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode(123),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting `"foo"`', 123)
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode('bar'),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting `"foo"`', 'bar')
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode('foo'),
+        Either.Right(new Date(2000, 3, 10))
+    );
+
+    const _1 /* Decoder<number> */ = Decode.enums([
+        [ 'Jan', 0 ],
+        [ 'Feb', 1 ],
+        [ 'Mar', 2 ]
+    ]);
+
+    t.deepEqual(
+        _1.decode('Jul'),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting `"Jan"`', 'Jul'),
+            Decode.Error.Failure('Expecting `"Feb"`', 'Jul'),
+            Decode.Error.Failure('Expecting `"Mar"`', 'Jul')
+        ]))
+    );
+
+    t.deepEqual(_1.decode('Jan'), Either.Right(0));
+    t.deepEqual(_1.decode('Feb'), Either.Right(1));
+    t.deepEqual(_1.decode('Mar'), Either.Right(2));
+
+    const _2 /* Decoder<Maybe<string>> */ = Decode.enums([
+        [ null, Maybe.Nothing ],
+        [ '', Maybe.Nothing ],
+        [ false, Maybe.Nothing ],
+        [ NaN, Maybe.Nothing ],
+        [ Infinity, Maybe.Just('Infinity') ],
+        [ 'str', Maybe.Just('string') ],
+        [ true, Maybe.Just('boolean') ],
+        [ 3, Maybe.Just('number') ]
+    ]);
+
+    t.deepEqual(
+        _2.decode([]),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting `null`', []),
+            Decode.Error.Failure('Expecting `""`', []),
+            Decode.Error.Failure('Expecting `false`', []),
+            Decode.Error.Failure('Expecting `NaN`', []),
+            Decode.Error.Failure('Expecting `Infinity`', []),
+            Decode.Error.Failure('Expecting `"str"`', []),
+            Decode.Error.Failure('Expecting `true`', []),
+            Decode.Error.Failure('Expecting `3`', [])
+        ]))
+    );
+
+    t.deepEqual(_2.decode(null), Either.Right(Maybe.Nothing));
+    t.deepEqual(_2.decode(''), Either.Right(Maybe.Nothing));
+    t.deepEqual(_2.decode(false), Either.Right(Maybe.Nothing));
+    t.deepEqual(_2.decode(NaN), Either.Right(Maybe.Nothing));
+    t.deepEqual(_2.decode(Infinity), Either.Right(Maybe.Just('Infinity')));
+    t.deepEqual(_2.decode('str'), Either.Right(Maybe.Just('string')));
+    t.deepEqual(_2.decode(true), Either.Right(Maybe.Just('boolean')));
+    t.deepEqual(_2.decode(3), Either.Right(Maybe.Just('number')));
+});
+
 test('Json.Decode.lazy(callDecoder)', t => {
     interface Folder {
         name: string;
@@ -1447,6 +1548,17 @@ test('Json.Decode.field(name).{`of` shortcuts}', t => {
             _2: 7.89
         }),
         'Json.Decode.field(name).dict(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.field('__0__').enums([
+            [ 'true', true ],
+            [ 'false', false ]
+        ]).decode({
+            __0__: 'true'
+        }),
+        Either.Right(true),
+        'Json.Decode.field(name).enums(config)'
     );
 
     const _0 /* Decoder<boolean> */ = Decode.field('__0__').oneOf([
@@ -2098,6 +2210,15 @@ test('Json.Decode.index(position).{`of` shortcuts}', t => {
             _2: 7.89
         }),
         'Json.Decode.index(position).dict(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.index(0).enums([
+            [ 'true', true ],
+            [ 'false', false ]
+        ]).decode([ 'false' ]),
+        Either.Right(false),
+        'Json.Decode.index(position).enums(config)'
     );
 
     const _0 /* Decoder<boolean> */ = Decode.index(0).oneOf([
@@ -2850,6 +2971,17 @@ test('Json.Decode.at(path).{`of` shortcuts}', t => {
             _2: 7.89
         }),
         'Json.Decode.at(path).dict(decoder)'
+    );
+
+    t.deepEqual(
+        Decode.at([ 0, '__1__' ]).enums([
+            [ 'true', true ],
+            [ 'false', false ]
+        ]).decode([{
+            __1__: 'true'
+        }]),
+        Either.Right(true),
+        'Json.Decode.at(path).enums(config)'
     );
 
     const _0 /* Decoder<boolean> */ = Decode.at([ 0, '__1__' ]).oneOf([
@@ -4521,6 +4653,95 @@ test('Json.Decode.optional.oneOf(decoders)', t => {
         _0.decode(10),
         Either.Right(Maybe.Just(true))
     );
+});
+
+test('Json.Decode.optional.enums(config)', t => {
+    t.deepEqual(
+        Decode.optional.enums([]).decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        Decode.optional.enums([]).decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    const _0 /* Decoder<Maybe<Date>> */ = Decode.optional.enums([
+        [ 'foo', new Date(2000, 3, 10) ]
+    ]);
+    t.deepEqual(
+        _0.decode(undefined),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(null),
+        Either.Right(Maybe.Nothing)
+    );
+
+    t.deepEqual(
+        _0.decode(123),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting an OPTIONAL `"foo"`', 123)
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode('bar'),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting an OPTIONAL `"foo"`', 'bar')
+        ]))
+    );
+
+    t.deepEqual(
+        _0.decode('foo'),
+        Either.Right(Maybe.Just(new Date(2000, 3, 10)))
+    );
+
+    const _1 /* Decoder<Maybe<number>> */ = Decode.optional.enums([
+        [ 'Jan', 0 ],
+        [ 'Feb', 1 ],
+        [ 'Mar', 2 ]
+    ]);
+
+    t.deepEqual(
+        _1.decode('Jul'),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting an OPTIONAL `"Jan"`', 'Jul'),
+            Decode.Error.Failure('Expecting an OPTIONAL `"Feb"`', 'Jul'),
+            Decode.Error.Failure('Expecting an OPTIONAL `"Mar"`', 'Jul')
+        ]))
+    );
+
+    t.deepEqual(_1.decode(undefined), Either.Right(Maybe.Nothing));
+    t.deepEqual(_1.decode(null), Either.Right(Maybe.Nothing));
+    t.deepEqual(_1.decode('Jan'), Either.Right(Maybe.Just(0)));
+    t.deepEqual(_1.decode('Feb'), Either.Right(Maybe.Just(1)));
+    t.deepEqual(_1.decode('Mar'), Either.Right(Maybe.Just(2)));
+
+    const _2 /* Decoder<string>> */ = Decode.optional.enums([
+        [ Infinity, 'Infinity' ],
+        [ 'str', 'string' ],
+        [ true, 'boolean' ],
+        [ 3, 'number' ]
+    ]);
+
+    t.deepEqual(
+        _2.decode([]),
+        Either.Left(Decode.Error.OneOf([
+            Decode.Error.Failure('Expecting an OPTIONAL `Infinity`', []),
+            Decode.Error.Failure('Expecting an OPTIONAL `"str"`', []),
+            Decode.Error.Failure('Expecting an OPTIONAL `true`', []),
+            Decode.Error.Failure('Expecting an OPTIONAL `3`', [])
+        ]))
+    );
+
+    t.deepEqual(_2.decode(undefined), Either.Right(Maybe.Nothing));
+    t.deepEqual(_2.decode(null), Either.Right(Maybe.Nothing));
+    t.deepEqual(_2.decode(Infinity), Either.Right(Maybe.Just('Infinity')));
+    t.deepEqual(_2.decode('str'), Either.Right(Maybe.Just('string')));
+    t.deepEqual(_2.decode(true), Either.Right(Maybe.Just('boolean')));
+    t.deepEqual(_2.decode(3), Either.Right(Maybe.Just('number')));
 });
 
 test('Json.Decode.optional.{impossibles}', t => {
