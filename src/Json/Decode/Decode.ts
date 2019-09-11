@@ -16,31 +16,65 @@ import {
     Optional as IOptional
 } from './index';
 
+/**
+ * A Containers that knows how to decode JSON and unknown JS values.
+ */
 export abstract class Decoder<T> {
     protected static decodeAs<T>(decoder: Decoder<T>, input: unknown, required: boolean) {
         return decoder.decodeAs(input, required);
     }
 
+    /**
+     * Transform the `Decoder` with a given function.
+     *
+     * @param fn Transforming function.
+     *
+     * @example
+     * Decode.string.map((str: string): number => str.length).decode('1234') // Right(4)
+     */
     public map<R>(fn: (value: T) => R): Decoder<R> {
         return new Map(fn, this);
     }
 
+    /**
+     * Create decoders that depend on previous results.
+     *
+     * @param fn Chaining function.
+     *
+     * @example
+     * Decode.string.chain((str: string): Decoder<Date> => {
+     *     const date = new Date(str);
+     *
+     *     return isNaN(date.getTime()) ? Decode.fail('Invalid Date.') : Decode.succeed(date);
+     * }).decode('2010-01-02') // Right(new Date('2010-01-02'))
+     */
     public chain<R>(fn: (value: T) => Decoder<R>): Decoder<R> {
         return new Chain(fn, this);
     }
 
-    public decodeJSON(input: string): Either<Error, T> {
+    /**
+     * Parse the given string into an unknown JS value and then run the `Decoder` on it.
+     * This will fail if the string is not well-formed JSON or if the Decoder fails for some reason.
+     *
+     * @param json JSON string.
+     */
+    public decodeJSON(json: string): Either<Error, T> {
         try {
-            return this.decode(JSON.parse(input));
+            return this.decode(JSON.parse(json));
         } catch (error) {
             const error_: SyntaxError = error;
 
             return Left(
-                Error.Failure(`This is not valid JSON! ${error_.message}`, input)
+                Error.Failure(`This is not valid JSON! ${error_.message}`, json)
             );
         }
     }
 
+    /**
+     * Run the `Decoder` on unknown JS value.
+     *
+     * @param input JS value.
+     */
     public decode(input: unknown): Either<Error, T> {
         return this.decodeAs(input, true);
     }
@@ -780,16 +814,72 @@ export const value: Decoder<Encode.Value> = new class Identity extends Decoder<E
     }
 }();
 
+/**
+ * Decode an unknown JS into an `string`.
+ *
+ * @example
+ * Decode.string.decodeJSON('true')              // Left(Error.Failure('Expecting a STRING', true))
+ * Decode.string.decodeJSON('42')                // Left(Error.Failure('Expecting a STRING', 42))
+ * Decode.string.decodeJSON('3.14')              // Left(Error.Failure('Expecting a STRING', 3.14))
+ * Decode.string.decodeJSON('"hello"')           // Right('hello')
+ * Decode.string.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ */
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 
+/**
+ * Decode an unknown JS into an `boolean`.
+ *
+ * @example
+ * Decode.boolean.decodeJSON('true')              // Right(true)
+ * Decode.boolean.decodeJSON('42')                // Left(Error.Failure('Expecting a STRING', 42))
+ * Decode.boolean.decodeJSON('3.14')              // Left(Error.Failure('Expecting a STRING', 3.14))
+ * Decode.boolean.decodeJSON('"hello"')           // Left(Error.Failure('Expecting a STRING', 'hello'))
+ * Decode.boolean.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ */
 export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
 
+/**
+ * Decode an unknown JS into an `int` (`number` in fact).
+ *
+ * @example
+ * Decode.int.decodeJSON('true')              // Left(Error.Failure('Expecting a STRING', true))
+ * Decode.int.decodeJSON('42')                // Right(42)
+ * Decode.int.decodeJSON('3.14')              // Left(Error.Failure('Expecting a STRING', 3.14))
+ * Decode.int.decodeJSON('"hello"')           // Left(Error.Failure('Expecting a STRING', 'hello'))
+ * Decode.int.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ */
 export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
 
+/**
+ * Decode an unknown JS into an `float` (`number` in fact).
+ *
+ * @example
+ * Decode.float.decodeJSON('true')              // Left(Error.Failure('Expecting a STRING', true))
+ * Decode.float.decodeJSON('42')                // Left(Error.Failure('Expecting a STRING', 42))
+ * Decode.float.decodeJSON('3.14')              // Right(3.41)
+ * Decode.float.decodeJSON('"hello"')           // Left(Error.Failure('Expecting a STRING', 'hello'))
+ * Decode.float.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ */
 export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 
+/**
+ * Ignore the unknown JS value and make the decoder fail.
+ * This is handy when used with `oneOf` or `chain` where you want to give a custom error message in some case.
+ *
+ * @param message Custom error message
+ *
+ * @see `Decoder.chain`
+ */
 export const fail = (message: string): Decoder<never> => new Fail(message);
 
+/**
+ * Ignore the unknown JS value and produce a certain value.
+ * This is handy when used with `oneOf` or `chain`.
+ *
+ * @param value The certain value.
+ *
+ * @see `Decoder.chain`
+ */
 export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
 
 export const shape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Shape(object);
