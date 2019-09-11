@@ -75,6 +75,11 @@ abstract class Error implements IError {
     }
 }
 
+/**
+ * Collects a batch of `Error`s come from `Decode.oneOf` and `Decode.enums`.
+ *
+ * @param errors List of `Error`s
+ */
 export const OneOf: (errors: Array<IError>) => IError = cons(class OneOf extends Error {
     public constructor(private readonly errors: Array<IError>) {
         super();
@@ -89,6 +94,12 @@ export const OneOf: (errors: Array<IError>) => IError = cons(class OneOf extends
     }
 });
 
+/**
+ * Collects an `Error` comes from `Decode.field` and `Decode.at`
+ *
+ * @param name  Field name triggers the `error`
+ * @param error Nested field `Error`
+ */
 export const Field: (name: string, error: IError) => IError = cons(class Field extends Error {
     public constructor(
         private readonly name: string,
@@ -106,6 +117,12 @@ export const Field: (name: string, error: IError) => IError = cons(class Field e
     }
 });
 
+/**
+ * Collects an `Error` comes from `Decode.index` and `Decode.at`
+ *
+ * @param position Index position triggers the `error`
+ * @param error    Nested field `Error`
+ */
 export const Index: (position: number, error: IError) => IError = cons(class Index extends Error {
     public constructor(
         private readonly position: number,
@@ -123,6 +140,12 @@ export const Index: (position: number, error: IError) => IError = cons(class Ind
     }
 });
 
+/**
+ * Collects an `Error` comes from `Decode.field` and `Decode.at`
+ *
+ * @param message Description of the error.
+ * @param source  JS source input failed while decoding.
+ */
 export const Failure: (message: string, source: unknown) => IError = cons(class Failure extends Error {
     public constructor(
         private readonly message: string,
