@@ -10,11 +10,166 @@ import Maybe, { Nothing, Just } from '../../Maybe';
 import Either, { Left, Right } from '../../Either';
 import Encode from '../Encode';
 import Error from './Error';
-import {
-    Path as IPath,
-    OptionalPath as IOptionalPath,
-    Optional as IOptional
-} from './index';
+
+export interface RequiredKeyValue {
+    /**
+     * Decode a JSON into an `Array` of [ string, T ] pairs.
+     *
+     * @param decoder Decoder of the object element.
+     */
+    <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
+
+    /**
+     * Decode a JSON into an `Array` of [ K, T ] pairs.
+     *
+     * @param convertKey Converts field name from string to `K`.
+     * @param decoder Decoder of the object element.
+     */
+    <K, T>(convertKey: (key: string) => Either<string, K>, decoder: Decoder<T>): Decoder<Array<[ K, T ]>>;
+}
+
+export interface OptionalKeyValue {
+    /**
+     * Decode a JSON into an `Array` of [ string, T ] pairs.
+     *
+     * @param decoder Decoder of the object element.
+     */
+    <T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
+
+    /**
+     * Decode a JSON into an `Array` of [ K, T ] pairs.
+     *
+     * @param convertKey Converts field name from string to `K`.
+     * @param decoder Decoder of the object element.
+     */
+    <K, T>(convertKey: (key: string) => Either<string, K>, decoder: Decoder<T>): Decoder<Maybe<Array<[ K, T ]>>>;
+}
+
+export type RequiredDict = <T>(decoder: Decoder<T>) => Decoder<{[ key: string ]: T}>;
+
+export type OptionalDict = <T>(decoder: Decoder<T>) => Decoder<Maybe<{[ key: string ]: T}>>;
+
+export type RequiredList = <T>(decoder: Decoder<T>) => Decoder<Array<T>>;
+
+export type OptionaldList = <T>(decoder: Decoder<T>) => Decoder<Maybe<Array<T>>>;
+
+export type RequiredShape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}) => Decoder<T>;
+
+export type OptionalShape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}) => Decoder<Maybe<T>>;
+
+export type RequiredOf = <T>(decoder: Decoder<T>) => Decoder<T>;
+
+export type OptionalOf = <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>;
+
+export type RequiredOneOf = <T>(decoders: Array<Decoder<T>>) => Decoder<T>;
+
+export type OptionalOneOf = <T>(decoders: Array<Decoder<T>>) => Decoder<Maybe<T>>;
+
+export type RequiredEnums = <T>(variants: Array<[ string | number | boolean | null, T ]>) => Decoder<T>;
+
+export type OptionalEnums = <T>(variants: Array<[ string | number | boolean | null, T ]>) => Decoder<Maybe<T>>;
+
+export type RequiredLazy = <T>(callDecoder: () => Decoder<T>) => Decoder<T>;
+
+export type OptionalLazy = <T>(callDecoder: () => Decoder<T>) => Decoder<Maybe<T>>;
+
+interface Common {
+    string: unknown;
+    boolean: unknown;
+    int: unknown;
+    float: unknown;
+
+    keyValue: unknown;
+    shape: unknown;
+    list: unknown;
+    dict: unknown;
+
+    of: unknown;
+    oneOf: unknown;
+    enums: unknown;
+
+    field(key: string): Common;
+    index(position: number): Common;
+    at(path: Array<string | number>): Common;
+}
+
+interface NotOptional extends Common {
+    optional: Optional;
+
+    value: unknown;
+    lazy: unknown;
+}
+
+export interface Optional extends Common {
+    string: Decoder<Maybe<string>>;
+    boolean: Decoder<Maybe<boolean>>;
+    int: Decoder<Maybe<number>>;
+    float: Decoder<Maybe<number>>;
+
+    shape: OptionalShape;
+    list: OptionaldList;
+    keyValue: OptionalKeyValue;
+    dict: OptionalDict;
+
+    of: OptionalOf;
+    oneOf: OptionalOneOf;
+    enums: OptionalEnums;
+
+    field(key: string): OptionalPath;
+    index(position: number): OptionalPath;
+    at(path: Array<string | number>): OptionalPath;
+}
+
+export interface Path extends NotOptional {
+    optional: Optional;
+
+    string: Decoder<string>;
+
+    boolean: Decoder<boolean>;
+    int: Decoder<number>;
+    float: Decoder<number>;
+    value: Decoder<Encode.Value>;
+
+    shape: RequiredShape;
+    list: RequiredList;
+    keyValue: RequiredKeyValue;
+    dict: RequiredDict;
+
+    of: RequiredOf;
+    oneOf: RequiredOneOf;
+    enums: RequiredEnums;
+
+    lazy: RequiredLazy;
+
+    field(key: string): Path;
+    index(position: number): Path;
+    at(path: Array<string | number>): Path;
+}
+
+export interface OptionalPath extends NotOptional {
+    optional: Optional;
+
+    string: Decoder<Maybe<string>>;
+    boolean: Decoder<Maybe<boolean>>;
+    int: Decoder<Maybe<number>>;
+    float: Decoder<Maybe<number>>;
+    value: Decoder<Maybe<Encode.Value>>;
+
+    shape: OptionalShape;
+    list: OptionaldList;
+    keyValue: OptionalKeyValue;
+    dict: OptionalDict;
+
+    of: OptionalOf;
+    oneOf: OptionalOneOf;
+    enums: OptionalEnums;
+
+    lazy: OptionalLazy;
+
+    field(key: string): OptionalPath;
+    index(position: number): OptionalPath;
+    at(path: Array<string | number>): OptionalPath;
+}
 
 /**
  * A Containers that knows how to decode JSON and unknown JS values.
@@ -45,7 +200,7 @@ export abstract class Decoder<T> {
      * Decode.string.chain((str: string): Decoder<Date> => {
      *     const date = new Date(str);
      *
-     *     return isNaN(date.getTime()) ? Decode.fail('Invalid Date.') : Decode.succeed(date);
+     *     return isNaN(date.getTime()) ? Decode.fail('Expecting a DATE') : Decode.succeed(date);
      * }).decode('2010-01-02') // Right(new Date('2010-01-02'))
      */
     public chain<R>(fn: (value: T) => Decoder<R>): Decoder<R> {
@@ -53,7 +208,7 @@ export abstract class Decoder<T> {
     }
 
     /**
-     * Parse the given string into an unknown JS value and then run the `Decoder` on it.
+     * Parse the given string into a JSON and then run the `Decoder` on it.
      * This will fail if the string is not well-formed JSON or if the Decoder fails for some reason.
      *
      * @param json JSON string.
@@ -82,7 +237,7 @@ export abstract class Decoder<T> {
     protected abstract decodeAs(input: unknown, required: boolean): Either<Error, T>;
 }
 
-class Path implements IPath {
+class PathImpl implements Path {
     public constructor(
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<T>
     ) {}
@@ -119,11 +274,6 @@ class Path implements IPath {
         return this.of(list(decoder));
     }
 
-    public keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
-    public keyValue<K, T>(
-        convertKey: (key: string) => Either<string, K>,
-        decoder: Decoder<T>
-    ): Decoder<Array<[ K, T ]>>;
     public keyValue<K, T>(
         ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
     ): Decoder<Array<[ string, T ]>> | Decoder<Array<[ K, T ]>> {
@@ -142,40 +292,40 @@ class Path implements IPath {
         return this.of(oneOf(decoders));
     }
 
-    public enums<T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<T> {
-        return this.of(enums(config));
+    public enums<T>(variants: Array<[ string | number | boolean | null, T ]>): Decoder<T> {
+        return this.of(enums(variants));
     }
 
     public lazy<T>(callDecoder: () => Decoder<T>): Decoder<T> {
         return this.of(lazy(callDecoder));
     }
 
-    public field(name: string): IPath {
-        return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+    public field(name: string): Path {
+        return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => {
             return this.createDecoder(Field.required(name, decoder));
         });
     }
 
-    public index(position: number): IPath {
-        return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+    public index(position: number): Path {
+        return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => {
             return this.createDecoder(Index.required(position, decoder));
         });
     }
 
-    public at(path: Array<string | number>): IPath {
-        return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
+    public at(path: Array<string | number>): Path {
+        return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => {
             return this.createDecoder(requiredAt(path, decoder));
         });
     }
 
-    public get optional(): IOptional {
-        return new Optional(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public get optional(): Optional {
+        return new OptionalImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return this.createDecoder(decoder).map(Just);
         });
     }
 }
 
-class OptionalPath implements IOptionalPath {
+class OptionalPathImpl implements OptionalPath {
     public constructor(
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
@@ -212,11 +362,6 @@ class OptionalPath implements IOptionalPath {
         return this.of(list(decoder));
     }
 
-    public keyValue<T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
-    public keyValue<K, T>(
-        convertKey: (key: string) => Either<string, K>,
-        decoder: Decoder<T>
-    ): Decoder<Maybe<Array<[ K, T ]>>>;
     public keyValue<K, T>(
         ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
     ): Decoder<Maybe<Array<[ string, T ]>>> | Decoder<Maybe<Array<[ K, T ]>>> {
@@ -235,38 +380,38 @@ class OptionalPath implements IOptionalPath {
         return this.of(oneOf(decoders));
     }
 
-    public enums<T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>> {
-        return this.of(enums(config));
+    public enums<T>(variants: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>> {
+        return this.of(enums(variants));
     }
 
     public lazy<T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>> {
         return this.of(lazy(callDecoder));
     }
 
-    public field(name: string): IOptionalPath {
-        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public field(name: string): OptionalPath {
+        return new OptionalPathImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return Field.optional(name, decoder);
         });
     }
 
-    public index(position: number): IOptionalPath {
-        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public index(position: number): OptionalPath {
+        return new OptionalPathImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return Index.optional(position, decoder);
         });
     }
 
-    public at(path: Array<string | number>): IOptionalPath {
-        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public at(path: Array<string | number>): OptionalPath {
+        return new OptionalPathImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return optionalAt(path, decoder);
         });
     }
 
-    public get optional(): IOptional {
-        return new Optional(this.createDecoder);
+    public get optional(): Optional {
+        return new OptionalImpl(this.createDecoder);
     }
 }
 
-class Optional implements IOptional {
+class OptionalImpl implements Optional {
     public constructor(
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
@@ -299,11 +444,6 @@ class Optional implements IOptional {
         return this.of(list(decoder));
     }
 
-    public keyValue<T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
-    public keyValue<K, T>(
-        convertKey: (key: string) => Either<string, K>,
-        decoder: Decoder<T>
-    ): Decoder<Maybe<Array<[ K, T ]>>>;
     public keyValue<K, T>(
         ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
     ): Decoder<Maybe<Array<[ string, T ]>>> | Decoder<Maybe<Array<[ K, T ]>>> {
@@ -322,24 +462,24 @@ class Optional implements IOptional {
         return this.of(oneOf(decoders));
     }
 
-    public enums<T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>> {
-        return this.of(enums(config));
+    public enums<T>(variants: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>> {
+        return this.of(enums(variants));
     }
 
-    public field(name: string): IOptionalPath {
-        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public field(name: string): OptionalPath {
+        return new OptionalPathImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return this.createDecoder(Field.optional(name, decoder)).map(Maybe.join);
         });
     }
 
-    public index(position: number): IOptionalPath {
-        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public index(position: number): OptionalPath {
+        return new OptionalPathImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return this.createDecoder(Index.optional(position, decoder)).map(Maybe.join);
         });
     }
 
-    public at(path: Array<string | number>): IOptionalPath {
-        return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
+    public at(path: Array<string | number>): OptionalPath {
+        return new OptionalPathImpl(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
             return this.createDecoder(optionalAt(path, decoder)).map(Maybe.join);
         });
     }
@@ -460,14 +600,14 @@ class OneOf<T> extends Decoder<T> {
 }
 
 class Enums<T> extends Decoder<T> {
-    public constructor(private readonly config: Array<[ string | number | boolean | null, T ]>) {
+    public constructor(private readonly variants: Array<[ string | number | boolean | null, T ]>) {
         super();
     }
 
     protected decodeAs(input: unknown, required: boolean): Either<Error, T> {
         const errors: Array<Error> = [];
 
-        for (const [ expected, value ] of this.config) {
+        for (const [ expected, value ] of this.variants) {
             if (expected === input || expected !== expected && input !== input) {
                 return Right(value);
             }
@@ -692,7 +832,7 @@ abstract class Index<T, R> extends Decoder<R> {
         }
 
         return this.decoder
-            .decode(input[ this.position ])
+            .decode(input[ position ])
             .mapBoth(
                 (error: Error): Error => Error.Index(this.position, error),
                 (value: T): R => this.mapSuccess(value)
@@ -808,7 +948,12 @@ const optionalAt = <T>(path: Array<string | number>, decoder: Decoder<T>): Decod
     return acc;
 };
 
-export const value: Decoder<Encode.Value> = new class Identity extends Decoder<Encode.Value> {
+/**
+ * Do not do anything with a JSON value, just bring it into an `Encode.Value`.
+ * This can be useful if you have particularly complex data that you would like to deal with later.
+ * Or if you are going to send it out somewhere and do not care about its structure.
+ */
+export const value: Decoder<Encode.Value> = new class Value extends Decoder<Encode.Value> {
     protected decodeAs(input: unknown): Either<Error, Encode.Value> {
         return Right(new Encoder(input));
     }
@@ -818,11 +963,11 @@ export const value: Decoder<Encode.Value> = new class Identity extends Decoder<E
  * Decode an unknown JS into an `string`.
  *
  * @example
- * Decode.string.decodeJSON('true')              // Left(Error.Failure('Expecting a STRING', true))
- * Decode.string.decodeJSON('42')                // Left(Error.Failure('Expecting a STRING', 42))
- * Decode.string.decodeJSON('3.14')              // Left(Error.Failure('Expecting a STRING', 3.14))
- * Decode.string.decodeJSON('"hello"')           // Right('hello')
- * Decode.string.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ * string.decodeJSON('true')              // Left(...)
+ * string.decodeJSON('42')                // Left(...)
+ * string.decodeJSON('3.14')              // Left(...)
+ * string.decodeJSON('"hello"')           // Right('hello')
+ * boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
  */
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 
@@ -830,11 +975,11 @@ export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
  * Decode an unknown JS into an `boolean`.
  *
  * @example
- * Decode.boolean.decodeJSON('true')              // Right(true)
- * Decode.boolean.decodeJSON('42')                // Left(Error.Failure('Expecting a STRING', 42))
- * Decode.boolean.decodeJSON('3.14')              // Left(Error.Failure('Expecting a STRING', 3.14))
- * Decode.boolean.decodeJSON('"hello"')           // Left(Error.Failure('Expecting a STRING', 'hello'))
- * Decode.boolean.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ * boolean.decodeJSON('true')             // Right(true)
+ * boolean.decodeJSON('42')               // Left(..)
+ * boolean.decodeJSON('3.14')             // Left(..)
+ * boolean.decodeJSON('"hello"')          // Left(..)
+ * boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
  */
 export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
 
@@ -842,11 +987,11 @@ export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean
  * Decode an unknown JS into an `int` (`number` in fact).
  *
  * @example
- * Decode.int.decodeJSON('true')              // Left(Error.Failure('Expecting a STRING', true))
- * Decode.int.decodeJSON('42')                // Right(42)
- * Decode.int.decodeJSON('3.14')              // Left(Error.Failure('Expecting a STRING', 3.14))
- * Decode.int.decodeJSON('"hello"')           // Left(Error.Failure('Expecting a STRING', 'hello'))
- * Decode.int.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ * int.decodeJSON('true')              // Left(..)
+ * int.decodeJSON('42')                // Right(42)
+ * int.decodeJSON('3.14')              // Left(..)
+ * int.decodeJSON('"hello"')           // Left(..)
+ * int.decodeJSON('{ "hello": 42 }')   // Left(..)
  */
 export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
 
@@ -854,11 +999,11 @@ export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
  * Decode an unknown JS into an `float` (`number` in fact).
  *
  * @example
- * Decode.float.decodeJSON('true')              // Left(Error.Failure('Expecting a STRING', true))
- * Decode.float.decodeJSON('42')                // Left(Error.Failure('Expecting a STRING', 42))
- * Decode.float.decodeJSON('3.14')              // Right(3.41)
- * Decode.float.decodeJSON('"hello"')           // Left(Error.Failure('Expecting a STRING', 'hello'))
- * Decode.float.decodeJSON('{ "hello": 42 }')   // Left(Error.Failure('Expecting a STRING', { hello: 42 }))
+ * float.decodeJSON('true')             // Left(..)
+ * float.decodeJSON('42')               // Right(42)
+ * float.decodeJSON('3.14')             // Right(3.41)
+ * float.decodeJSON('"hello"')          // Left(..)
+ * float.decodeJSON('{ "hello": 42 }')  // Left(..)
  */
 export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 
@@ -868,7 +1013,13 @@ export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
  *
  * @param message Custom error message
  *
- * @see `Decoder.chain`
+ * @example
+ * string.chain((str: string): Decoder<Date> => {
+ *     const date = new Date(str);
+ *
+ *     return isNaN(date.getTime()) ? Decode.fail('Expecting a DATE') : Decode.succeed(date);
+ * }).decode('2010-01-02')
+ * // Right(new Date('2010-01-02'))
  */
 export const fail = (message: string): Decoder<never> => new Fail(message);
 
@@ -878,29 +1029,74 @@ export const fail = (message: string): Decoder<never> => new Fail(message);
  *
  * @param value The certain value.
  *
- * @see `Decoder.chain`
+ * @example
+ * string.chain((str: string): Decoder<Date> => {
+ *     const date = new Date(str);
+ *
+ *     return isNaN(date.getTime()) ? Decode.fail('Expecting a DATE') : Decode.succeed(date);
+ * }).decode('2010-01-02')
+ * // Right(new Date('2010-01-02'))
  */
 export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
 
-export const shape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T> => new Shape(object);
+/**
+ * Take an object of `Decoder`s and return a `Decoder` with an object of values.
+ * Decoding fails if at least one of the fields fails.
+ *
+ * @param object Object schema.
+ *
+ * @example
+ * shape({
+ *     x: field('_x_').float,
+ *     y: field('_y_').float,
+ * }).decodeJSON('{ "_x_": 12.34, "_y_": 56.78 }')
+ * // Right({ x: 12.34, y: 56.78 })
+ */
+export const shape: RequiredShape = object => new Shape(object);
 
-export const list = <T>(decoder: Decoder<T>): Decoder<Array<T>> => new List(decoder);
+/**
+ * Decode a JSON into an `Array`.
+ *
+ * @param decoder Decoder of the `Array`'s element.
+ *
+ * @example
+ * list(int).decodeJSON('[ 1, 2, 3 ]')
+ * // Right([ 1, 2, 3 ])
+ *
+ * list(boolean).decodeJSON('[ true, false ]')
+ * // Right([ true, false ])
+ */
+export const list: RequiredList = decoder => new List(decoder);
 
-export function keyValue<T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
-export function keyValue<K, T>(
-    convertKey: (key: string) => Either<string, K>,
-    decoder: Decoder<T>
-): Decoder<Array<[ K, T ]>>;
-export function keyValue<K, T>(
+/**
+ * Decode a JSON into an `Array` of pairs.
+ *
+ * @example
+ * keyValue(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
+ * // Right([[ 'key_1', 2 ], [ 'key_2', 1 ]])
+ *
+ * keyValue(intFromString, boolean).decodeJSON('{ "1": true, "2": false }')
+ * // Right([[ 1, true ], [ 2, false ]])
+ */
+export const keyValue: RequiredKeyValue = <T, K>(
     ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
-): Decoder<Array<[ string, T ]>> | Decoder<Array<[ K, T ]>> {
+) => {
     if (args.length === 1) {
         return new KeyValue(Right, args[ 0 ]);
     }
 
     return new KeyValue(args[ 0 ], args[ 1 ]);
-}
+};
 
+/**
+ * Decode a JSON into an object.
+ *
+ * @param decoder Decoder of the object value.
+ *
+ * @example
+ * dict(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
+ * // Right({ key_1: 2, key_2: 1 })
+ */
 export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => {
     return keyValue(decoder).map((pairs: Array<[ string, T ]>): {[ key: string ]: T } => {
         const acc: {[ key: string ]: T } = {};
@@ -913,34 +1109,182 @@ export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => 
     });
 };
 
-export const oneOf = <T>(decoders: Array<Decoder<T>>): Decoder<T> => new OneOf(decoders);
+/**
+ * Try a bunch of different decoders.
+ * This can be useful if the unknown JS value may come in a couple different formats.
+ * For example, say you want to read an array of int, but some of them are strings.
+ *
+ * Why would someone generate input like this?
+ * Questions like this are not good for your health.
+ * The point is that you can use `oneOf` to handle situations like this!
+ *
+ * You could also use `oneOf` to help version your data.
+ * Try the latest format, then a few older ones that you still support.
+ * You could use `chain` to be even more particular if you wanted.
+ *
+ * @param decoders Bunch of potential decoders.
+ *
+ * @example
+ * list(
+ *     oneOf([
+ *         int,
+ *         string.chain(str => fromMaybe('Expecting an INTEGER', Basics.toInt(str)))
+ *     ])
+ * ).decodeJSON('[ 0, 1, "2", 3, "4" ]')
+ * // Right([ 0, 1, 2, 3, 4 ])
+ */
+export const oneOf: RequiredOneOf = decoders => new OneOf(decoders);
 
-export const enums = <T>(config: Array<[ string | number | boolean | null, T ]>): Decoder<T> => new Enums(config);
+/**
+ * Creates enum decoder based on variants.
+ *
+ * @param variants Pairs of primitives (string | number | boolean | null) and variants.
+ *
+ * @example
+ * enums([
+ *     [ 'USD', new USD(0) ],
+ *     [ 'EUR', new EUR(0) ],
+ *     [ 'RUB', new RUB(0) ],
+ * ]).decodeJSON('"RUB"')
+ * // Right(new RUB(0))
+ */
+export const enums: RequiredEnums = variants => new Enums(variants);
 
-export const lazy = <T>(callDecoder: () => Decoder<T>): Decoder<T> => {
-    return succeed(null).chain(callDecoder);
+/**
+ * Sometimes you have a JSON with recursive structure,like nested comments.
+ * You can use `lazy` to make sure your decoder unrolls lazily.
+ *
+ * @param callDecoder Lazy `Decoder` initializer.
+ *
+ * @example
+ * interface Comment {
+ *     message: string;
+ *     comments: Array<Comment>;
+ * }
+ *
+ * const commentDecoder: Decoder<Comment> = shape({
+ *     message: field('message').string,
+ *     comments: field('message').list(lazy(() => commentDecoder))
+ * });
+ */
+export const lazy: RequiredLazy = callDecoder => succeed(null).chain(callDecoder);
+
+/**
+ * Decode a JSON object, requiring a particular field.
+ *
+ * @param name Name of the field.
+ *
+ * @example
+ * field('x').int.decodeJSON('{ "x": 3 }')          // Right(3)
+ * field('x').int.decodeJSON('{ "x": 3, "y": 4 }')  // Right(3)
+ * field('x').int.decodeJSON('{ "x": true }')       // Left(..)
+ * field('x').int.decodeJSON('{ "x": null }')       // Left(..)
+ * field('x').int.decodeJSON('{ y": 4 }')           // Left(..)
+ */
+export const field = (name: string): Path => {
+    return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => Field.required(name, decoder));
 };
 
-export const field = (name: string): IPath => {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => Field.required(name, decoder));
+/**
+ * Decode a JSON array, requiring a particular index.
+ *
+ * @param position Exact index of the decoding value.
+ *
+ * @example
+ * const json = '[ "alise", "bob", "chuck" ]';
+ *
+ * index(0).string.decodeJSON(json)   // Right('alise')
+ * index(1).string.decodeJSON(json)   // Right('bob')
+ * index(2).string.decodeJSON(json)   // Right('chuck')
+ * index(-1).string.decodeJSON(json)  // Right('chuck')
+ * index(3).string.decodeJSON(json)   // Left(..)
+ */
+export const index = (position: number): Path => {
+    return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => Index.required(position, decoder));
 };
 
-export const index = (position: number): IPath => {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => Index.required(position, decoder));
+/**
+ * Decode a nested JSON object, requiring certain fields and indexes.
+ *
+ * @param path
+ *
+ * @example
+ * const json = '{ "person": { "name": "tom", "age": 42, "emails": [ "tom@email.com" ] } }';
+ *
+ * at([ 'person', 'name' ]).string.decodeJSON(json)       // Right('tom')
+ * at([ 'person', 'age' ]).int.decodeJSON(json)           // Right(42)
+ * at([ 'person', 'emails', 0 ]).string.decodeJSON(json)  // Right('tom@email.com"')
+ *
+ * // This is really just a shorthand for saying things like:
+ *
+ * field('person').field('name').string.decodeJSON(json)             // Right('tom')
+ * field('person').field('age').int.decodeJSON(json)                 // Right(42)
+ * field('person').field('emails').index(0).string.decodeJSON(json)  // Right('tom@email.com"')
+ */
+export const at = (path: Array<string | number>): Path => {
+    return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => requiredAt(path, decoder));
 };
 
-export const at = (path: Array<string | number>): IPath => {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => requiredAt(path, decoder));
-};
 
-export const optional: IOptional = new Optional(
+/**
+ * Lets create an optional `Decoder`.
+ *
+ * @example
+ * optional.string.decodeJSON('null')        // Right(Nothing)
+ * optional.string.decodeJSON('"anything"')  // Right(Just('anything))
+ *
+ * optional.field('name').string.decodeJSON('null')               // Right(Nothing)
+ * optional.field('name').string.decodeJSON('{}')                 // Right(Nothing)
+ * optional.field('name').string.decodeJSON('{ "name": null }')   // Left(..)
+ * optional.field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
+ * optional.field('name').string.decodeJSON('{ "name": "tom" }')  // Right('tom')
+ *
+ * optional.field('name').optional.string.decodeJSON('null')               // Right(Nothing)
+ * optional.field('name').optional.string.decodeJSON('{}')                 // Right(Nothing)
+ * optional.field('name').optional.string.decodeJSON('{ "name": null }')   // Right(Nothing)
+ * optional.field('name').optional.string.decodeJSON('{ "name": 1 }')      // Left(..)
+ * optional.field('name').optional.string.decodeJSON('{ "name": "tom" }')  // Right('tom')
+ */
+export const optional: Optional = new OptionalImpl(
     <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
 );
 
+/**
+ * Transform an either into a `Decoder`.
+ * Sometimes it can be useful to use functions that primarily operate on `Either` in decoders.
+ *
+ * @param either Container to transform.
+ *
+ * @example
+ * const validateNumber = (num: number): Either<string, number> => {
+ *     return num > 0 ? Either.Right(num) : Either.Left('Expecting a POSITIVE NUMBER');
+ * };
+ *
+ * number.map(validateNumber).chain(fromEither).decodeJSON('1')   // Right(1)
+ * number.map(validateNumber).chain(fromEither).decodeJSON('-1')  // Left(..)
+ */
 export const fromEither = <T>(either: Either<string, T>): Decoder<T> => {
     return either.fold(fail, succeed);
 };
 
+/**
+ * Transform a maybe into a `Decoder`.
+ * Sometimes it can be useful to use functions that primarily operate on `Maybe` in decoders.
+ *
+ * @param either Container to transform.
+ *
+ * @example
+ * const nonBlankString = (str: string): Maybe<string> => {
+ *     return str.trim() === '' ? Maybe.Nothing : Maybe.Just(str.trim());
+ * };
+ *
+ * const decoder: Decoder<string> = string.chain(str => {
+ *     return fromMaybe('Expecting a NON EMPTY STRING', nonBlankString(str));
+ * });
+ *
+ * decoder.decodeJSON(' some string ')  // Right('some string')
+ * decoder.decodeJSON('  ')             // Left(..)
+ */
 export const fromMaybe = <T>(message: string, maybe: Maybe<T>): Decoder<T> => {
     return maybe.toEither(message).pipe(fromEither);
 };

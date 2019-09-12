@@ -1150,7 +1150,7 @@ test('Json.Decode.oneOf(decoders)', t => {
     );
 });
 
-test('Json.Decode.enums(config)', t => {
+test('Json.Decode.enums(variants)', t => {
     t.deepEqual(
         Decode.enums([]).decode(undefined),
         Either.Left(Decode.Error.OneOf([]))
@@ -1558,7 +1558,7 @@ test('Json.Decode.field(name).{`of` shortcuts}', t => {
             __0__: 'true'
         }),
         Either.Right(true),
-        'Json.Decode.field(name).enums(config)'
+        'Json.Decode.field(name).enums(variants)'
     );
 
     const _0 /* Decoder<boolean> */ = Decode.field('__0__').oneOf([
@@ -2104,6 +2104,44 @@ test('Json.Decode.index(position).of(decoder)', t => {
         _0.decode([ 'str' ]),
         Either.Right('str')
     );
+
+    const _1 /* Decoder<string> */ = Decode.index(-1).string;
+
+    t.deepEqual(
+        _1.decode(null),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', null))
+    );
+
+    t.deepEqual(
+        _1.decode({}),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY', {}))
+    );
+
+    t.deepEqual(
+        _1.decode([]),
+        Either.Left(Decode.Error.Failure('Expecting an ARRAY with an ELEMENT at [-1] but only see 0 entries', []))
+    );
+
+    t.deepEqual(
+        _1.decode([ null, null ]),
+        Either.Left(Decode.Error.Index(
+            -1,
+            Decode.Error.Failure('Expecting a STRING', null)
+        ))
+    );
+
+    t.deepEqual(
+        _1.decode([ null, 1 ]),
+        Either.Left(Decode.Error.Index(
+            -1,
+            Decode.Error.Failure('Expecting a STRING', 1)
+        ))
+    );
+
+    t.deepEqual(
+        _1.decode([ null, 'str' ]),
+        Either.Right('str')
+    );
 });
 
 test('Json.Decode.index(position).{`of` shortcuts}', t => {
@@ -2218,7 +2256,7 @@ test('Json.Decode.index(position).{`of` shortcuts}', t => {
             [ 'false', false ]
         ]).decode([ 'false' ]),
         Either.Right(false),
-        'Json.Decode.index(position).enums(config)'
+        'Json.Decode.index(position).enums(variants)'
     );
 
     const _0 /* Decoder<boolean> */ = Decode.index(0).oneOf([
@@ -2981,7 +3019,7 @@ test('Json.Decode.at(path).{`of` shortcuts}', t => {
             __1__: 'true'
         }]),
         Either.Right(true),
-        'Json.Decode.at(path).enums(config)'
+        'Json.Decode.at(path).enums(variants)'
     );
 
     const _0 /* Decoder<boolean> */ = Decode.at([ 0, '__1__' ]).oneOf([
@@ -4655,7 +4693,7 @@ test('Json.Decode.optional.oneOf(decoders)', t => {
     );
 });
 
-test('Json.Decode.optional.enums(config)', t => {
+test('Json.Decode.optional.enums(variants)', t => {
     t.deepEqual(
         Decode.optional.enums([]).decode(undefined),
         Either.Right(Maybe.Nothing)
