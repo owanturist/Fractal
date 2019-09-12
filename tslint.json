@@ -69,6 +69,7 @@
     "no-irregular-whitespace": true,
     "no-unnecessary-callback-wrapper": false,
     "callable-types": false,
+    "no-empty-interface": false,
     "number-literal-format": true,
     "ordered-imports": false,
     "prefer-method-signature": true,
