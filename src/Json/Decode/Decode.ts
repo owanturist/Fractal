@@ -13,15 +13,11 @@ import Error from './Error';
 
 export interface RequiredKeyValue {
     /**
-     * Decode a JSON into an `Array` of [ string, T ] pairs.
-     *
      * @param decoder Decoder of the object element.
      */
     <T>(decoder: Decoder<T>): Decoder<Array<[ string, T ]>>;
 
     /**
-     * Decode a JSON into an `Array` of [ K, T ] pairs.
-     *
      * @param convertKey Converts field name from string to `K`.
      * @param decoder Decoder of the object element.
      */
@@ -30,15 +26,11 @@ export interface RequiredKeyValue {
 
 export interface OptionalKeyValue {
     /**
-     * Decode a JSON into an `Array` of [ string, T ] pairs.
-     *
      * @param decoder Decoder of the object element.
      */
     <T>(decoder: Decoder<T>): Decoder<Maybe<Array<[ string, T ]>>>;
 
     /**
-     * Decode a JSON into an `Array` of [ K, T ] pairs.
-     *
      * @param convertKey Converts field name from string to `K`.
      * @param decoder Decoder of the object element.
      */
@@ -101,22 +93,212 @@ interface NotOptional extends Common {
 }
 
 export interface Optional extends Common {
+    /**
+     * Decode a JSON into an optional `string`.
+     *
+     * @example
+     * optional.string.decodeJSON('null')              // Right(Nothing)
+     * optional.string.decodeJSON('true')              // Left(...)
+     * optional.string.decodeJSON('42')                // Left(...)
+     * optional.string.decodeJSON('3.14')              // Left(...)
+     * optional.string.decodeJSON('"hello"')           // Right(Just('hello'))
+     * optional.string.decodeJSON('{ "hello": 42 }')   // Left(..)
+     */
     string: Decoder<Maybe<string>>;
+
+    /**
+     * Decode a JSON into an optional `boolean`.
+     *
+     * @example
+     * optional.boolean.decodeJSON('null')             // Right(Nothing)
+     * optional.boolean.decodeJSON('true')             // Right(Just(true))
+     * optional.boolean.decodeJSON('42')               // Left(..)
+     * optional.boolean.decodeJSON('3.14')             // Left(..)
+     * optional.boolean.decodeJSON('"hello"')          // Left(..)
+     * optional.boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
+     */
     boolean: Decoder<Maybe<boolean>>;
+
+    /**
+     * Decode a JSON into an optional `int` (`number` in fact).
+     *
+     * @example
+     * optional.int.decodeJSON('null')              // Right(Nothing)
+     * optional.int.decodeJSON('true')              // Left(..)
+     * optional.int.decodeJSON('42')                // Right(Just(42))
+     * optional.int.decodeJSON('3.14')              // Left(..)
+     * optional.int.decodeJSON('"hello"')           // Left(..)
+     * optional.int.decodeJSON('{ "hello": 42 }')   // Left(..)
+     */
     int: Decoder<Maybe<number>>;
+
+    /**
+     * Decode a JSON into an optional `float` (`number` in fact).
+     *
+     * @example
+     * optional.float.decodeJSON('null')             // Right(Nothing)
+     * optional.float.decodeJSON('true')             // Left(..)
+     * optional.float.decodeJSON('42')               // Right(Just(42))
+     * optional.float.decodeJSON('3.14')             // Right(Just(3.41))
+     * optional.float.decodeJSON('"hello"')          // Left(..)
+     * optional.float.decodeJSON('{ "hello": 42 }')  // Left(..)
+     */
     float: Decoder<Maybe<number>>;
 
+    /**
+     * Take an object of `Decoder`s and return a `Decoder` with an optional object of values.
+     * Decoding fails if at least one of the fields fails.
+     *
+     * @param object Object schema.
+     *
+     * @example
+     * const decoder = optional.shape({
+     *     x: field('_x_').float,
+     *     y: field('_y_').float,
+     * })
+     *
+     * decoder.decodeJSON('null')
+     * // Right(Nothing)
+     *
+     * decoder.decodeJSON('{ "_x_": 12.34, "_y_": 56.78 }')
+     * // Right(Just({ x: 12.34, y: 56.78 }))
+     */
     shape: OptionalShape;
+
+    /**
+     * Decode a JSON into an optional `Array`.
+     *
+     * @param decoder Decoder of the `Array`'s element.
+     *
+     * @example
+     * optional.list(int).decodeJSON('null')
+     * // Right(Nothing)
+     * optional.list(boolean).decodeJSON('[ true, false ]')
+     * // Right(Just([ true, false ]))
+     */
     list: OptionaldList;
+
+    /**
+     * Decode a JSON into an optional `Array` of pairs.
+     *
+     * @example
+     * optional.keyValue(number).decodeJSON('null')
+     * // Right(Nothing)
+     * optional.keyValue(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
+     * // Right(Just([[ 'key_1', 2 ], [ 'key_2', 1 ]]))
+     */
     keyValue: OptionalKeyValue;
+
+    /**
+     * Decode a JSON into an optional object.
+     *
+     * @param decoder Decoder of the object value.
+     *
+     * @example
+     * optional.dict(number).decodeJSON('null')
+     * // Right(Nothing)
+     * optional.dict(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
+     * // Right(Just({ key_1: 2, key_2: 1 }))
+     */
     dict: OptionalDict;
 
+    /**
+     * Makes the `decoder` optional.
+     *
+     * @example
+     * optional.of(string) === optional.string
+     */
     of: OptionalOf;
+
+    /**
+     * Try a bunch of different decoders.
+     * This can be useful if the JSON value may come in a couple different formats.
+     * For example, say you want to read an array of int, but some of them are strings.
+     *
+     * @param decoders Bunch of potential decoders.
+     *
+     * @example
+     * list(
+     *     optional.oneOf([
+     *         int,
+     *         string.chain(str => fromMaybe('Expecting an INTEGER', Basics.toInt(str)))
+     *     ])
+     * ).decodeJSON('[ null, 1, "2", 3, "4" ]')
+     * // Right([ Nothing, Just(1), Just(2), Just(3), Just(4) ])
+     */
     oneOf: OptionalOneOf;
+
+    /**
+     * Creates optional enum decoder based on variants.
+     *
+     * @param variants Pairs of primitives (string | number | boolean | null) and variants.
+     *
+     * @example
+     * const currencyDecoder = optional.enums([
+     *     [ 'USD', new USD(0) ],
+     *     [ 'EUR', new EUR(0) ],
+     *     [ 'RUB', new RUB(0) ],
+     * ])
+     *
+     * currencyDecoder.decodeJSON('null')  // Right(Nothing)
+     * currencyDecoder.decodeJSON('"RUB"') // Right(Just(new RUB(0)))
+     */
     enums: OptionalEnums;
 
-    field(key: string): OptionalPath;
+    /**
+     * Decode a JSON object, requiring a particular optional field.
+     *
+     * @param name Name of the field.
+     *
+     * @example
+     * optional.field('name').string.decodeJSON('null')               // Right(Nothing)
+     * optional.field('name').string.decodeJSON('{}')                 // Right(Nothing)
+     * optional.field('name').string.decodeJSON('{ "name": null }')   // Left(..)
+     * optional.field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
+     * optional.field('name').string.decodeJSON('{ "name": "tom" }')  // Right(Just('tom'))
+     */
+    field(name: string): OptionalPath;
+
+    /**
+     * Decode a JSON array, requiring a particular optional index.
+     *
+     * @param position Exact index of the decoding value.
+     *
+     * @example
+     * const json = '[ "alise", null, "chuck" ]';
+     *
+     * optional.index(0).string.decodeJSON(json)   // Right(Just('alise'))
+     * optional.index(1).string.decodeJSON(json)   // Left(..)
+     * optional.index(2).string.decodeJSON(json)   // Right(Just('chuck'))
+     * optional.index(-1).string.decodeJSON(json)  // Right(Just('chuck'))
+     * optional.index(3).string.decodeJSON(json)   // Right(Nothing)
+     */
     index(position: number): OptionalPath;
+
+    /**
+     * Decode a nested JSON object, requiring certain optional fields and indexes.
+     *
+     * @param path
+     *
+     * @example
+     * const json = '{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ] } }';
+     *
+     * optional.at([ 'count' ]).int.decodeJSON(json)                     // Right(Nothing)
+     * optional.at([ 'person', 'height' ]).float.decodeJSON(json)        // Right(Nothing)
+     * optional.at([ 'person', 'name' ]).string.decodeJSON(json)         // Right(Just('tom'))
+     * optional.at([ 'person', 'age' ]).int.decodeJSON(json)             // Right(Just(42))
+     * optional.at([ 'person', 'accounts', 0 ]).string.decodeJSON(json)  // Right(Just('tom_42"'))
+     * optional.at([ 'person', 'accounts', 1 ]).string.decodeJSON(json)  // Right(Nothing)
+     *
+     * // This is really just a shorthand for saying things like:
+     *
+     * optional.field('count').int
+     * optional.field('person').optional.field('height').float
+     * optional.field('person').optional.field('name').string
+     * optional.field('person').optional.field('age').int
+     * optional.field('person').optional.field('accounts').optional.index(0).string
+     * optional.field('person').optional.field('accounts').optional.index(1).string
+     */
     at(path: Array<string | number>): OptionalPath;
 }
 
@@ -141,7 +323,7 @@ export interface Path extends NotOptional {
 
     lazy: RequiredLazy;
 
-    field(key: string): Path;
+    field(name: string): Path;
     index(position: number): Path;
     at(path: Array<string | number>): Path;
 }
@@ -166,7 +348,7 @@ export interface OptionalPath extends NotOptional {
 
     lazy: OptionalLazy;
 
-    field(key: string): OptionalPath;
+    field(name: string): OptionalPath;
     index(position: number): OptionalPath;
     at(path: Array<string | number>): OptionalPath;
 }
@@ -960,19 +1142,19 @@ export const value: Decoder<Encode.Value> = new class Value extends Decoder<Enco
 }();
 
 /**
- * Decode an unknown JS into an `string`.
+ * Decode a JSON into a `string`.
  *
  * @example
  * string.decodeJSON('true')              // Left(...)
  * string.decodeJSON('42')                // Left(...)
  * string.decodeJSON('3.14')              // Left(...)
  * string.decodeJSON('"hello"')           // Right('hello')
- * boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
+ * string.decodeJSON('{ "hello": 42 }')   // Left(..)
  */
 export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 
 /**
- * Decode an unknown JS into an `boolean`.
+ * Decode a JSON into a `boolean`.
  *
  * @example
  * boolean.decodeJSON('true')             // Right(true)
@@ -984,7 +1166,7 @@ export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
 export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
 
 /**
- * Decode an unknown JS into an `int` (`number` in fact).
+ * Decode a JSON into an `int` (`number` in fact).
  *
  * @example
  * int.decodeJSON('true')              // Left(..)
@@ -996,7 +1178,7 @@ export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean
 export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
 
 /**
- * Decode an unknown JS into an `float` (`number` in fact).
+ * Decode a JSON into a `float` (`number` in fact).
  *
  * @example
  * float.decodeJSON('true')             // Left(..)
@@ -1008,7 +1190,7 @@ export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
 export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 
 /**
- * Ignore the unknown JS value and make the decoder fail.
+ * Ignore the JSON value and make the decoder fail.
  * This is handy when used with `oneOf` or `chain` where you want to give a custom error message in some case.
  *
  * @param message Custom error message
@@ -1024,7 +1206,7 @@ export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
 export const fail = (message: string): Decoder<never> => new Fail(message);
 
 /**
- * Ignore the unknown JS value and produce a certain value.
+ * Ignore the JSON value and produce a certain value.
  * This is handy when used with `oneOf` or `chain`.
  *
  * @param value The certain value.
@@ -1111,7 +1293,7 @@ export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => 
 
 /**
  * Try a bunch of different decoders.
- * This can be useful if the unknown JS value may come in a couple different formats.
+ * This can be useful if the JSON value may come in a couple different formats.
  * For example, say you want to read an array of int, but some of them are strings.
  *
  * Why would someone generate input like this?
@@ -1209,17 +1391,17 @@ export const index = (position: number): Path => {
  * @param path
  *
  * @example
- * const json = '{ "person": { "name": "tom", "age": 42, "emails": [ "tom@email.com" ] } }';
+ * const json = '{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ] } }';
  *
- * at([ 'person', 'name' ]).string.decodeJSON(json)       // Right('tom')
- * at([ 'person', 'age' ]).int.decodeJSON(json)           // Right(42)
- * at([ 'person', 'emails', 0 ]).string.decodeJSON(json)  // Right('tom@email.com"')
+ * at([ 'person', 'name' ]).string.decodeJSON(json)         // Right('tom')
+ * at([ 'person', 'age' ]).int.decodeJSON(json)             // Right(42)
+ * at([ 'person', 'accounts', 0 ]).string.decodeJSON(json)  // Right('tom_42"')
  *
  * // This is really just a shorthand for saying things like:
  *
- * field('person').field('name').string.decodeJSON(json)             // Right('tom')
- * field('person').field('age').int.decodeJSON(json)                 // Right(42)
- * field('person').field('emails').index(0).string.decodeJSON(json)  // Right('tom@email.com"')
+ * field('person').field('name').string
+ * field('person').field('age').int
+ * field('person').field('accounts').index(0).string
  */
 export const at = (path: Array<string | number>): Path => {
     return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => requiredAt(path, decoder));
@@ -1233,17 +1415,11 @@ export const at = (path: Array<string | number>): Path => {
  * optional.string.decodeJSON('null')        // Right(Nothing)
  * optional.string.decodeJSON('"anything"')  // Right(Just('anything))
  *
- * optional.field('name').string.decodeJSON('null')               // Right(Nothing)
- * optional.field('name').string.decodeJSON('{}')                 // Right(Nothing)
- * optional.field('name').string.decodeJSON('{ "name": null }')   // Left(..)
- * optional.field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
- * optional.field('name').string.decodeJSON('{ "name": "tom" }')  // Right('tom')
- *
  * optional.field('name').optional.string.decodeJSON('null')               // Right(Nothing)
  * optional.field('name').optional.string.decodeJSON('{}')                 // Right(Nothing)
  * optional.field('name').optional.string.decodeJSON('{ "name": null }')   // Right(Nothing)
  * optional.field('name').optional.string.decodeJSON('{ "name": 1 }')      // Left(..)
- * optional.field('name').optional.string.decodeJSON('{ "name": "tom" }')  // Right('tom')
+ * optional.field('name').optional.string.decodeJSON('{ "name": "tom" }')  // Right(Just('tom'))
  */
 export const optional: Optional = new OptionalImpl(
     <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
