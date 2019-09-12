@@ -37,33 +37,103 @@ export interface OptionalKeyValue {
     <K, T>(convertKey: (key: string) => Either<string, K>, decoder: Decoder<T>): Decoder<Maybe<Array<[ K, T ]>>>;
 }
 
-export type RequiredDict = <T>(decoder: Decoder<T>) => Decoder<{[ key: string ]: T}>;
+export interface RequiredDict {
+    /**
+     * @param decoder Decoder of the object value.
+     */
+    <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T}>;
+}
 
-export type OptionalDict = <T>(decoder: Decoder<T>) => Decoder<Maybe<{[ key: string ]: T}>>;
+export interface OptionalDict {
+    /**
+     * @param decoder Decoder of the object value.
+     */
+    <T>(decoder: Decoder<T>): Decoder<Maybe<{[ key: string ]: T}>>;
+}
 
-export type RequiredList = <T>(decoder: Decoder<T>) => Decoder<Array<T>>;
+export interface RequiredList {
+    /**
+     * @param decoder Decoder of the `Array`'s element.
+     */
+    <T>(decoder: Decoder<T>): Decoder<Array<T>>;
+}
 
-export type OptionaldList = <T>(decoder: Decoder<T>) => Decoder<Maybe<Array<T>>>;
+export interface OptionaldList {
+    /**
+     * @param decoder Decoder of the `Array`'s element.
+     */
+    <T>(decoder: Decoder<T>): Decoder<Maybe<Array<T>>>;
+}
 
-export type RequiredShape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}) => Decoder<T>;
+export interface RequiredShape {
+    /**
+     * @param object Object schema.
+     */
+    <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<T>;
+}
 
-export type OptionalShape = <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}) => Decoder<Maybe<T>>;
+export interface OptionalShape {
+    /**
+     * @param object Object schema.
+     */
+    <T extends {}>(object: {[ K in keyof T ]: Decoder<T[ K ]>}): Decoder<Maybe<T>>;
+}
 
-export type RequiredOf = <T>(decoder: Decoder<T>) => Decoder<T>;
+export interface RequiredOf {
+    /**
+     * @param decoder Nested decoder.
+     */
+    <T>(decoder: Decoder<T>): Decoder<T>;
+}
 
-export type OptionalOf = <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>;
+export interface OptionalOf {
+    /**
+     * @param decoder Nested decoder.
+     */
+    <T>(decoder: Decoder<T>): Decoder<Maybe<T>>;
+}
 
-export type RequiredOneOf = <T>(decoders: Array<Decoder<T>>) => Decoder<T>;
+export interface RequiredOneOf {
+    /**
+     * @param decoders Bunch of potential decoders.
+     */
+    <T>(decoders: Array<Decoder<T>>): Decoder<T>;
+}
 
-export type OptionalOneOf = <T>(decoders: Array<Decoder<T>>) => Decoder<Maybe<T>>;
+export interface OptionalOneOf {
+    /**
+     * @param decoders Bunch of potential decoders.
+     */
+    <T>(decoders: Array<Decoder<T>>): Decoder<Maybe<T>>;
+}
 
-export type RequiredEnums = <T>(variants: Array<[ string | number | boolean | null, T ]>) => Decoder<T>;
+export interface RequiredEnums {
+    /**
+     * @param variants Pairs of primitives (string | number | boolean | null) and variants.
+     */
+    <T>(variants: Array<[ string | number | boolean | null, T ]>): Decoder<T>;
+}
 
-export type OptionalEnums = <T>(variants: Array<[ string | number | boolean | null, T ]>) => Decoder<Maybe<T>>;
+export interface OptionalEnums {
+    /**
+     * @param variants Pairs of primitives (string | number | boolean | null) and variants.
+     */
+    <T>(variants: Array<[ string | number | boolean | null, T ]>): Decoder<Maybe<T>>;
+}
 
-export type RequiredLazy = <T>(callDecoder: () => Decoder<T>) => Decoder<T>;
+export interface RequiredLazy {
+    /**
+     * @param callDecoder Lazy `Decoder` initializer.
+     */
+    <T>(callDecoder: () => Decoder<T>): Decoder<T>;
+}
 
-export type OptionalLazy = <T>(callDecoder: () => Decoder<T>) => Decoder<Maybe<T>>;
+export interface OptionalLazy {
+    /**
+     * @param callDecoder Lazy `Decoder` initializer.
+     */
+    <T>(callDecoder: () => Decoder<T>): Decoder<Maybe<T>>;
+}
 
 interface Common {
     string: unknown;
@@ -85,7 +155,7 @@ interface Common {
     at(path: Array<string | number>): Common;
 }
 
-interface NotOptional extends Common {
+interface WithOptional extends Common {
     optional: Optional;
 
     value: unknown;
@@ -149,8 +219,6 @@ export interface Optional extends Common {
      * Take an object of `Decoder`s and return a `Decoder` with an optional object of values.
      * Decoding fails if at least one of the fields fails.
      *
-     * @param object Object schema.
-     *
      * @example
      * const decoder = optional.shape({
      *     x: field('_x_').float,
@@ -167,8 +235,6 @@ export interface Optional extends Common {
 
     /**
      * Decode a JSON into an optional `Array`.
-     *
-     * @param decoder Decoder of the `Array`'s element.
      *
      * @example
      * optional.list(int).decodeJSON('null')
@@ -192,8 +258,6 @@ export interface Optional extends Common {
     /**
      * Decode a JSON into an optional object.
      *
-     * @param decoder Decoder of the object value.
-     *
      * @example
      * optional.dict(number).decodeJSON('null')
      * // Right(Nothing)
@@ -203,7 +267,7 @@ export interface Optional extends Common {
     dict: OptionalDict;
 
     /**
-     * Makes the `decoder` optional.
+     * Nest a decoder.
      *
      * @example
      * optional.of(string) === optional.string
@@ -214,8 +278,6 @@ export interface Optional extends Common {
      * Try a bunch of different decoders.
      * This can be useful if the JSON value may come in a couple different formats.
      * For example, say you want to read an array of int, but some of them are strings.
-     *
-     * @param decoders Bunch of potential decoders.
      *
      * @example
      * list(
@@ -230,8 +292,6 @@ export interface Optional extends Common {
 
     /**
      * Creates optional enum decoder based on variants.
-     *
-     * @param variants Pairs of primitives (string | number | boolean | null) and variants.
      *
      * @example
      * const currencyDecoder = optional.enums([
@@ -302,33 +362,234 @@ export interface Optional extends Common {
     at(path: Array<string | number>): OptionalPath;
 }
 
-export interface Path extends NotOptional {
+export interface Path extends WithOptional {
+    /**
+     * Lets create an optional `Decoder`.
+     *
+     * @example
+     * field('name').optional.string.decodeJSON('{ "name": null }')   // Right(Nothing)
+     * field('name').optional.string.decodeJSON('{ "name": "tom" }')  // Right(Just('tom'))
+     *
+     * index(0).optional.string.decodeJSON('[]')          // Right(Nothing)
+     * index(0).optional.string.decodeJSON('[ "cats" ]')  // Right(Just('cats'))
+     */
     optional: Optional;
 
+    /**
+     * Decode a JSON into a `string`.
+     *
+     * @example
+     * field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
+     * field('name').string.decodeJSON('{ "name": "tom" }')  // Right('tom')
+     *
+     * index(0).string.decodeJSON('[]')          // Left(..)
+     * index(0).string.decodeJSON('[ "cats" ]')  // Right('cats')
+     */
     string: Decoder<string>;
 
+    /**
+     * Decode a JSON into a `boolean`.
+     *
+     * @example
+     * field('disabled').boolean.decodeJSON('{ "disabled": 1 }')     // Left(..)
+     * field('disabled').boolean.decodeJSON('{ "disabled": true }')  // Right(true)
+     *
+     * index(0).boolean.decodeJSON('[]')         // Left(..)
+     * index(0).boolean.decodeJSON('[ false ]')  // Right(false)
+     */
     boolean: Decoder<boolean>;
+
+    /**
+     * Decode a JSON into a `int` (`number` in fact).
+     *
+     * @example
+     * field('age').int.decodeJSON('{ "age": true }')  // Left(..)
+     * field('age').int.decodeJSON('{ "age": 42 }')    // Right(42)
+     *
+     * index(0).int.decodeJSON('[]')      // Left(..)
+     * index(0).int.decodeJSON('[ 18 ]')  // Right(18)
+     */
     int: Decoder<number>;
+
+    /**
+     * Decode a JSON into a `float` (`number` in fact).
+     *
+     * @example
+     * field('weight').float.decodeJSON('{ "weight": true }')    // Left(..)
+     * field('weight').float.decodeJSON('{ "weight": 123.45 }')  // Right(123.45)
+     *
+     * index(0).float.decodeJSON('[]')        // Left(..)
+     * index(0).float.decodeJSON('[ 18.1 ]')  // Right(18.1)
+     */
     float: Decoder<number>;
+
+    /**
+     * Do not do anything with a JSON value, just bring it into an `Encode.Value`.
+     * This can be useful if you have particularly complex data that you would like to deal with later.
+     * Or if you are going to send it out somewhere and do not care about its structure.
+     */
     value: Decoder<Encode.Value>;
 
+    /**
+     * Take an object of `Decoder`s and return a `Decoder` with a object of values.
+     * Decoding fails if at least one of the fields fails.
+     *
+     * @example
+     * field('center').shape({
+     *     x: field('_x_').float,
+     *     y: field('_y_').float,
+     * }).decodeJSON('{ "center": { "_x_": 12.34, "_y_": 56.78 }}')
+     * // Right({ x: 12.34, y: 56.78 })
+     *
+     * index(0).shape({
+     *     x: field('_x_').float,
+     *     y: field('_y_').float,
+     * }).decodeJSON('[{ "_x_": 12.34, "_y_": 56.78 }]')
+     * // Right({ x: 12.34, y: 56.78 })
+     */
     shape: RequiredShape;
+
+    /**
+     * Decode a JSON into an `Array`.
+     *
+     * @example
+     * field('sequence').list(int).decodeJSON('{ "sequence": [ 1, 2, 3 ]}')
+     * // Right([ 1, 2, 3 ])
+     *
+     * index(0).list(boolean).decodeJSON('[[ true, false ]]')
+     * // Right([ true, false ])
+     */
     list: RequiredList;
+
+    /**
+     * Decode a JSON into an `Array` of pairs.
+     *
+     * @example
+     * field('keys').keyValue(number).decodeJSON('{ "keys": { "key_1": 2, "key_2": 1 }}')
+     * // Right([[ 'key_1', 2 ], [ 'key_2', 1 ]])
+     *
+     * index(0).keyValue(intFromString, boolean).decodeJSON('[{ "1": true, "2": false }]')
+     * // Right([[ 1, true ], [ 2, false ]])
+     */
     keyValue: RequiredKeyValue;
+
+    /**
+     * Decode a JSON into an object.
+     *
+     * @example
+     * field('keys').dict(number).decodeJSON('{ "keys": { "key_1": 2, "key_2": 1 }}')
+     * // Right({ key_1: 2, key_2: 1 })
+     */
     dict: RequiredDict;
 
+    /**
+     * Nest a decoder.
+     *
+     * @example
+     * field('name').of(string) === field('name').string
+     * index(0).of(int) === index(0).int
+     */
     of: RequiredOf;
+
+    /**
+     * Try a bunch of different decoders.
+     * This can be useful if the JSON value may come in a couple different formats.
+     * For example, say you want to read an array of int, but some of them are strings.
+     *
+     * @example
+     * list(
+     *     field('count').oneOf([
+     *         int,
+     *         string.chain(str => fromMaybe('Expecting an INTEGER', Basics.toInt(str)))
+     *     ])
+     * ).decodeJSON('[{ "count": 0 }, { "count": "1" }, { "count": "2" }, { "count": 3 }]')
+     * // Right([ 0, 1, 2, 3 ])
+     */
     oneOf: RequiredOneOf;
+
+
+    /**
+     * Creates enum decoder based on variants.
+     *
+     * @example
+     * field('currency').enums([
+     *     [ 'USD', new USD(0) ],
+     *     [ 'EUR', new EUR(0) ],
+     *     [ 'RUB', new RUB(0) ],
+     * ]).decodeJSON('{ "currency": "RUB" }')
+     * // Right(new RUB(0))
+     */
     enums: RequiredEnums;
 
+    /**
+     * Sometimes you have a JSON with recursive structure,like nested comments.
+     * You can use `lazy` to make sure your decoder unrolls lazily.
+     *
+     * @example
+     * interface Comment {
+     *     message: string;
+     *     comments: Array<Comment>;
+     * }
+     *
+     * const commentDecoder: Decoder<Comment> = shape({
+     *     message: field('message').string,
+     *     comments: field('message').lazy(() => list(commentDecoder))
+     * });
+     */
     lazy: RequiredLazy;
 
+    /**
+     * Decode a JSON object, requiring a particular field.
+     *
+     * @param name Name of the field.
+     *
+     * @example
+     * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": 3 }}')          // Right(3)
+     * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": 3, "y": 4 }}')  // Right(3)
+     * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": true }}')       // Left(..)
+     * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": null }}')       // Left(..)
+     * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "y": 4 }}')          // Left(..)
+     */
     field(name: string): Path;
+
+    /**
+     * Decode a JSON array, requiring a particular index.
+     *
+     * @param position Exact index of the decoding value.
+     *
+     * @example
+     * const json = '[{ "children": [ "alise", "bob", "chuck" ]}]';
+     *
+     * at(0, 'children').index(0).string.decodeJSON(json)   // Right('alise')
+     * at(0, 'children').index(1).string.decodeJSON(json)   // Right('bob')
+     * at(0, 'children').index(2).string.decodeJSON(json)   // Right('chuck')
+     * at(0, 'children').index(-1).string.decodeJSON(json)  // Right('chuck')
+     * at(0, 'children').index(3).string.decodeJSON(json)   // Left(..)
+     */
     index(position: number): Path;
+
+    /**
+     * Decode a nested JSON object, requiring certain fields and indexes.
+     *
+     * @param path Sequence of field names and index positions.
+     *
+     * @example
+     * const json = '[{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ]}}]';
+     *
+     * index(0).at([ 'person', 'name' ]).string.decodeJSON(json)         // Right('tom')
+     * index(0).at([ 'person', 'age' ]).int.decodeJSON(json)             // Right(42)
+     * index(0).at([ 'person', 'accounts', 0 ]).string.decodeJSON(json)  // Right('tom_42"')
+     *
+     * // This is really just a shorthand for saying things like:
+     *
+     * index(0).field('person').field('name').string
+     * index(0).field('person').field('age').int
+     * index(0).field('person').field('accounts').index(0).string
+     */
     at(path: Array<string | number>): Path;
 }
 
-export interface OptionalPath extends NotOptional {
+export interface OptionalPath extends WithOptional {
     optional: Optional;
 
     string: Decoder<Maybe<string>>;
@@ -1225,8 +1486,6 @@ export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
  * Take an object of `Decoder`s and return a `Decoder` with an object of values.
  * Decoding fails if at least one of the fields fails.
  *
- * @param object Object schema.
- *
  * @example
  * shape({
  *     x: field('_x_').float,
@@ -1238,8 +1497,6 @@ export const shape: RequiredShape = object => new Shape(object);
 
 /**
  * Decode a JSON into an `Array`.
- *
- * @param decoder Decoder of the `Array`'s element.
  *
  * @example
  * list(int).decodeJSON('[ 1, 2, 3 ]')
@@ -1304,8 +1561,6 @@ export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => 
  * Try the latest format, then a few older ones that you still support.
  * You could use `chain` to be even more particular if you wanted.
  *
- * @param decoders Bunch of potential decoders.
- *
  * @example
  * list(
  *     oneOf([
@@ -1320,8 +1575,6 @@ export const oneOf: RequiredOneOf = decoders => new OneOf(decoders);
 /**
  * Creates enum decoder based on variants.
  *
- * @param variants Pairs of primitives (string | number | boolean | null) and variants.
- *
  * @example
  * enums([
  *     [ 'USD', new USD(0) ],
@@ -1335,8 +1588,6 @@ export const enums: RequiredEnums = variants => new Enums(variants);
 /**
  * Sometimes you have a JSON with recursive structure,like nested comments.
  * You can use `lazy` to make sure your decoder unrolls lazily.
- *
- * @param callDecoder Lazy `Decoder` initializer.
  *
  * @example
  * interface Comment {
@@ -1361,7 +1612,7 @@ export const lazy: RequiredLazy = callDecoder => succeed(null).chain(callDecoder
  * field('x').int.decodeJSON('{ "x": 3, "y": 4 }')  // Right(3)
  * field('x').int.decodeJSON('{ "x": true }')       // Left(..)
  * field('x').int.decodeJSON('{ "x": null }')       // Left(..)
- * field('x').int.decodeJSON('{ y": 4 }')           // Left(..)
+ * field('x').int.decodeJSON('{ "y": 4 }')          // Left(..)
  */
 export const field = (name: string): Path => {
     return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => Field.required(name, decoder));
@@ -1388,7 +1639,7 @@ export const index = (position: number): Path => {
 /**
  * Decode a nested JSON object, requiring certain fields and indexes.
  *
- * @param path
+ * @param path Sequence of field names and index positions.
  *
  * @example
  * const json = '{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ] } }';
@@ -1407,19 +1658,12 @@ export const at = (path: Array<string | number>): Path => {
     return new PathImpl(<T>(decoder: Decoder<T>): Decoder<T> => requiredAt(path, decoder));
 };
 
-
 /**
  * Lets create an optional `Decoder`.
  *
  * @example
  * optional.string.decodeJSON('null')        // Right(Nothing)
  * optional.string.decodeJSON('"anything"')  // Right(Just('anything))
- *
- * optional.field('name').optional.string.decodeJSON('null')               // Right(Nothing)
- * optional.field('name').optional.string.decodeJSON('{}')                 // Right(Nothing)
- * optional.field('name').optional.string.decodeJSON('{ "name": null }')   // Right(Nothing)
- * optional.field('name').optional.string.decodeJSON('{ "name": 1 }')      // Left(..)
- * optional.field('name').optional.string.decodeJSON('{ "name": "tom" }')  // Right(Just('tom'))
  */
 export const optional: Optional = new OptionalImpl(
     <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
