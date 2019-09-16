@@ -1,8 +1,5 @@
 import {
     isString,
-    isInt,
-    isFloat,
-    isBoolean,
     isObject,
     isArray
 } from '../../Basics';
@@ -11,10 +8,26 @@ import Either, { Left, Right } from '../../Either';
 import Encode from '../Encode';
 import Error from './Error';
 import {
+    value,
+    string,
+    boolean,
+    int,
+    float,
+    shape,
+    list,
+    keyValue,
+    dict,
+    oneOf,
+    enums,
+    lazy,
     Path as IPath,
     OptionalPath as IOptionalPath,
     Optional as IOptional
 } from './index';
+
+const expecting = (type: string, source: unknown): Either<Error, never> => Left(
+    Error.Failure(`Expecting ${type}`, source)
+);
 
 export abstract class Decoder<T> {
     protected static decodeAs<T>(decoder: Decoder<T>, input: unknown, required: boolean) {
@@ -79,7 +92,21 @@ export abstract class Decoder<T> {
     protected abstract decodeAs(input: unknown, required: boolean): Either<Error, T>;
 }
 
-class Path implements IPath {
+export class Path implements IPath {
+    public static at<T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<T> {
+        let acc: Decoder<T> = decoder;
+
+        for (let index = path.length - 1; index >= 0; index--) {
+            const fragment: string | number = path[ index ];
+
+            acc = isString(fragment)
+                ? Field.required(fragment, acc)
+                : Index.required(fragment, acc);
+        }
+
+        return acc;
+    }
+
     public constructor(
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<T>
     ) {}
@@ -156,7 +183,7 @@ class Path implements IPath {
 
     public at(path: Array<string | number>): IPath {
         return new Path(<T>(decoder: Decoder<T>): Decoder<T> => {
-            return this.createDecoder(requiredAt(path, decoder));
+            return this.createDecoder(Path.at(path, decoder));
         });
     }
 
@@ -167,7 +194,21 @@ class Path implements IPath {
     }
 }
 
-class OptionalPath implements IOptionalPath {
+export class OptionalPath implements IOptionalPath {
+    public static at<T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<Maybe<T>> {
+        let acc: Decoder<Maybe<T>> = decoder.map(Just);
+
+        for (let index = path.length - 1; index >= 0; index--) {
+            const fragment: string | number = path[ index ];
+
+            acc = isString(fragment)
+                ? Field.optional(fragment, acc).map(Maybe.join)
+                : Index.optional(fragment, acc).map(Maybe.join);
+        }
+
+        return acc;
+    }
+
     public constructor(
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
@@ -244,7 +285,7 @@ class OptionalPath implements IOptionalPath {
 
     public at(path: Array<string | number>): IOptionalPath {
         return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-            return optionalAt(path, decoder);
+            return OptionalPath.at(path, decoder);
         });
     }
 
@@ -253,7 +294,7 @@ class OptionalPath implements IOptionalPath {
     }
 }
 
-class Optional implements IOptional {
+export class Optional implements IOptional {
     public constructor(
         private readonly createDecoder: <T>(decoder: Decoder<T>) => Decoder<Maybe<T>>
     ) {}
@@ -322,7 +363,7 @@ class Optional implements IOptional {
 
     public at(path: Array<string | number>): IOptionalPath {
         return new OptionalPath(<T>(decoder: Decoder<T>): Decoder<Maybe<T>> => {
-            return this.createDecoder(optionalAt(path, decoder)).map(Maybe.join);
+            return this.createDecoder(OptionalPath.at(path, decoder)).map(Maybe.join);
         });
     }
 }
@@ -355,7 +396,7 @@ class Chain<T, R> extends Decoder<R> {
     }
 }
 
-class Primitive<T> extends Decoder<T> {
+export class Primitive<T> extends Decoder<T> {
     public constructor(
         private readonly prefix: string,
         private readonly type: string,
@@ -371,7 +412,7 @@ class Primitive<T> extends Decoder<T> {
     }
 }
 
-class Fail extends Decoder<never> {
+export class Fail extends Decoder<never> {
     public constructor(private readonly message: string) {
         super();
     }
@@ -383,7 +424,7 @@ class Fail extends Decoder<never> {
     }
 }
 
-class Succeed<T> extends Decoder<T> {
+export class Succeed<T> extends Decoder<T> {
     public constructor(private readonly value: T) {
         super();
     }
@@ -393,7 +434,7 @@ class Succeed<T> extends Decoder<T> {
     }
 }
 
-class Shape<T> extends Decoder<T> {
+export class Shape<T> extends Decoder<T> {
     public constructor(private readonly object: {[ K in keyof T ]: Decoder<T[ K ]>}) {
         super();
     }
@@ -419,7 +460,7 @@ class Shape<T> extends Decoder<T> {
     }
 }
 
-class OneOf<T> extends Decoder<T> {
+export class OneOf<T> extends Decoder<T> {
     public constructor(private readonly decoders: Array<Decoder<T>>) {
         super();
     }
@@ -441,7 +482,7 @@ class OneOf<T> extends Decoder<T> {
     }
 }
 
-class Enums<T> extends Decoder<T> {
+export class Enums<T> extends Decoder<T> {
     public constructor(private readonly variants: Array<[ string | number | boolean | null, T ]>) {
         super();
     }
@@ -466,7 +507,7 @@ class Enums<T> extends Decoder<T> {
     }
 }
 
-class List<T> extends Decoder<Array<T>> {
+export class List<T> extends Decoder<Array<T>> {
     public constructor(private readonly decoder: Decoder<T>) {
         super();
     }
@@ -495,7 +536,7 @@ class List<T> extends Decoder<Array<T>> {
     }
 }
 
-class KeyValue<K, T> extends Decoder<Array<[ K, T ]>> {
+export class KeyValue<K, T> extends Decoder<Array<[ K, T ]>> {
     public constructor(
         private readonly convertKey: (key: string) => Either<string, K>,
         private readonly decoder: Decoder<T>
@@ -544,7 +585,7 @@ class Nullable<T> extends Decoder<Maybe<T>> {
     }
 }
 
-abstract class Field<T, R> extends Decoder<R> {
+export abstract class Field<T, R> extends Decoder<R> {
     public static required<T>(name: string, decoder: Decoder<T>): Decoder<T> {
         return new RequiredField(name, decoder);
     }
@@ -640,7 +681,7 @@ class OptionalField<T> extends Field<T, Maybe<T>> {
     }
 }
 
-abstract class Index<T, R> extends Decoder<R> {
+export abstract class Index<T, R> extends Decoder<R> {
     public static required<T>(position: number, decoder: Decoder<T>): Decoder<T> {
         return new RequiredIndex(position, decoder);
     }
@@ -758,113 +799,8 @@ class Encoder implements Encode.Value {
     }
 }
 
-const expecting = (type: string, source: unknown): Either<Error, never> => Left(
-    Error.Failure(`Expecting ${type}`, source)
-);
-
-const requiredAt = <T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<T> => {
-    let acc: Decoder<T> = decoder;
-
-    for (let index = path.length - 1; index >= 0; index--) {
-        const fragment: string | number = path[ index ];
-
-        acc = isString(fragment)
-            ? Field.required(fragment, acc)
-            : Index.required(fragment, acc);
-    }
-
-    return acc;
-};
-
-const optionalAt = <T>(path: Array<string | number>, decoder: Decoder<T>): Decoder<Maybe<T>> => {
-    let acc: Decoder<Maybe<T>> = decoder.map(Just);
-
-    for (let index = path.length - 1; index >= 0; index--) {
-        const fragment: string | number = path[ index ];
-
-        acc = isString(fragment)
-            ? Field.optional(fragment, acc).map(Maybe.join)
-            : Index.optional(fragment, acc).map(Maybe.join);
-    }
-
-    return acc;
-};
-
-export const value: Decoder<Encode.Value> = new class Value extends Decoder<Encode.Value> {
+export class Value extends Decoder<Encode.Value> {
     protected decodeAs(input: unknown): Either<Error, Encode.Value> {
         return Right(new Encoder(input));
     }
-}();
-
-export const string: Decoder<string> = new Primitive('a', 'STRING', isString);
-
-export const boolean: Decoder<boolean> = new Primitive('a', 'BOOLEAN', isBoolean);
-
-export const int: Decoder<number> = new Primitive('an', 'INTEGER', isInt);
-
-export const float: Decoder<number> = new Primitive('a', 'FLOAT', isFloat);
-
-export const fail = (message: string): Decoder<never> => new Fail(message);
-
-export const succeed = <T>(value: T): Decoder<T> => new Succeed(value);
-
-export const shape: IPath['shape'] = object => new Shape(object);
-
-export const list: IPath['list'] = decoder => new List(decoder);
-
-export const keyValue: IPath['keyValue'] = <T, K>(
-    ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
-) => {
-    if (args.length === 1) {
-        return new KeyValue(Right, args[ 0 ]);
-    }
-
-    return new KeyValue(args[ 0 ], args[ 1 ]);
-};
-
-export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => {
-    return keyValue(decoder).map((pairs: Array<[ string, T ]>): {[ key: string ]: T } => {
-        const acc: {[ key: string ]: T } = {};
-
-        for (const [ key, value ] of pairs) {
-            acc[ key ] = value;
-        }
-
-        return acc;
-    });
-};
-
-export const oneOf: IPath['oneOf'] = decoders => new OneOf(decoders);
-
-export const enums: IPath['enums'] = variants => new Enums(variants);
-
-export const lazy: IPath['lazy'] = callDecoder => succeed(null).chain(callDecoder);
-
-export const field = (name: string): IPath => {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => Field.required(name, decoder));
-};
-
-export const index = (position: number): IPath => {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => Index.required(position, decoder));
-};
-
-export const at = (path: Array<string | number>): IPath => {
-    return new Path(<T>(decoder: Decoder<T>): Decoder<T> => requiredAt(path, decoder));
-};
-
-export const optional: IOptional = new Optional(
-    <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
-);
-
-export const fromEither = <T>(either: Either<string, T>): Decoder<T> => {
-    return either.fold(fail, succeed);
-};
-
-/**
- *
- * @param message dsalkj
- * @param maybe daslkjd
- */
-export const fromMaybe = <T>(message: string, maybe: Maybe<T>): Decoder<T> => {
-    return maybe.toEither(message).tap(fromEither);
-};
+}
