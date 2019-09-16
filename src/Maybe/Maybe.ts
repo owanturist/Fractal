@@ -73,9 +73,8 @@ export class Just<T> implements Maybe<T> {
     }
 
     public isEqual<T_>(another: Maybe<WhenNever<T, T_>>): boolean {
-        return another
-            .map((value: WhenNever<T, T_>): boolean => this.value === value)
-            .getOrElse(false);
+        return this === another as Maybe<T>
+            || another.map((value: WhenNever<T, T_>): boolean => this.value === value).getOrElse(false);
     }
 
     public map<R>(fn: (value: T) => R): Maybe<R> {

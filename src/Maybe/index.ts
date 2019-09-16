@@ -185,7 +185,7 @@ export namespace Maybe {
     /**
      * Represents a `Maybe` containing no value.
      */
-    export const Nothing = _.Nothing;
+    export const Nothing: Maybe<never> = _.Nothing;
 
     /**
      * Constructs a `Maybe` containing the `value`.
