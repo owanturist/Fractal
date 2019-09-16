@@ -283,20 +283,6 @@ test('Maybe.prototype.filter()', t => {
     t.deepEqual(_3, Just(2));
 });
 
-test('Maybe.prototype.ap()', t => {
-    const _1 /* Maybe<never> */ = Nothing.ap(Nothing);
-    t.deepEqual(_1, Nothing);
-
-    const _2 /* Maybe<boolean> */ = Nothing.ap(Just((a: number) => a > 0));
-    t.deepEqual(_2, Nothing);
-
-    const _3 /* Maybe<never> */ = Just(0).ap(Nothing);
-    t.deepEqual(_3, Nothing);
-
-    const _4 /* Maybe<boolean> */ = Just(1).ap(Just((a: number) => a > 0));
-    t.deepEqual(_4, Just(true));
-});
-
 test('Maybe.prototype.orElse()', t => {
     const _1 /* Maybe<never> */ = Nothing.orElse(() => Nothing);
     t.deepEqual(_1, Nothing);

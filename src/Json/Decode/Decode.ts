@@ -513,7 +513,7 @@ class KeyValue<K, T> extends Decoder<Array<[ K, T ]>> {
         for (const key in input) {
             if (input.hasOwnProperty(key)) {
                 result = result.chain((acc: Array<[ K, T ]>): Either<Error, Array<[ K, T ]>> => {
-                    return Either.props({
+                    return Either.shape({
                         key: this.convertKey(key).mapLeft((message: string): Error => Error.Failure(message, key)),
                         value: this.decoder.decode(input[ key ])
                     }).mapBoth(
@@ -866,5 +866,5 @@ export const fromEither = <T>(either: Either<string, T>): Decoder<T> => {
  * @param maybe daslkjd
  */
 export const fromMaybe = <T>(message: string, maybe: Maybe<T>): Decoder<T> => {
-    return maybe.toEither(message).pipe(fromEither);
+    return maybe.toEither(message).tap(fromEither);
 };

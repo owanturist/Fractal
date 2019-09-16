@@ -80,19 +80,6 @@ export interface Maybe<T> {
     filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): Maybe<WhenNever<T, T_>>;
 
     /**
-     * Apply a `maybeFn` function to the `Maybe` value.
-     *
-     * @param maybeFn `Maybe` function.
-     *
-     * @example
-     * Nothing.ap(Nothing)                    // Nothing
-     * Just(3).ap(Nothing)                    // Nothing
-     * Nothing.ap(Just((a: number) => a * 2)) // Nothing
-     * Just(3).ap(Just((a: number) => a * 2)) // Just(6)
-     */
-    ap<R = never>(maybeFn: Maybe<(value: T) => R>): Maybe<R>;
-
-    /**
      * Like the boolean `||` this will return the first value that is `Just`.
      *
      * @param fn The function to return next `Maybe`.
