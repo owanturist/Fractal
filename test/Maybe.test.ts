@@ -40,20 +40,20 @@ test('Maybe.join()', t => {
     t.deepEqual(_3, Just(1));
 });
 
-test('Maybe.props()', t => {
-    const _1 /* Maybe<{}> */  = Maybe.props({});
+test('Maybe.shape()', t => {
+    const _1 /* Maybe<{}> */  = Maybe.shape({});
     t.deepEqual(_1, Just({}));
 
     const _2 /* Maybe<{
         foo: never;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Nothing
     });
     t.deepEqual(_2, Nothing);
 
     const _3 /* Maybe<{
         foo: number;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Just(1)
     });
     t.deepEqual(
@@ -66,7 +66,7 @@ test('Maybe.props()', t => {
     const _4 /* Maybe<{
         foo: never;
         bar: never;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Nothing,
         bar: Nothing
     });
@@ -75,7 +75,7 @@ test('Maybe.props()', t => {
     const _5 /* Maybe<{
         foo: never;
         bar: number;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Nothing,
         bar: Just(1)
     });
@@ -84,7 +84,7 @@ test('Maybe.props()', t => {
     const _6 /* Maybe<{
         foo: number;
         bar: never;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Just('foo'),
         bar: Nothing
     });
@@ -93,7 +93,7 @@ test('Maybe.props()', t => {
     const _7 /* Maybe<{
         foo: string;
         bar: number;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Just('foo'),
         bar: Just(1)
     });
@@ -105,25 +105,25 @@ test('Maybe.props()', t => {
         })
     );
 
-    const _8 /* Maybe<never> */ = Maybe.props({
+    const _8 /* Maybe<never> */ = Maybe.shape({
         foo: Nothing,
         bar: Just(1)
     }).map(obj => obj.foo);
     t.deepEqual(_8, Nothing);
 
-    const _9 /* Maybe<number> */ = Maybe.props({
+    const _9 /* Maybe<number> */ = Maybe.shape({
         foo: Nothing,
         bar: Just(1)
     }).map(obj => obj.bar);
     t.deepEqual(_9, Nothing);
 
-    const _10 /* Maybe<string> */ = Maybe.props({
+    const _10 /* Maybe<string> */ = Maybe.shape({
         foo: Just('foo'),
         bar: Just(1)
     }).map(obj => obj.foo);
     t.deepEqual(_10, Just('foo'));
 
-    const _11 /* Maybe<number> */ = Maybe.props({
+    const _11 /* Maybe<number> */ = Maybe.shape({
         foo: Just('foo'),
         bar: Just(1)
     }).map(obj => obj.bar);
@@ -134,9 +134,9 @@ test('Maybe.props()', t => {
         bar: {
             baz: never;
         };
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Just('foo'),
-        bar: Maybe.props({
+        bar: Maybe.shape({
             baz: Nothing
         })
     });
@@ -146,9 +146,9 @@ test('Maybe.props()', t => {
         foo: string;
         bar: {
             baz: number;
-    }> */ = Maybe.props({
+    }> */ = Maybe.shape({
         foo: Just('foo'),
-        bar: Maybe.props({
+        bar: Maybe.shape({
             baz: Just(1)
         })
     });
@@ -381,7 +381,7 @@ test('Maybe.prototype.cata()', t => {
     t.is(_8, 20);
 });
 
-test('Maybe.prototype.pipe()', t => {
+test('Maybe.prototype.tap()', t => {
     const someFuncHandeMaybe = (maybeNumber: Maybe<number>): string => {
         return maybeNumber.map(num => num * 2 + '_').getOrElse('_');
     };
@@ -390,7 +390,7 @@ test('Maybe.prototype.pipe()', t => {
         Nothing
             .orElse(() => Just(20))
             .map(a => a * a)
-            .pipe(someFuncHandeMaybe)
+            .tap(someFuncHandeMaybe)
             .replace('_', '|')
             .trim(),
 
@@ -407,7 +407,7 @@ test('Maybe.prototype.pipe()', t => {
         Just(1)
             .map(a => a - 1)
             .chain(a => a > 0 ? Just(a) : Nothing)
-            .pipe(someFuncHandeMaybe)
+            .tap(someFuncHandeMaybe)
             .repeat(10)
             .trim(),
 
@@ -421,12 +421,12 @@ test('Maybe.prototype.pipe()', t => {
     );
 
     t.deepEqual(
-        Nothing.pipe(Maybe.join),
+        Nothing.tap(Maybe.join),
         Nothing
     );
 
     t.deepEqual(
-        Just(1).pipe(Just).pipe(Maybe.join),
+        Just(1).tap(Just).tap(Maybe.join),
         Just(1)
     );
 });
