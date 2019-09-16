@@ -4,64 +4,36 @@ import {
 } from '../Basics';
 import Either, { Left, Right } from '../Either';
 import {
-    Maybe as IMaybe,
+    Maybe,
     Pattern
 } from './index';
 
-export abstract class Maybe<T> implements IMaybe<T> {
+export const Nothing: Maybe<never> = new class Nothing implements Maybe<never> {
     public isNothing(): boolean {
-        return false;
+        return true;
     }
 
     public isJust(): boolean {
         return false;
     }
 
-    public abstract isEqual<T_>(another: IMaybe<WhenNever<T, T_>>): boolean;
-
-    public abstract map<R>(fn: (value: T) => R): IMaybe<R>;
-
-    public abstract chain<R>(fn: (value: T) => IMaybe<R>): IMaybe<R>;
-
-    public abstract filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): IMaybe<WhenNever<T, T_>>;
-
-    public abstract orElse<T_>(fn: () => IMaybe<WhenNever<T, T_>>): IMaybe<WhenNever<T, T_>>;
-
-    public abstract getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_>;
-
-    public abstract fold<R>(onNothing: () => R, onJust: (value: T) => R): R;
-
-    public abstract cata<R>(pattern: Pattern<T, R>): R;
-
-    public tap<R>(fn: (that: IMaybe<T>) => R): R {
-        return fn(this);
-    }
-
-    public abstract toEither<E>(error: E): Either<E, T>;
-}
-
-export const Nothing: IMaybe<never> = new class Nothing extends Maybe<never> {
-    public isNothing(): boolean {
-        return true;
-    }
-
-    public isEqual(another: IMaybe<never>): boolean {
+    public isEqual(another: Maybe<never>): boolean {
         return this === another || another.isNothing();
     }
 
-    public map(): IMaybe<never> {
+    public map(): Maybe<never> {
         return this;
     }
 
-    public chain(): IMaybe<never> {
+    public chain(): Maybe<never> {
         return this;
     }
 
-    public filter(): IMaybe<never> {
+    public filter(): Maybe<never> {
         return this;
     }
 
-    public orElse<T>(fn: () => IMaybe<T>): IMaybe<T> {
+    public orElse<T>(fn: () => Maybe<T>): Maybe<T> {
         return fn();
     }
 
@@ -81,40 +53,46 @@ export const Nothing: IMaybe<never> = new class Nothing extends Maybe<never> {
         return (pattern._ as () => R)();
     }
 
+    public tap<R>(fn: (that: Maybe<never>) => R): R {
+        return fn(this);
+    }
+
     public toEither<E>(error: E): Either<E, never> {
         return Left(error);
     }
 }();
 
-export class Just<T> extends Maybe<T> {
-    public constructor(private readonly value: T) {
-        super();
+export class Just<T> implements Maybe<T> {
+    public constructor(private readonly value: T) {}
+
+    public isNothing(): boolean {
+        return false;
     }
 
     public isJust(): boolean {
         return true;
     }
 
-    public isEqual<T_>(another: IMaybe<WhenNever<T, T_>>): boolean {
+    public isEqual<T_>(another: Maybe<WhenNever<T, T_>>): boolean {
         return another
             .map((value: WhenNever<T, T_>): boolean => this.value === value)
             .getOrElse(false);
     }
 
-    public map<R>(fn: (value: T) => R): IMaybe<R> {
+    public map<R>(fn: (value: T) => R): Maybe<R> {
         return new Just(fn(this.value));
     }
 
-    public chain<R>(fn: (value: T) => IMaybe<R>): IMaybe<R> {
+    public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
         return fn(this.value);
     }
 
-    public filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): IMaybe<WhenNever<T, T_>> {
-        return (fn(this.value as WhenNever<T, T_>) ? this : Nothing) as IMaybe<WhenNever<T, T_>>;
+    public filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): Maybe<WhenNever<T, T_>> {
+        return (fn(this.value as WhenNever<T, T_>) ? this : Nothing) as Maybe<WhenNever<T, T_>>;
     }
 
-    public orElse<T_>(): IMaybe<WhenNever<T, T_>> {
-        return this as unknown as IMaybe<WhenNever<T, T_>>;
+    public orElse<T_>(): Maybe<WhenNever<T, T_>> {
+        return this as unknown as Maybe<WhenNever<T, T_>>;
     }
 
     public getOrElse<T_>(): WhenNever<T, T_> {
@@ -133,22 +111,26 @@ export class Just<T> extends Maybe<T> {
         return (pattern._ as () => R)();
     }
 
+    public tap<R>(fn: (that: Maybe<T>) => R): R {
+        return fn(this);
+    }
+
     public toEither(): Either<never, T> {
         return Right(this.value);
     }
 }
 
-export const fromNullable = <T>(value: T | null | undefined): IMaybe<T extends null | undefined ? never : T> => {
+export const fromNullable = <T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> => {
     return value == null ? Nothing : new Just(value as T extends null | undefined ? never : T);
 };
 
-export const fromEither = <E, T>(either: Either<E, T>): IMaybe<T> => {
-    return either.map((value: T): IMaybe<T> => new Just(value)).getOrElse(Nothing);
+export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
+    return either.map((value: T): Maybe<T> => new Just(value)).getOrElse(Nothing);
 };
 
-export const join = <T>(maybe: IMaybe<IMaybe<T>>): IMaybe<T> => maybe.chain(identity);
+export const join = <T>(maybe: Maybe<Maybe<T>>): Maybe<T> => maybe.chain(identity);
 
-export const shape = <O extends {}>(object: {[ K in keyof O ]: IMaybe<O[ K ]>}): IMaybe<O> => {
+export const shape = <O extends {}>(object: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
     const acc: O = {} as O;
 
     for (const key in object) {
@@ -156,7 +138,7 @@ export const shape = <O extends {}>(object: {[ K in keyof O ]: IMaybe<O[ K ]>}):
             const maybe = object[ key ];
 
             if (maybe.isNothing()) {
-                return maybe as IMaybe<never>;
+                return maybe as Maybe<never>;
             }
 
             acc[ key ] = maybe.getOrElse(null as never /* don't use this hack */);
@@ -166,12 +148,12 @@ export const shape = <O extends {}>(object: {[ K in keyof O ]: IMaybe<O[ K ]>}):
     return new Just(acc);
 };
 
-export const combine = <T>(array: Array<IMaybe<T>>): IMaybe<Array<unknown extends T ? never : T>> => {
+export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<unknown extends T ? never : T>> => {
     const acc: Array<T> = [];
 
     for (const maybe of array) {
         if (maybe.isNothing()) {
-            return maybe as IMaybe<never>;
+            return maybe as Maybe<never>;
         }
 
         acc.push(maybe.getOrElse(null as never /* don't use this hack */));
@@ -180,7 +162,7 @@ export const combine = <T>(array: Array<IMaybe<T>>): IMaybe<Array<unknown extend
     return new Just((acc as Array<unknown extends T ? never : T>));
 };
 
-export const values = <T>(array: Array<IMaybe<T>>): Array<unknown extends T ? never : T> => {
+export const values = <T>(array: Array<Maybe<T>>): Array<unknown extends T ? never : T> => {
     const acc: Array<T> = [];
 
     for (const item of array) {
