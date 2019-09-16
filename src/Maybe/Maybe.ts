@@ -1,6 +1,5 @@
 import {
-    WhenNever,
-    identity
+    WhenNever
 } from '../Basics';
 import Either, { Left, Right } from '../Either';
 import {
@@ -119,57 +118,3 @@ export class Just<T> implements Maybe<T> {
         return Right(this.value);
     }
 }
-
-export const fromNullable = <T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> => {
-    return value == null ? Nothing : new Just(value as T extends null | undefined ? never : T);
-};
-
-export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
-    return either.map((value: T): Maybe<T> => new Just(value)).getOrElse(Nothing);
-};
-
-export const join = <T>(maybe: Maybe<Maybe<T>>): Maybe<T> => maybe.chain(identity);
-
-export const shape = <O extends {}>(object: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
-    const acc: O = {} as O;
-
-    for (const key in object) {
-        if (object.hasOwnProperty(key)) {
-            const maybe = object[ key ];
-
-            if (maybe.isNothing()) {
-                return maybe as Maybe<never>;
-            }
-
-            acc[ key ] = maybe.getOrElse(null as never /* don't use this hack */);
-        }
-    }
-
-    return new Just(acc);
-};
-
-export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<unknown extends T ? never : T>> => {
-    const acc: Array<T> = [];
-
-    for (const maybe of array) {
-        if (maybe.isNothing()) {
-            return maybe as Maybe<never>;
-        }
-
-        acc.push(maybe.getOrElse(null as never /* don't use this hack */));
-    }
-
-    return new Just((acc as Array<unknown extends T ? never : T>));
-};
-
-export const values = <T>(array: Array<Maybe<T>>): Array<unknown extends T ? never : T> => {
-    const acc: Array<T> = [];
-
-    for (const item of array) {
-        if (item.isJust()) {
-            acc.push(item.getOrElse(null as never /* don't use this hack */));
-        }
-    }
-
-    return acc as Array<unknown extends T ? never : T>;
-};

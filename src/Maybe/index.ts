@@ -1,6 +1,7 @@
 import {
     WhenNever,
-    Cata
+    Cata,
+    identity
 } from '../Basics';
 import Either from '../Either';
 import * as _ from './Maybe';
@@ -204,7 +205,9 @@ export namespace Maybe {
      * fromNullable([ '0', '1', '2' ][ 3 ]) // Nothing
      * fromNullable([ '0', '1', '2' ][ 0 ]) // Just('0')
      */
-    export const fromNullable = _.fromNullable;
+    export const fromNullable = <T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> => {
+        return value == null ? Nothing : Just(value as T extends null | undefined ? never : T);
+    };
 
 
     /**
@@ -217,7 +220,9 @@ export namespace Maybe {
      * fromEither(Left('error')) // Nothing
      * fromEither(Right(42))     // Just(42)
      */
-    export const fromEither = _.fromEither;
+    export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
+        return either.map(Just).getOrElse(Nothing);
+    };
 
 
     /**
@@ -233,7 +238,7 @@ export namespace Maybe {
      * Nothing.tap(join)              // Nothing
      * Just(42).tap(Just).tap(join) // Just(42)
      */
-    export const join = _.join;
+    export const join = <T>(maybe: Maybe<Maybe<T>>): Maybe<T> => maybe.chain(identity);
 
 
     /**
@@ -253,7 +258,23 @@ export namespace Maybe {
      *     title: Just('name')
      * }) // Just({ id: 0, title: 'name' })
      */
-    export const shape = _.shape;
+    export const shape = <O extends {}>(object: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
+        const acc: O = {} as O;
+
+        for (const key in object) {
+            if (object.hasOwnProperty(key)) {
+                const maybe = object[ key ];
+
+                if (maybe.isNothing()) {
+                    return maybe as Maybe<never>;
+                }
+
+                acc[ key ] = maybe.getOrElse(null as never /* don't use this hack */);
+            }
+        }
+
+        return Just(acc);
+    };
 
 
     /**
@@ -266,7 +287,19 @@ export namespace Maybe {
      * combine([ Nothing, Just(42) ]) // Nothing
      * combine([ Just(1), Just(2) ])  // Just([ 1, 2 ])
      */
-    export const combine = _.combine;
+    export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<unknown extends T ? never : T>> => {
+        const acc: Array<T> = [];
+
+        for (const maybe of array) {
+            if (maybe.isNothing()) {
+                return maybe as Maybe<never>;
+            }
+
+            acc.push(maybe.getOrElse(null as never /* don't use this hack */));
+        }
+
+        return Just((acc as Array<unknown extends T ? never : T>));
+    };
 
     /**
      * Convert a list of `Maybe`s a to a list of a only for the values different from `Nothing`.
@@ -277,7 +310,18 @@ export namespace Maybe {
      * values([ Nothing, Just(42), Just(0) ]) // [ 42, 0 ]
      * values([ Just(1), Just(2), Nothing ])  // [ 1, 2 ]
      */
-    export const values = _.values;
+    export const values = <T>(array: Array<Maybe<T>>): Array<unknown extends T ? never : T> => {
+        const acc: Array<T> = [];
+
+        for (const item of array) {
+            if (item.isJust()) {
+                acc.push(item.getOrElse(null as never /* don't use this hack */));
+            }
+        }
+
+        return acc as Array<unknown extends T ? never : T>;
+    };
+
 }
 
 /**
