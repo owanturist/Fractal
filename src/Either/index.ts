@@ -1,6 +1,7 @@
 import {
     WhenNever,
-    Cata
+    Cata,
+    identity
 } from '../Basics';
 import Maybe from '../Maybe';
 import * as _ from './Either';
@@ -240,7 +241,12 @@ export namespace Either {
      * fromNullable('undefined', JSON.stringify(undefined)) // Left('undefined')
      * fromNullable('undefined', JSON.stringify('valid'))   // Right('"valid"')
      */
-    export const fromNullable = _.fromNullable;
+    export const fromNullable = <E, T>(
+        error: E,
+        value: T | null | undefined
+    ): Either<E, T extends null | undefined ? never : T> => {
+        return value == null ? Left(error) : Right(value as T extends null | undefined ? never : T);
+    };
 
     /**
      * Converts `Maybe` to `Either`.
@@ -253,7 +259,9 @@ export namespace Either {
      * fromEither('error', Nothing) // Left('error')
      * fromEither(Just(42))         // Right(42)
      */
-    export const fromMaybe = _.fromMaybe;
+    export const fromMaybe = <E, T>(error: E, maybe: Maybe<T>): Either<E, T> => {
+        return maybe.fold((): Either<E, T> => Left(error), Right);
+    };
 
     /**
      * Eliminate `Either` when error and success have been mapped to the same type.
@@ -266,7 +274,7 @@ export namespace Either {
      * merge(Left('error').orElse(() => Right('value')))       // 'value'
      * Left('error').chain(() => Right('value')).tap(merge)   // 'error'
      */
-    export const merge = _.merge;
+    export const merge = <T>(either: Either<T, T>): T => either.fold(identity, identity);
 
     /**
      * Take an object of `Either`s and return a `Either` with an object of values.
@@ -287,7 +295,23 @@ export namespace Either {
      *
      * @todo fix the `E` calculation. Now it's always `unknown`.
      */
-    export const shape = _.shape;
+    export const shape = <E, O extends {}>(object: {[ K in keyof O ]: Either<E, O[ K ]>}): Either<E, O> => {
+        const acc: O = {} as O;
+
+        for (const key in object) {
+            if (object.hasOwnProperty(key)) {
+                const value = object[ key ];
+
+                if (value.isLeft()) {
+                    return value as Either<E, never>;
+                }
+
+                acc[ key ] = value.getOrElse(null as never /* don't use this hack */);
+            }
+        }
+
+        return Right(acc);
+    };
 
     /**
      * Take an array of `Either`s and return a `Either` with an array of values.
@@ -299,7 +323,22 @@ export namespace Either {
      * combine([ Left('error'), Right(42) ]) // Left('error')
      * combine([ Right(1), Right(2) ])       // Right([ 1, 2 ])
      */
-    export const combine = _.combine;
+    export const combine = <E, T>(array: Array<Either<E, T>>): Either<
+        unknown extends E ? never : E,
+        Array<unknown extends T ? never : T>
+    > => {
+        const acc: Array<T> = [];
+
+        for (const item of array) {
+            if (item.isLeft()) {
+                return item as Either<unknown extends E ? never : E, never>;
+            }
+
+            acc.push(item.getOrElse(null as never /* don't use this hack */));
+        }
+
+        return Right(acc as Array<unknown extends T ? never : T>);
+    };
 }
 
 /**
