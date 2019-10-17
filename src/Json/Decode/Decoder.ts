@@ -6,6 +6,7 @@ import {
 import Maybe, { Nothing, Just } from '../../Maybe';
 import Either, { Left, Right } from '../../Either';
 import Encode from '../Encode';
+import Encoder from '../Encode/Encoder';
 import Error from './Error';
 import {
     value,
@@ -784,22 +785,6 @@ class OptionalIndex<T> extends Index<T, Maybe<T>> {
 
     protected mapSuccess(value: T): Maybe<T> {
         return Just(value);
-    }
-}
-
-class Encoder implements Encode.Value {
-    public constructor(private readonly value: unknown) {}
-
-    public encode(indent: number): string {
-        return JSON.stringify(this.value, null, indent);
-    }
-
-    public serialize(): unknown {
-        return this.value;
-    }
-
-    public tap<R>(fn: (value: Encode.Value) => R): R {
-        return fn(this);
     }
 }
 

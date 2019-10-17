@@ -9,7 +9,7 @@ import Either, { Right } from '../../Either';
 import Encode from '../Encode';
 
 import _Error from './Error';
-import * as _ from './Decode';
+import * as _ from './Decoder';
 
 interface RequiredKeyValue {
     /**
@@ -1178,7 +1178,7 @@ export namespace Decode {
      * });
      *
      * decoder.decodeJSON('" some string "')  // Right('some string')
-     * decoder.decodeJSON('" "')             // Left(..)
+     * decoder.decodeJSON('" "')              // Left(..)
      */
     export const fromMaybe = <T>(message: string, maybe: Maybe<T>): Decoder<T> => {
         return maybe.toEither(message).tap(fromEither);
@@ -1193,10 +1193,9 @@ export {
     Value
 } from '../Encode';
 
-/**
- * @alis `Decode.Decoder`
- */
-export abstract class Decoder<T> extends _.Decoder<T> {}
+export {
+    Decoder
+} from './Decoder';
 
 /**
  * @alis `Decode.Path`

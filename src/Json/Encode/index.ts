@@ -1,7 +1,8 @@
 import {
     isArray
-} from '../Basics';
-import Maybe from '../Maybe';
+} from '../../Basics';
+import Maybe from '../../Maybe';
+import Encoder from './Encoder';
 
 interface List {
     /**
@@ -78,22 +79,6 @@ interface Obj {
 
     // tslint:disable-next-line:unified-signatures
     (listOfOptionalKeyValues: Array<[ string, Maybe<Value> ]>): Value;
-}
-
-class Encoder implements Value {
-    public constructor(private readonly value: unknown) {}
-
-    public encode(indent: number): string {
-        return JSON.stringify(this.value, null, indent);
-    }
-
-    public serialize(): unknown {
-        return this.value;
-    }
-
-    public tap<R>(fn: (value: Value) => R): R {
-        return fn(this);
-    }
 }
 
 export namespace Encode {
