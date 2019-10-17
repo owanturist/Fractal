@@ -198,6 +198,7 @@ test('Json.Encode.object(object)', t => {
     );
 });
 
+
 test('Json.Encode.object(list)', t => {
     const _1 = (foo: {
         bar: string;
@@ -283,5 +284,101 @@ test('Json.Encode.object(list)', t => {
             ]
         ]).encode(0),
         '{"foo":0,"bar":[false,"1"]}'
+    );
+});
+
+test('Json.Encode.object(optional object)', t => {
+    const _1 = (foo: {
+        bar: Maybe<string>;
+        baz: Maybe<number>;
+        foo: boolean;
+    }): Encode.Value => Encode.object({
+        _bar: foo.bar.map(Encode.string),
+        _baz: foo.baz.map(Encode.number),
+        _foo: Encode.boolean(foo.foo).tap(Maybe.Just)
+    });
+
+    t.is(
+        _1({
+            bar: Maybe.Nothing,
+            baz: Maybe.Nothing,
+            foo: false
+        }).encode(0),
+        '{"_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: Maybe.Nothing,
+            baz: Maybe.Just(0),
+            foo: false
+        }).encode(0),
+        '{"_baz":0,"_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: Maybe.Just('str'),
+            baz: Maybe.Nothing,
+            foo: false
+        }).encode(0),
+        '{"_bar":"str","_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: Maybe.Just('str'),
+            baz: Maybe.Just(0),
+            foo: false
+        }).encode(0),
+        '{"_bar":"str","_baz":0,"_foo":false}'
+    );
+});
+
+test('Json.Encode.object(optional list)', t => {
+    const _1 = (foo: {
+        bar: Maybe<string>;
+        baz: Maybe<number>;
+        foo: boolean;
+    }): Encode.Value => Encode.object([
+        [ '_bar', foo.bar.map(Encode.string) ],
+        [ '_baz', foo.baz.map(Encode.number) ],
+        [ '_foo', Encode.boolean(foo.foo).tap(Maybe.Just) ]
+    ]);
+
+    t.is(
+        _1({
+            bar: Maybe.Nothing,
+            baz: Maybe.Nothing,
+            foo: false
+        }).encode(0),
+        '{"_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: Maybe.Nothing,
+            baz: Maybe.Just(0),
+            foo: false
+        }).encode(0),
+        '{"_baz":0,"_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: Maybe.Just('str'),
+            baz: Maybe.Nothing,
+            foo: false
+        }).encode(0),
+        '{"_bar":"str","_foo":false}'
+    );
+
+    t.is(
+        _1({
+            bar: Maybe.Just('str'),
+            baz: Maybe.Just(0),
+            foo: false
+        }).encode(0),
+        '{"_bar":"str","_baz":0,"_foo":false}'
     );
 });

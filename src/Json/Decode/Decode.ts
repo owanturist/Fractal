@@ -797,6 +797,10 @@ class Encoder implements Encode.Value {
     public serialize(): unknown {
         return this.value;
     }
+
+    public tap<R>(fn: (value: Encode.Value) => R): R {
+        return fn(this);
+    }
 }
 
 export class Value extends Decoder<Encode.Value> {

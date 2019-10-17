@@ -72,6 +72,12 @@ interface Obj {
      */
     // tslint:disable-next-line:unified-signatures
     (listOfKeyValues: Array<[ string, Value ]>): Value;
+
+    // tslint:disable-next-line:unified-signatures
+    (objectOfOptionalValues: {[ key: string ]: Maybe<Value> }): Value;
+
+    // tslint:disable-next-line:unified-signatures
+    (listOfOptionalKeyValues: Array<[ string, Maybe<Value> ]>): Value;
 }
 
 class Encoder implements Value {
@@ -83,6 +89,10 @@ class Encoder implements Value {
 
     public serialize(): unknown {
         return this.value;
+    }
+
+    public tap<R>(fn: (value: Value) => R): R {
+        return fn(this);
     }
 }
 
@@ -125,6 +135,8 @@ export namespace Encode {
          * ]).serialize() // { _bar: 'str, _baz: 0, _foo: false }
          */
         serialize(): unknown;
+
+        tap<R>(fn: (value: Value) => R): R;
     }
 
     /**
@@ -200,17 +212,32 @@ export namespace Encode {
         return new Encoder(acc);
     };
 
-    export const object: Obj = (listOrObject: Array<[ string, Value ]> | {[ key: string ]: Value }): Value => {
+    export const object: Obj = (
+        listOrObject: Array<[ string, Value ]>
+                    | {[ key: string ]: Value }
+                    | Array<[ string, Maybe<Value> ]>
+                    | {[ key: string ]: Maybe<Value> }
+    ): Value => {
         const acc: {[ key: string ]: unknown } = {};
 
         if (isArray(listOrObject)) {
-            for (const [ key, value ] of listOrObject) {
-                acc[ key ] = value.serialize();
+            for (const [ key, valueOrOptionalValue ] of listOrObject) {
+                if ('serialize' in valueOrOptionalValue) {
+                    acc[ key ] = valueOrOptionalValue.serialize();
+                } else if (valueOrOptionalValue.isJust()) {
+                    acc[ key ] = valueOrOptionalValue.getOrElse(nill).serialize();
+                }
             }
         } else {
             for (const key in listOrObject) {
                 if (listOrObject.hasOwnProperty(key)) {
-                    acc[ key ] = listOrObject[ key ].serialize();
+                    const valueOrOptionalValue = listOrObject[ key ];
+
+                    if ('serialize' in valueOrOptionalValue) {
+                        acc[ key ] = valueOrOptionalValue.serialize();
+                    } else if (valueOrOptionalValue.isJust()) {
+                        acc[ key ] = valueOrOptionalValue.getOrElse(nill).serialize();
+                    }
                 }
             }
         }
