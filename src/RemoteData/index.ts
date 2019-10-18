@@ -87,61 +87,9 @@ export namespace RemoteData {
     }
 }
 
-/**
- * @alias `RemoteData.Optional`
- */
-export interface Optional<E, T> extends RemoteData.Optional<E, T> {}
-
-/**
- * @alias `RemoteData.Optional`
- */
-export namespace Optional {
-    /**
-     * @alias `RemoteData.Optional.Pattern`
-     */
-
-    export type Pattern<E, T, R> = RemoteData.Optional.Pattern<E, T, R>;
-
-    /**
-     * @alias `RemoteData.Optional.NotAsked`
-     */
-    export const NotAsked = RemoteData.Optional.NotAsked;
-
-    /**
-     * @alias `RemoteData.Optional.Loading`
-     */
-    export const Loading = RemoteData.Optional.Loading;
-
-    /**
-     * @alias `RemoteData.Optional.Failure`
-     */
-    export const Failure = RemoteData.Optional.Failure;
-
-    /**
-     * @alias `RemoteData.Optional.Succeed`
-     */
-    export const Succeed = RemoteData.Optional.Succeed;
-
-    /**
-     * @alias `RemoteData.Optional.fromMaybe`
-     */
-    export const fromMaybe = RemoteData.Optional.fromMaybe;
-
-    /**
-     * @alias `RemoteData.Optional.fromEither`
-     */
-    export const fromEither = RemoteData.Optional.fromEither;
-
-    /**
-     * @alias `RemoteData.Optional.shape`
-     */
-    export const shape = RemoteData.Optional.shape;
-
-    /**
-     * @alias `RemoteData.Optional.combine`
-     */
-    export const combine = RemoteData.Optional.combine;
-}
+export {
+    Optional
+} from './Optional';
 
 /**
  * @alias `RemoteData.Pattern`
