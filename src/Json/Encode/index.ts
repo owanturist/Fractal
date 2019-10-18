@@ -1,18 +1,84 @@
 import {
     isArray
-} from '../Basics';
-import Maybe from '../Maybe';
+} from '../../Basics';
+import Maybe from '../../Maybe';
+import Encoder from './Encoder';
 
-class Encoder implements Value {
-    public constructor(private readonly value: unknown) {}
+interface List {
+    /**
+     * Turns a list of `Value` into a JSON value.
+     *
+     * @param listOfValues Value to turn.
+     *
+     * @example
+     * list([
+     *     number(0),
+     *     boolean(true),
+     *     string('str'),
+     *     nill
+     * ]).encode(0)
+     * // '[0,true,"str",null]'
+     *
+     * list([
+     *     number(0),
+     *     boolean(true),
+     *     string('str'),
+     *     nill
+     * ]).serialize()
+     * // [ 0, true, 'str', null]
+     */
+    (listOfValues: Array<Value>): Value;
 
-    public encode(indent: number): string {
-        return JSON.stringify(this.value, null, indent);
-    }
+    /**
+     * Turns a `list` into a JSON value according `encoder` function.
+     *
+     * @param encoder Function to turn `list` item to JSON.
+     * @param list    List of values to turn.
+     *
+     * @example
+     * list(number, [ 0, 2, 3 ]).encode(0)   // '[0,2,3]'
+     * list(number, [ 0, 2, 3 ]).serialize() // [ 0, 2, 3 ]
+     */
+    <T>(encoder: (value: T) => Value, list: Array<T>): Value;
+}
 
-    public serialize(): unknown {
-        return this.value;
-    }
+interface Obj {
+    /**
+     * Creates a JSON object.
+     *
+     * @param objectOfValues Object of `Value` to turn.
+     *
+     * @example
+     * object({
+     *    bar: string('str'),
+     *    baz: number(0),
+     *    foo: boolean(false)
+     * }).encode(0)
+     * // '{"bar":"str","baz":0,"foo":false}'
+     */
+    (objectOfValues: {[ key: string ]: Value }): Value;
+
+    /**
+     * Creates a JSON object.
+     *
+     * @param objectOfValues Object of `Value` to turn.
+     *
+     * @example
+     * object([
+     *     [ 'bar', string('str') ],
+     *     [ 'baz', number(0) ],
+     *     [ 'foo', boolean(false) ]
+     * ]).encode(0)
+     * // '{"bar":"str","baz":0,"foo":false}'
+     */
+    // tslint:disable-next-line:unified-signatures
+    (listOfKeyValues: Array<[ string, Value ]>): Value;
+
+    // tslint:disable-next-line:unified-signatures
+    (objectOfOptionalValues: {[ key: string ]: Maybe<Value> }): Value;
+
+    // tslint:disable-next-line:unified-signatures
+    (listOfOptionalKeyValues: Array<[ string, Maybe<Value> ]>): Value;
 }
 
 export namespace Encode {
@@ -54,6 +120,8 @@ export namespace Encode {
          * ]).serialize() // { _bar: 'str, _baz: 0, _foo: false }
          */
         serialize(): unknown;
+
+        tap<R>(fn: (value: Value) => R): R;
     }
 
     /**
@@ -74,9 +142,7 @@ export namespace Encode {
      * string('str').encode(0)   // '"str"'
      * string('str').serialize() // 'str'
      */
-    export function string(string: string): Value {
-        return new Encoder(string);
-    }
+    export const string = (string: string): Value => new Encoder(string);
 
     /**
      * Turns a `number` into a JSON number.
@@ -87,9 +153,7 @@ export namespace Encode {
      * string(1).encode(0)   // '1'
      * string(1).serialize() // 1
      */
-    export function number(number: number): Value {
-        return new Encoder(number);
-    }
+    export const number = (number: number): Value => new Encoder(number);
 
     /**
      * Turns a `boolean` into a JSON boolean.
@@ -100,9 +164,7 @@ export namespace Encode {
      * string(true).encode(0)   // 'true'
      * string(true).serialize() // true
      */
-    export function boolean(boolean: boolean): Value {
-        return new Encoder(boolean);
-    }
+    export const boolean = (boolean: boolean): Value => new Encoder(boolean);
 
     /**
      * Converts a `maybe` into a JSON value.
@@ -115,47 +177,11 @@ export namespace Encode {
      * nullable(number, Nothing).serialize() // null
      * nullable(number, Just(1)).serialize() // 0
      */
-    export function nullable<T>(encoder: (value: T) => Value, maybe: Maybe<T>): Value {
+    export const nullable = <T>(encoder: (value: T) => Value, maybe: Maybe<T>): Value => {
         return maybe.map(encoder).getOrElse(nill);
-    }
+    };
 
-    /**
-     * Turns a `list` into a JSON value according `encoder` function.
-     *
-     * @param encoder Function to turn `list` item to JSON.
-     * @param list    List of values to turn.
-     *
-     * @example
-     * list(number, [ 0, 2, 3 ]).encode(0)   // '[0,2,3]'
-     * list(number, [ 0, 2, 3 ]).serialize() // [ 0, 2, 3 ]
-     */
-    export function list<T>(encoder: (value: T) => Value, list: Array<T>): Value;
-
-    /**
-     * Turns a list of `Value` into a JSON value.
-     *
-     * @param listOfValues Value to turn.
-     *
-     * @example
-     * list([
-     *     number(0),
-     *     boolean(true),
-     *     string('str'),
-     *     nill
-     * ]).encode(0)
-     * // '[0,true,"str",null]'
-     *
-     * list([
-     *     number(0),
-     *     boolean(true),
-     *     string('str'),
-     *     nill
-     * ]).serialize()
-     * // [ 0, true, 'str', null]
-     */
-    export function list(listOfValues: Array<Value>): Value;
-
-    export function list<T>(...args: [ Array<Value> ] | [ (value: T) => Value, Array<T> ]): Value {
+    export const list: List = <T>(...args: [ Array<Value> ] | [ (value: T) => Value, Array<T> ]): Value => {
         const acc: Array<unknown> = [];
 
         if (args.length === 1) {
@@ -169,55 +195,40 @@ export namespace Encode {
         }
 
         return new Encoder(acc);
-    }
+    };
 
-    /**
-     * Creates a JSON object.
-     *
-     * @param objectOfValues Object of `Value` to turn.
-     *
-     * @example
-     * object({
-     *    bar: string('str'),
-     *    baz: number(0),
-     *    foo: boolean(false)
-     * }).encode(0)
-     * // '{"bar":"str","baz":0,"foo":false}'
-     */
-    export function object(objectOfValues: {[ key: string ]: Value }): Value;
-
-    /**
-     * Creates a JSON object.
-     *
-     * @param objectOfValues Object of `Value` to turn.
-     *
-     * @example
-     * object([
-     *     [ 'bar', string('str') ],
-     *     [ 'baz', number(0) ],
-     *     [ 'foo', boolean(false) ]
-     * ]).encode(0)
-     * // '{"bar":"str","baz":0,"foo":false}'
-     */
-    // tslint:disable-next-line:unified-signatures
-    export function object(listOfKeyValues: Array<[ string, Value ]>): Value;
-    export function object(listOrObject: Array<[ string, Value ]> | {[ key: string ]: Value }): Value {
+    export const object: Obj = (
+        listOrObject: Array<[ string, Value ]>
+                    | {[ key: string ]: Value }
+                    | Array<[ string, Maybe<Value> ]>
+                    | {[ key: string ]: Maybe<Value> }
+    ): Value => {
         const acc: {[ key: string ]: unknown } = {};
 
         if (isArray(listOrObject)) {
-            for (const [ key, value ] of listOrObject) {
-                acc[ key ] = value.serialize();
+            for (const [ key, valueOrOptionalValue ] of listOrObject) {
+                if ('serialize' in valueOrOptionalValue) {
+                    acc[ key ] = valueOrOptionalValue.serialize();
+                } else if (valueOrOptionalValue.isJust()) {
+                    acc[ key ] = valueOrOptionalValue.getOrElse(nill).serialize();
+                }
             }
         } else {
             for (const key in listOrObject) {
                 if (listOrObject.hasOwnProperty(key)) {
-                    acc[ key ] = listOrObject[ key ].serialize();
+                    const valueOrOptionalValue = listOrObject[ key ];
+
+                    if ('serialize' in valueOrOptionalValue) {
+                        acc[ key ] = valueOrOptionalValue.serialize();
+                    } else if (valueOrOptionalValue.isJust()) {
+                        acc[ key ] = valueOrOptionalValue.getOrElse(nill).serialize();
+                    }
                 }
             }
         }
 
         return new Encoder(acc);
-    }
+    };
 }
 
 /**

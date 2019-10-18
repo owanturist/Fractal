@@ -37,20 +37,20 @@ test('Either.fromMaybe()', t => {
     t.deepEqual(_3, Left('err'));
 });
 
-test('Either.props()', t => {
-    const _1 /* Either<never, {}> */ = Either.props({});
+test('Either.shape()', t => {
+    const _1 /* Either<never, {}> */ = Either.shape({});
     t.deepEqual(_1, Right({}));
 
     const _2 /* Either<string, {
         foo: never;
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Left('err')
     });
     t.deepEqual(_2, Left('err'));
 
     const _3 /* Either<never, {
         foo: number;
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Right(1)
     });
     t.deepEqual(
@@ -63,7 +63,7 @@ test('Either.props()', t => {
     const _4 /* Either<string, {
         foo: never;
         bar: never;
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Left('err1'),
         bar: Left('err2')
     });
@@ -72,7 +72,7 @@ test('Either.props()', t => {
     const _5 /* Either<string, {
         foo: never;
         bar: number;
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Left('err'),
         bar: Right(1)
     });
@@ -81,7 +81,7 @@ test('Either.props()', t => {
     const _6 /* Either<string, {
         foo: number;
         bar: never;
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Right(1),
         bar: Left('err')
     });
@@ -90,7 +90,7 @@ test('Either.props()', t => {
     const _7 /* Either<never, {
         foo: string;
         bar: number;
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Right('foo'),
         bar: Right(1)
     });
@@ -102,25 +102,25 @@ test('Either.props()', t => {
         })
     );
 
-    const _8 /* Either<string, never> */ = Either.props({
+    const _8 /* Either<string, never> */ = Either.shape({
         foo: Left('err'),
         bar: Right(1)
     }).map(obj => obj.foo);
     t.deepEqual(_8, Left('err'));
 
-    const _9 /* Either<string, number> */ = Either.props({
+    const _9 /* Either<string, number> */ = Either.shape({
         foo: Left('err'),
         bar: Right(1)
     }).map(obj => obj.bar);
     t.deepEqual(_9, Left('err'));
 
-    const _10 /* Either<never, string> */ = Either.props({
+    const _10 /* Either<never, string> */ = Either.shape({
         foo: Right('foo'),
         bar: Right(1)
     }).map(obj => obj.foo);
     t.deepEqual(_10, Right('foo'));
 
-    const _11 /* Either<never, number> */ = Either.props({
+    const _11 /* Either<never, number> */ = Either.shape({
         foo: Right('foo'),
         bar: Right(1)
     }).map(obj => obj.bar);
@@ -131,9 +131,9 @@ test('Either.props()', t => {
         bar: {
             baz: never;
         };
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Right('foo'),
-        bar: Either.props({
+        bar: Either.shape({
             baz: Left('err')
         })
     });
@@ -144,9 +144,9 @@ test('Either.props()', t => {
         bar: {
             baz: number;
         };
-    }> */ = Either.props({
+    }> */ = Either.shape({
         foo: Right('foo'),
-        bar: Either.props({
+        bar: Either.shape({
             baz: Right(1)
         })
     });
@@ -194,7 +194,7 @@ test('Either.merge()', t => {
     const _3 /* string */ = Either.merge(Left('err').orElse(() => Right('ok')));
     t.deepEqual(_3, 'ok');
 
-    const _4 /* string */ = Left('err').orElse(() => Right('ok')).pipe(Either.merge);
+    const _4 /* string */ = Left('err').orElse(() => Right('ok')).tap(Either.merge);
     t.deepEqual(_4, 'ok');
 });
 
@@ -258,20 +258,6 @@ test('Either.prototype.chain()', t => {
     t.deepEqual(_4, Right(true));
 });
 
-test('Either.prototype.ap()', t => {
-    const _1 /* Either<string, never> */ = Left('1').ap(Left('2'));
-    t.deepEqual(_1, Left('1'));
-
-    const _2 /* Either<string, boolean> */ = Left('1').ap(Right((a: number) => a > 0));
-    t.deepEqual(_2, Left('1'));
-
-    const _3 /* Either<string, number> */ = Right(1).ap(Left('1'));
-    t.deepEqual(_3, Left('1'));
-
-    const _4 /* Either<never, boolean> */ = Right(1).ap(Right((a: number) => a > 0));
-    t.deepEqual(_4, Right(true));
-});
-
 test('Either.prototype.mapBoth()', t => {
     const _1 /* Either<boolean, boolean> */ = Left('err').mapBoth(err => err === 'err', (a: number) => a > 0);
     t.deepEqual(_1, Left(true));
@@ -308,10 +294,10 @@ test('Either.prototype.mapLeft()', t => {
 });
 
 test('Either.prototype.orElse()', t => {
-    const _1 /* Either<string, never> */ = Left('err').orElse(err => Left(err + '_'));
-    t.deepEqual(_1, Left('err_'));
+    const _1 /* Either<string, never> */ = Left('err').orElse(() => Left('msg'));
+    t.deepEqual(_1, Left('msg'));
 
-    const _2 /* Either<string, number> */ = Right(1).orElse((err: string) => Left(err + '_'));
+    const _2 /* Either<string, number> */ = Right(1).orElse(() => Left('msg'));
     t.deepEqual(_2, Right(1));
 
     const _3 /* Either<string, number> */ = Left('err').orElse(() => Right(1));
@@ -385,7 +371,7 @@ test('Either.prototype.cata()', t => {
     t.is(_8, 20);
 });
 
-test('Either.prototype.pipe()', t => {
+test('Either.prototype.tap()', t => {
     const someFuncHandeEither = (eitherNumber: Either<string, number>): string => {
         return eitherNumber.map(num => num * 2 + '_').getOrElse('_');
     };
@@ -394,7 +380,7 @@ test('Either.prototype.pipe()', t => {
         Left('err')
             .orElse(() => Right(20))
             .map(a => a * a)
-            .pipe(someFuncHandeEither)
+            .tap(someFuncHandeEither)
             .replace('_', '|')
             .trim(),
 
@@ -411,7 +397,7 @@ test('Either.prototype.pipe()', t => {
         Right(1)
             .map(a => a - 1)
             .chain(a => a > 0 ? Right(a) : Left('err'))
-            .pipe(someFuncHandeEither)
+            .tap(someFuncHandeEither)
             .repeat(10)
             .trim(),
 
@@ -425,17 +411,17 @@ test('Either.prototype.pipe()', t => {
     );
 
     t.deepEqual(
-        Left('err').pipe(Either.merge),
+        Left('err').tap(Either.merge),
         'err'
     );
 
     t.deepEqual(
-        Right('ok').pipe(Either.merge),
+        Right('ok').tap(Either.merge),
         'ok'
     );
 
     t.deepEqual(
-        Left('err').orElse(() => Right('ok')).pipe(Either.merge),
+        Left('err').orElse(() => Right('ok')).tap(Either.merge),
         'ok'
     );
 });

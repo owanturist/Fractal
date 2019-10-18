@@ -1,11 +1,17 @@
-import Maybe from '../../Maybe';
-import Either from '../../Either';
+import {
+    isString,
+    isInt,
+    isFloat,
+    isBoolean
+} from '../../Basics';
+import Maybe, { Just } from '../../Maybe';
+import Either, { Right } from '../../Either';
 import Encode from '../Encode';
 
 import _Error from './Error';
-import * as _ from './Decode';
+import * as _ from './Decoder';
 
-export interface RequiredKeyValue {
+interface RequiredKeyValue {
     /**
      * @param decoder Decoder of the object element.
      */
@@ -18,7 +24,7 @@ export interface RequiredKeyValue {
     <K, T>(convertKey: (key: string) => Either<string, K>, decoder: _.Decoder<T>): _.Decoder<Array<[ K, T ]>>;
 }
 
-export interface OptionalKeyValue {
+interface OptionalKeyValue {
     /**
      * @param decoder Decoder of the object element.
      */
@@ -31,98 +37,98 @@ export interface OptionalKeyValue {
     <K, T>(convertKey: (key: string) => Either<string, K>, decoder: _.Decoder<T>): _.Decoder<Maybe<Array<[ K, T ]>>>;
 }
 
-export interface RequiredDict {
+interface RequiredDict {
     /**
      * @param decoder Decoder of the object value.
      */
     <T>(decoder: _.Decoder<T>): _.Decoder<{[ key: string ]: T}>;
 }
 
-export interface OptionalDict {
+interface OptionalDict {
     /**
      * @param decoder Decoder of the object value.
      */
     <T>(decoder: _.Decoder<T>): _.Decoder<Maybe<{[ key: string ]: T}>>;
 }
 
-export interface RequiredList {
+interface RequiredList {
     /**
      * @param decoder Decoder of the `Array`'s element.
      */
     <T>(decoder: _.Decoder<T>): _.Decoder<Array<T>>;
 }
 
-export interface OptionaldList {
+interface OptionaldList {
     /**
      * @param decoder Decoder of the `Array`'s element.
      */
     <T>(decoder: _.Decoder<T>): _.Decoder<Maybe<Array<T>>>;
 }
 
-export interface RequiredShape {
+interface RequiredShape {
     /**
      * @param object Object schema.
      */
     <T extends {}>(object: {[ K in keyof T ]: _.Decoder<T[ K ]>}): _.Decoder<T>;
 }
 
-export interface OptionalShape {
+interface OptionalShape {
     /**
      * @param object Object schema.
      */
     <T extends {}>(object: {[ K in keyof T ]: _.Decoder<T[ K ]>}): _.Decoder<Maybe<T>>;
 }
 
-export interface RequiredOf {
+interface RequiredOf {
     /**
      * @param decoder Nested decoder.
      */
     <T>(decoder: _.Decoder<T>): _.Decoder<T>;
 }
 
-export interface OptionalOf {
+interface OptionalOf {
     /**
      * @param decoder Nested decoder.
      */
     <T>(decoder: _.Decoder<T>): _.Decoder<Maybe<T>>;
 }
 
-export interface RequiredOneOf {
+interface RequiredOneOf {
     /**
      * @param decoders Bunch of potential decoders.
      */
     <T>(decoders: Array<_.Decoder<T>>): _.Decoder<T>;
 }
 
-export interface OptionalOneOf {
+interface OptionalOneOf {
     /**
      * @param decoders Bunch of potential decoders.
      */
     <T>(decoders: Array<_.Decoder<T>>): _.Decoder<Maybe<T>>;
 }
 
-export interface RequiredEnums {
+interface RequiredEnums {
     /**
      * @param variants Pairs of primitives (string | number | boolean | null) and variants.
      */
     <T>(variants: Array<[ string | number | boolean | null, T ]>): _.Decoder<T>;
 }
 
-export interface OptionalEnums {
+interface OptionalEnums {
     /**
      * @param variants Pairs of primitives (string | number | boolean | null) and variants.
      */
     <T>(variants: Array<[ string | number | boolean | null, T ]>): _.Decoder<Maybe<T>>;
 }
 
-export interface RequiredLazy {
+interface RequiredLazy {
     /**
      * @param callDecoder Lazy `Decoder` initializer.
      */
     <T>(callDecoder: () => _.Decoder<T>): _.Decoder<T>;
 }
 
-export interface OptionalLazy {
+interface OptionalLazy {
     /**
      * @param callDecoder Lazy `Decoder` initializer.
      */
@@ -870,7 +876,7 @@ export namespace Decode {
      * This can be useful if you have particularly complex data that you would like to deal with later.
      * Or if you are going to send it out somewhere and do not care about its structure.
      */
-    export const value = _.value;
+    export const value = new _.Value();
 
     /**
      * Decode a JSON into a `string`.
@@ -882,7 +888,7 @@ export namespace Decode {
      * string.decodeJSON('"hello"')           // Right('hello')
      * string.decodeJSON('{ "hello": 42 }')   // Left(..)
      */
-    export const string = _.string;
+    export const string: Decoder<string> = new _.Primitive('a', 'STRING', isString);
 
     /**
      * Decode a JSON into a `boolean`.
@@ -894,7 +900,7 @@ export namespace Decode {
      * boolean.decodeJSON('"hello"')          // Left(..)
      * boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
      */
-    export const boolean = _.boolean;
+    export const boolean: Decoder<boolean> = new _.Primitive('a', 'BOOLEAN', isBoolean);
 
     /**
      * Decode a JSON into an `int` (`number` in fact).
@@ -906,7 +912,7 @@ export namespace Decode {
      * int.decodeJSON('"hello"')           // Left(..)
      * int.decodeJSON('{ "hello": 42 }')   // Left(..)
      */
-    export const int = _.int;
+    export const int: Decoder<number> = new _.Primitive('an', 'INTEGER', isInt);
 
     /**
      * Decode a JSON into a `float` (`number` in fact).
@@ -918,7 +924,7 @@ export namespace Decode {
      * float.decodeJSON('"hello"')          // Left(..)
      * float.decodeJSON('{ "hello": 42 }')  // Left(..)
      */
-    export const float = _.float;
+    export const float: Decoder<number> = new _.Primitive('a', 'FLOAT', isFloat);
 
     /**
      * Ignore the JSON value and make the decoder fail.
@@ -934,7 +940,7 @@ export namespace Decode {
      * }).decode('2010-01-02')
      * // Right(new Date('2010-01-02'))
      */
-    export const fail = _.fail;
+    export const fail = (message: string): Decoder<never> => new _.Fail(message);
 
     /**
      * Ignore the JSON value and produce a certain value.
@@ -950,7 +956,7 @@ export namespace Decode {
      * }).decode('2010-01-02')
      * // Right(new Date('2010-01-02'))
      */
-    export const succeed = _.succeed;
+    export const succeed = <T>(value: T): Decoder<T> => new _.Succeed(value);
 
     /**
      * Take an object of `Decoder`s and return a `Decoder` with an object of values.
@@ -963,7 +969,7 @@ export namespace Decode {
      * }).decodeJSON('{ "_x_": 12.34, "_y_": 56.78 }')
      * // Right({ x: 12.34, y: 56.78 })
      */
-    export const shape = _.shape;
+    export const shape: RequiredShape = object => new _.Shape(object);
 
     /**
      * Decode a JSON into an `Array`.
@@ -975,7 +981,7 @@ export namespace Decode {
      * list(boolean).decodeJSON('[ true, false ]')
      * // Right([ true, false ])
      */
-    export const list = _.list;
+    export const list: RequiredList = decoder => new _.List(decoder);
 
     /**
      * Decode a JSON into an `Array` of pairs.
@@ -987,7 +993,15 @@ export namespace Decode {
      * keyValue(intFromString, boolean).decodeJSON('{ "1": true, "2": false }')
      * // Right([[ 1, true ], [ 2, false ]])
      */
-    export const keyValue = _.keyValue;
+    export const keyValue: RequiredKeyValue = <T, K>(
+        ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
+    ) => {
+        if (args.length === 1) {
+            return new _.KeyValue(Right, args[ 0 ]);
+        }
+
+        return new _.KeyValue(args[ 0 ], args[ 1 ]);
+    };
 
     /**
      * Decode a JSON into an object.
@@ -998,7 +1012,17 @@ export namespace Decode {
      * dict(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
      * // Right({ key_1: 2, key_2: 1 })
      */
-    export const dict = _.dict;
+    export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => {
+        return keyValue(decoder).map((pairs: Array<[ string, T ]>): {[ key: string ]: T } => {
+            const acc: {[ key: string ]: T } = {};
+
+            for (const [ key, value ] of pairs) {
+                acc[ key ] = value;
+            }
+
+            return acc;
+        });
+    };
 
     /**
      * Try a bunch of different decoders.
@@ -1022,7 +1046,7 @@ export namespace Decode {
      * ).decodeJSON('[ 0, 1, "2", 3, "4" ]')
      * // Right([ 0, 1, 2, 3, 4 ])
      */
-    export const oneOf = _.oneOf;
+    export const oneOf: RequiredOneOf = decoders => new _.OneOf(decoders);
 
     /**
      * Creates enum decoder based on variants.
@@ -1035,7 +1059,7 @@ export namespace Decode {
      * ]).decodeJSON('"RUB"')
      * // Right(new RUB(0))
      */
-    export const enums = _.enums;
+    export const enums: RequiredEnums = variants => new _.Enums(variants);
 
     /**
      * Sometimes you have a JSON with recursive structure,like nested comments.
@@ -1052,7 +1076,7 @@ export namespace Decode {
      *     comments: field('message').list(lazy(() => commentDecoder))
      * });
      */
-    export const lazy = _.lazy;
+    export const lazy: RequiredLazy = callDecoder => succeed(null).chain(callDecoder);
 
     /**
      * Decode a JSON object, requiring a particular field.
@@ -1066,7 +1090,9 @@ export namespace Decode {
      * field('x').int.decodeJSON('{ "x": null }')       // Left(..)
      * field('x').int.decodeJSON('{ "y": 4 }')          // Left(..)
      */
-    export const field = _.field;
+    export const field = (name: string): Path => new _.Path(
+        <T>(decoder: Decoder<T>): Decoder<T> => _.Field.required(name, decoder)
+    );
 
     /**
      * Decode a JSON array, requiring a particular index.
@@ -1082,7 +1108,10 @@ export namespace Decode {
      * index(-1).string.decodeJSON(json)  // Right('chuck')
      * index(3).string.decodeJSON(json)   // Left(..)
      */
-    export const index = _.index;
+
+    export const index = (position: number): Path => new _.Path(
+        <T>(decoder: Decoder<T>): Decoder<T> => _.Index.required(position, decoder)
+    );
 
     /**
      * Decode a nested JSON object, requiring certain fields and indexes.
@@ -1102,7 +1131,9 @@ export namespace Decode {
      * field('person').field('age').int
      * field('person').field('accounts').index(0).string
      */
-    export const at = _.at;
+    export const at = (path: Array<string | number>): Path => new _.Path(
+        <T>(decoder: Decoder<T>): Decoder<T> => _.Path.at(path, decoder)
+    );
 
     /**
      * Lets create an optional `Decoder`.
@@ -1111,7 +1142,9 @@ export namespace Decode {
      * optional.string.decodeJSON('null')        // Right(Nothing)
      * optional.string.decodeJSON('"anything"')  // Right(Just('anything))
      */
-    export const optional = _.optional;
+    export const optional: Optional = new _.Optional(
+        <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
+    );
 
     /**
      * Transform an either into a `Decoder`.
@@ -1127,7 +1160,7 @@ export namespace Decode {
      * number.map(validateNumber).chain(fromEither).decodeJSON('1')   // Right(1)
      * number.map(validateNumber).chain(fromEither).decodeJSON('-1')  // Left(..)
      */
-    export const fromEither = _.fromEither;
+    export const fromEither = <T>(either: Either<string, T>): Decoder<T> => either.fold(fail, succeed);
 
     /**
      * Transform a maybe into a `Decoder`.
@@ -1144,10 +1177,12 @@ export namespace Decode {
      *     return fromMaybe('Expecting a NON EMPTY STRING', nonBlankString(str));
      * });
      *
-     * decoder.decodeJSON(' some string ')  // Right('some string')
-     * decoder.decodeJSON('  ')             // Left(..)
+     * decoder.decodeJSON('" some string "')  // Right('some string')
+     * decoder.decodeJSON('" "')              // Left(..)
      */
-    export const fromMaybe = _.fromMaybe;
+    export const fromMaybe = <T>(message: string, maybe: Maybe<T>): Decoder<T> => {
+        return maybe.toEither(message).tap(fromEither);
+    };
 }
 
 export {
@@ -1158,10 +1193,9 @@ export {
     Value
 } from '../Encode';
 
-/**
- * @alis `Decode.Decoder`
- */
-export abstract class Decoder<T> extends _.Decoder<T> {}
+export {
+    Decoder
+} from './Decoder';
 
 /**
  * @alis `Decode.Path`

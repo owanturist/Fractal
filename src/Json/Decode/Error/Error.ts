@@ -1,7 +1,4 @@
 import {
-    cons
-} from '../../../Basics';
-import {
     Error as IError,
     Pattern
 } from './index';
@@ -75,7 +72,7 @@ abstract class Error implements IError {
     }
 }
 
-export const OneOf: (errors: Array<IError>) => IError = cons(class OneOf extends Error {
+export class OneOf extends Error {
     public constructor(private readonly errors: Array<IError>) {
         super();
     }
@@ -87,9 +84,9 @@ export const OneOf: (errors: Array<IError>) => IError = cons(class OneOf extends
 
         return (pattern._ as () => R)();
     }
-});
+}
 
-export const Field: (name: string, error: IError) => IError = cons(class Field extends Error {
+export class Field extends Error {
     public constructor(
         private readonly name: string,
         private readonly error: IError
@@ -104,9 +101,9 @@ export const Field: (name: string, error: IError) => IError = cons(class Field e
 
         return (pattern._ as () => R)();
     }
-});
+}
 
-export const Index: (position: number, error: IError) => IError = cons(class Index extends Error {
+export class Index extends Error {
     public constructor(
         private readonly position: number,
         private readonly error: IError
@@ -121,9 +118,9 @@ export const Index: (position: number, error: IError) => IError = cons(class Ind
 
         return (pattern._ as () => R)();
     }
-});
+}
 
-export const Failure: (message: string, source: unknown) => IError = cons(class Failure extends Error {
+export class Failure extends Error {
     public constructor(
         private readonly message: string,
         private readonly source: unknown
@@ -138,4 +135,4 @@ export const Failure: (message: string, source: unknown) => IError = cons(class 
 
         return (pattern._ as () => R)();
     }
-});
+}

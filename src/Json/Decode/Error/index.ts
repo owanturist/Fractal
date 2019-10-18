@@ -42,7 +42,7 @@ export namespace Error {
      *
      * @param errors List of `Error`s
      */
-    export const OneOf = _.OneOf;
+    export const OneOf = (errors: Array<Error>): Error => new _.OneOf(errors);
 
     /**
      * Collects an `Error` comes from `Decode.field` and `Decode.at`
@@ -50,7 +50,7 @@ export namespace Error {
      * @param name  Field name triggers the `error`
      * @param error Nested field `Error`
      */
-    export const Field = _.Field;
+    export const Field = (name: string, error: Error): Error => new _.Field(name, error);
 
     /**
      * Collects an `Error` comes from `Decode.index` and `Decode.at`
@@ -58,7 +58,7 @@ export namespace Error {
      * @param position Index position triggers the `error`
      * @param error    Nested field `Error`
      */
-    export const Index = _.Index;
+    export const Index = (position: number, error: Error): Error => new _.Index(position, error);
 
     /**
      * Collects an `Error` comes from `Decode.field` and `Decode.at`
@@ -66,7 +66,7 @@ export namespace Error {
      * @param message Description of the error.
      * @param source  JS source input failed while decoding.
      */
-    export const Failure = _.Failure;
+    export const Failure = (message: string, source: unknown) => new _.Failure(message, source);
 }
 
 /**
