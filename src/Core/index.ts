@@ -138,7 +138,7 @@ class Runtime<AppMsg> {
         sub.gather(effectsDict);
 
         for (const [ id, process ] of this.processes) {
-            Scheduler.rawSend(process, new AM(effectsDict.get(id) || {
+            Scheduler.rawSend(process, new AM<Msg, unknown>(effectsDict.get(id) || {
                 commands: [],
                 subscriptions: []
             }));

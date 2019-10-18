@@ -71,9 +71,9 @@ export abstract class Decoder<T> {
      */
     public decodeJSON(json: string): Either<Error, T> {
         try {
-            return this.decode(JSON.parse(json));
+            return this.decode(JSON.parse(json) as unknown);
         } catch (error) {
-            const error_: SyntaxError = error;
+            const error_ = error as SyntaxError;
 
             return Left(
                 Error.Failure(`This is not valid JSON! ${error_.message}`, json)

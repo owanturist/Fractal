@@ -369,7 +369,7 @@ test('Maybe.prototype.cata()', t => {
 
 test('Maybe.prototype.tap()', t => {
     const someFuncHandeMaybe = (maybeNumber: Maybe<number>): string => {
-        return maybeNumber.map(num => num * 2 + '_').getOrElse('_');
+        return maybeNumber.map(num => num.toFixed(2)).getOrElse('_');
     };
 
     t.is(
@@ -377,7 +377,7 @@ test('Maybe.prototype.tap()', t => {
             .orElse(() => Just(20))
             .map(a => a * a)
             .tap(someFuncHandeMaybe)
-            .replace('_', '|')
+            .replace('.', ',')
             .trim(),
 
         someFuncHandeMaybe(
@@ -385,7 +385,7 @@ test('Maybe.prototype.tap()', t => {
                 .orElse(() => Just(20))
                 .map(a => a * a)
         )
-        .replace('_', '|')
+        .replace('.', ',')
         .trim()
     );
 
