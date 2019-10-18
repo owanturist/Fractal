@@ -4,11 +4,9 @@ import {
 } from '../Basics';
 import Maybe from '../Maybe';
 import Either from '../Either';
-import * as _ from './RemoteData';
+import _ from './Optional';
 
 export interface RemoteData<E, T> {
-    isNotAsked(): boolean;
-
     isLoading(): boolean;
 
     isFailure(): boolean;
@@ -42,75 +40,113 @@ export interface RemoteData<E, T> {
 
 export namespace RemoteData {
     export type Pattern<E, T, R> = Cata<{
-        NotAsked(): R;
         Loading(): R;
         Failure(error: E): R;
         Succeed(value: T): R;
     }>;
 
-    export const NotAsked: RemoteData<never, never> = _.NotAsked;
-
     export const Loading: RemoteData<never, never> = _.Loading;
 
-    export const Failure = <E>(error: E): RemoteData<E, never> => new _.Failure(error);
+    export const Failure: <E>(error: E) => RemoteData<E, never> = _.Failure;
 
-    export const Succeed = <T>(value: T): RemoteData<never, T> => new _.Succeed(value);
+    export const Succeed: <T>(value: T) => RemoteData<never, T> = _.Succeed;
 
-    export const fromMaybe = <E, T>(error: E, maybe: Maybe<T>): RemoteData<E, T> => {
-        return maybe.fold((): RemoteData<E, T> => Failure(error), Succeed);
-    };
+    export const fromMaybe: <E, T>(error: E, maybe: Maybe<T>) => RemoteData<E, T> = _.fromMaybe;
 
-    export const fromEither = <E, T>(either: Either<E, T>): RemoteData<E, T> => {
-        return either.fold(Failure, Succeed as (value: T) => RemoteData<E, T>);
-    };
+    export const fromEither: <E, T>(either: Either<E, T>) => RemoteData<E, T> = _.fromEither;
 
-    export const shape = <E, O extends {}>(
+    export const shape: <E, O extends {}>(
         object: {[ K in keyof O ]: RemoteData<E, O[ K ]> }
-    ): RemoteData<E, O> => {
-        const acc: O = {} as O;
+    ) => RemoteData<E, O> = _.shape;
 
-        for (const key in object) {
-            if (object.hasOwnProperty(key)) {
-                const value = object[ key ];
-
-                if (!value.isSucceed()) {
-                    return value as RemoteData<E, never>;
-                }
-
-                acc[ key ] = value.getOrElse(null as never /* don't use this hack */);
-            }
-        }
-
-        return RemoteData.Succeed(acc);
-    };
-
-    export const combine = <E, T>(array: Array<RemoteData<E, T>>): RemoteData<
+    export const combine: <E, T>(array: Array<RemoteData<E, T>>) => RemoteData<
         unknown extends E ? never : E,
         Array<unknown extends T ? never : T>
-    > => {
-        const acc: Array<T> = [];
+    > = _.combine;
 
-        for (const item of array) {
-            if (!item.isSucceed()) {
-                return item as RemoteData<unknown extends E ? never : E, never>;
-            }
+    export interface Optional<E, T> extends _<E, T> {}
 
-            acc.push(item.getOrElse(null as never /* don't use this hack */));
-        }
+    export namespace Optional {
+        export type Pattern<E, T, R> = _.Pattern<E, T, R>;
 
-        return RemoteData.Succeed(acc as Array<unknown extends T ? never : T>);
-    };
+        export const NotAsked = _.NotAsked;
+
+        export const Loading = _.Loading;
+
+        export const Failure = _.Failure;
+
+        export const Succeed = _.Succeed;
+
+        export const fromMaybe = _.fromMaybe;
+
+        export const fromEither = _.fromEither;
+
+        export const shape = _.shape;
+
+        export const combine = _.combine;
+    }
+}
+
+/**
+ * @alias `RemoteData.Optional`
+ */
+export interface Optional<E, T> extends RemoteData.Optional<E, T> {}
+
+/**
+ * @alias `RemoteData.Optional`
+ */
+export namespace Optional {
+    /**
+     * @alias `RemoteData.Optional.Pattern`
+     */
+
+    export type Pattern<E, T, R> = RemoteData.Optional.Pattern<E, T, R>;
+
+    /**
+     * @alias `RemoteData.Optional.NotAsked`
+     */
+    export const NotAsked = RemoteData.Optional.NotAsked;
+
+    /**
+     * @alias `RemoteData.Optional.Loading`
+     */
+    export const Loading = RemoteData.Optional.Loading;
+
+    /**
+     * @alias `RemoteData.Optional.Failure`
+     */
+    export const Failure = RemoteData.Optional.Failure;
+
+    /**
+     * @alias `RemoteData.Optional.Succeed`
+     */
+    export const Succeed = RemoteData.Optional.Succeed;
+
+    /**
+     * @alias `RemoteData.Optional.fromMaybe`
+     */
+    export const fromMaybe = RemoteData.Optional.fromMaybe;
+
+    /**
+     * @alias `RemoteData.Optional.fromEither`
+     */
+    export const fromEither = RemoteData.Optional.fromEither;
+
+    /**
+     * @alias `RemoteData.Optional.shape`
+     */
+    export const shape = RemoteData.Optional.shape;
+
+    /**
+     * @alias `RemoteData.Optional.combine`
+     */
+    export const combine = RemoteData.Optional.combine;
 }
 
 /**
  * @alias `RemoteData.Pattern`
  */
 export type Pattern<E, T, R> = RemoteData.Pattern<E, T, R>;
-
-/**
- * @alias `RemoteData.NotAsked`
- */
-export const NotAsked = RemoteData.NotAsked;
 
 /**
  * @alias `RemoteData.Loading`
@@ -147,4 +183,4 @@ export const shape = RemoteData.shape;
  */
 export const combine = RemoteData.combine;
 
-export default Either;
+export default RemoteData;
