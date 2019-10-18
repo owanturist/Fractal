@@ -470,13 +470,13 @@ export class OneOf<T> extends Decoder<T> {
         let result: Either<Array<Error>, T> = Left([]);
 
         for (const decoder of this.decoders) {
-            result = result.orElse((acc: Array<Error>): Either<Array<Error>, T> => {
+            result = result.fold((acc: Array<Error>): Either<Array<Error>, T> => {
                 return Decoder.decodeAs(decoder, input, required).mapLeft((error: Error): Array<Error> => {
                     acc.push(error);
 
                     return acc;
                 });
-            });
+            }, Right);
         }
 
         return result.mapLeft(Error.OneOf);

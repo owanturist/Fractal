@@ -3,54 +3,86 @@ import {
 } from '../Basics';
 import Maybe, { Nothing, Just } from '../Maybe';
 import {
-    Either,
+    Either as IEither,
     Pattern
 } from './index';
 
-export class Left<E> implements Either<E, never> {
-    public constructor(private readonly error: E) {}
-
+abstract class Either<E, T> implements IEither<E, T> {
     public isLeft(): boolean {
-        return true;
+        return false;
     }
 
     public isRight(): boolean {
         return false;
     }
 
-    public isEqual<E_>(another: Either<WhenNever<E, E_>, never>): boolean {
-        return this === another as Either<E, never>
+    public abstract isEqual<E_, T_>(another: IEither<WhenNever<E, E_>, WhenNever<T, T_>>): boolean;
+
+    public abstract swap(): IEither<T, E>;
+
+    public map<R>(_fn: (value: T) => R): IEither<E, R> {
+        return this as unknown as IEither<E, R>;
+    }
+
+    public mapLeft<S>(_fn: (error: E) => S): IEither<S, T> {
+        return this as unknown as IEither<S, T>;
+    }
+
+    public mapBoth<S, R>(onLeft: (error: E) => S, onRight: (value: T) => R): IEither<S, R> {
+        return this.mapLeft(onLeft).map(onRight);
+    }
+
+    public chain<E_, R>(_fn: (value: T) => IEither<WhenNever<E, E_>, R>): IEither<WhenNever<E, E_>, R> {
+        return this as unknown as IEither<WhenNever<E, E_>, R>;
+    }
+
+    public orElse<E_, T_>(
+        fn: () => IEither<WhenNever<E, E_>, WhenNever<T, T_>>
+    ): IEither<WhenNever<E, E_>, WhenNever<T, T_>> {
+        return fn();
+    }
+
+    public getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_> {
+        return defaults;
+    }
+
+    public abstract extract<T_>(fn: (error: E) => WhenNever<T, T_>): WhenNever<T, T_>;
+
+    public abstract fold<R>(onLeft: (error: E) => R, onRight: (value: T) => R): R;
+
+    public abstract cata<R>(pattern: Pattern<E, T, R>): R;
+
+    public toMaybe(): Maybe<T> {
+        return this.map(Just).getOrElse(Nothing);
+    }
+
+    public tap<R>(fn: (that: Either<E, T>) => R): R {
+        return fn(this);
+    }
+}
+
+export class Left<E> extends Either<E, never> {
+    public constructor(private readonly error: E) {
+        super();
+    }
+
+    public isLeft(): boolean {
+        return true;
+    }
+
+    public isEqual<E_>(another: IEither<WhenNever<E, E_>, never>): boolean {
+        return this === another as IEither<E, never>
             || another.fold(
                 (error: WhenNever<E, E_>): boolean => this.error === error,
                 (): boolean => false
             );
     }
 
-    public map(): Either<E, never> {
-        return this;
-    }
-
-    public mapLeft<S>(fn: (error: E) => S): Either<S, never> {
+    public mapLeft<S>(fn: (error: E) => S): IEither<S, never> {
         return new Left(fn(this.error));
     }
 
-    public mapBoth<S>(onLeft: (error: E) => S): Either<S, never> {
-        return this.mapLeft(onLeft);
-    }
-
-    public chain<E_>(): Either<WhenNever<E, E_>, never> {
-        return this as unknown as Either<WhenNever<E, E_>, never>;
-    }
-
-    public orElse<E_, T>(fn: (error: WhenNever<E, E_>) => Either<WhenNever<E, E_>, T>): Either<WhenNever<E, E_>, T> {
-        return fn(this.error as WhenNever<E, E_>);
-    }
-
-    public getOrElse<T>(defaults: T): T {
-        return defaults;
-    }
-
-    public swap(): Either<never, E> {
+    public swap(): IEither<never, E> {
         return new Right(this.error);
     }
 
@@ -69,60 +101,42 @@ export class Left<E> implements Either<E, never> {
 
         return (pattern._ as () => R)();
     }
-
-    public tap<R>(fn: (that: Either<E, never>) => R): R {
-        return fn(this);
-    }
-
-    public toMaybe(): Maybe<never> {
-        return Nothing;
-    }
 }
 
-export class Right<T> implements Either<never, T> {
-    public constructor(private readonly value: T) {}
-
-    public isLeft(): boolean {
-        return false;
+export class Right<T> extends Either<never, T> {
+    public constructor(private readonly value: T) {
+        super();
     }
 
     public isRight(): boolean {
         return true;
     }
 
-    public isEqual<T_>(another: Either<never, WhenNever<T, T_>>): boolean {
-        return this === another as Either<never, T>
+    public isEqual<T_>(another: IEither<never, WhenNever<T, T_>>): boolean {
+        return this === another as IEither<never, T>
             || another.fold(
                 (): boolean => false,
                 (value: WhenNever<T, T_>): boolean => this.value === value
             );
     }
 
-    public map<R>(fn: (value: T) => R): Either<never, R> {
+    public map<R>(fn: (value: T) => R): IEither<never, R> {
         return new Right(fn(this.value));
     }
 
-    public mapLeft(): Either<never, T> {
-        return this;
-    }
-
-    public mapBoth<R>(_onLeft: (error: never) => never, onRight: (value: T) => R): Either<never, R> {
-        return this.map(onRight);
-    }
-
-    public chain<R>(fn: (value: T) => Either<never, R>): Either<never, R> {
+    public chain<R>(fn: (value: T) => IEither<never, R>): IEither<never, R> {
         return fn(this.value);
     }
 
-    public orElse<T_>(): Either<never, WhenNever<T, T_>> {
-        return this as unknown as Either<never, WhenNever<T, T_>>;
+    public orElse<T_>(): IEither<never, WhenNever<T, T_>> {
+        return this as unknown as IEither<never, WhenNever<T, T_>>;
     }
 
     public getOrElse<T_>(): WhenNever<T, T_> {
         return this.value as WhenNever<T, T_>;
     }
 
-    public swap(): Either<T, never> {
+    public swap(): IEither<T, never> {
         return new Left(this.value);
     }
 
@@ -140,13 +154,5 @@ export class Right<T> implements Either<never, T> {
         }
 
         return (pattern._ as () => R)();
-    }
-
-    public tap<R>(fn: (that: Either<never, T>) => R): R {
-        return fn(this);
-    }
-
-    public toMaybe(): Maybe<T> {
-        return Just(this.value);
     }
 }

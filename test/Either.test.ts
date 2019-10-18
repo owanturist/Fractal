@@ -294,10 +294,10 @@ test('Either.prototype.mapLeft()', t => {
 });
 
 test('Either.prototype.orElse()', t => {
-    const _1 /* Either<string, never> */ = Left('err').orElse(err => Left(err + '_'));
-    t.deepEqual(_1, Left('err_'));
+    const _1 /* Either<string, never> */ = Left('err').orElse(() => Left('msg'));
+    t.deepEqual(_1, Left('msg'));
 
-    const _2 /* Either<string, number> */ = Right(1).orElse((err: string) => Left(err + '_'));
+    const _2 /* Either<string, number> */ = Right(1).orElse(() => Left('msg'));
     t.deepEqual(_2, Right(1));
 
     const _3 /* Either<string, number> */ = Left('err').orElse(() => Right(1));

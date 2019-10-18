@@ -47,6 +47,15 @@ export interface Either<E, T> {
     isEqual<E_, T_>(another: Either<WhenNever<E, E_>, WhenNever<T, T_>>): boolean;
 
     /**
+     * Swaps value and error.
+     *
+     * @example
+     * Left('error').swap() // Right('error')
+     * Right(1).swap()      // Left(1)
+     */
+    swap(): Either<T, E>;
+
+    /**
      * Transform the `Either` value with a given function.
      *
      * @param fn Transforming function.
@@ -99,13 +108,13 @@ export interface Either<E, T> {
      * @param fn The function to return next `Right`.
      *
      * @example
-     * Left('error').orElse(e => Left(e + '_'))      // Left('error_')
-     * Right(1).orElse((e: string) => Left(e + '_')) // Right(1)
-     * Left('error').orElse(() => Right(1))          // Right(1)
-     * Right(1).orElse(() => Right(2))               // Right(1)
+     * Left('error').orElse(() => Left('message')) // Left('message')
+     * Right(1).orElse(() => Left('message'))      // Right(1)
+     * Left('error').orElse(() => Right(1))        // Right(1)
+     * Right(1).orElse(() => Right(2))             // Right(1)
      */
     orElse<E_, T_>(
-        fn: (error: WhenNever<E, E_>) => Either<WhenNever<E, E_>, WhenNever<T, T_>>
+        fn: () => Either<WhenNever<E, E_>, WhenNever<T, T_>>
     ): Either<WhenNever<E, E_>, WhenNever<T, T_>>;
 
     /**
@@ -118,15 +127,6 @@ export interface Either<E, T> {
      * Right(13).getOrElse(42)     // 13
      */
     getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_>;
-
-    /**
-     * Swaps value and error.
-     *
-     * @example
-     * Left('error').swap() // Right('error')
-     * Right(1).swap()      // Left(1)
-     */
-    swap(): Either<T, E>;
 
     /**
      * Turn a `Either` to an `T`, by applying the conversion function specified to the `E`.
@@ -170,6 +170,15 @@ export interface Either<E, T> {
     cata<R>(pattern: Pattern<E, T, R>): R;
 
     /**
+     * Convert to `Maybe`.
+     *
+     * @example
+     * Left('error').toMaybe() // Nothing
+     * Right(42).toMaybe()     // Just(42)
+     */
+    toMaybe(): Maybe<T>;
+
+    /**
      * Apply the current `Either` to the predicate function.
      * Could be usefull to make code more "linear".
      *
@@ -195,15 +204,6 @@ export interface Either<E, T> {
      * ).toFixed(2)
      */
     tap<R>(fn: (that: Either<E, T>) => R): R;
-
-    /**
-     * Convert to `Maybe`.
-     *
-     * @example
-     * Left('error').toMaybe() // Nothing
-     * Right(42).toMaybe()     // Just(42)
-     */
-    toMaybe(): Maybe<T>;
 }
 
 export namespace Either {

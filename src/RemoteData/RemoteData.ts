@@ -57,7 +57,7 @@ abstract class RemoteData<E, T> implements Optional<E, T> {
     public abstract cata<R>(pattern: Optional.Pattern<E, T, R>): R;
 
     public toMaybe(): Maybe<T> {
-        return Nothing;
+        return this.map(Just).getOrElse(Nothing);
     }
 
     public tap<R>(fn: (that: Optional<E, T>) => R): R {
@@ -107,11 +107,12 @@ export class Failure<E> extends RemoteData<E, never> {
     }
 
     public isEqual<E_>(another: Optional<WhenNever<E, E_>, never>): boolean {
-        return another.cata({
-            Failure: (error: WhenNever<E, E_>) => this.error === error,
+        return this === another as Optional<E, never>
+            || another.cata({
+                Failure: (error: WhenNever<E, E_>) => this.error === error,
 
-            _: () => false
-        });
+                _: () => false
+            });
     }
 
     public swap(): Optional<never, E> {
@@ -139,11 +140,12 @@ export class Succeed<T> extends RemoteData<never, T> {
     }
 
     public isEqual<T_>(another: Optional<never, WhenNever<T, T_>>): boolean {
-        return another.cata({
-            Succeed: (value: WhenNever<T, T_>) => this.value === value,
+        return this === another as Optional<never, T>
+            || another.cata({
+                Succeed: (value: WhenNever<T, T_>) => this.value === value,
 
-            _: () => false
-        });
+                _: () => false
+            });
     }
 
     public swap(): Optional<T, never> {
@@ -170,9 +172,5 @@ export class Succeed<T> extends RemoteData<never, T> {
         return typeof pattern.Succeed === 'function'
             ? pattern.Succeed(this.value)
             : (pattern._ as () => R)();
-    }
-
-    public toMaybe(): Maybe<T> {
-        return Just(this.value);
     }
 }
