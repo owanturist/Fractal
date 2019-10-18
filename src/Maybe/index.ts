@@ -209,7 +209,6 @@ export namespace Maybe {
         return value == null ? Nothing : Just(value as T extends null | undefined ? never : T);
     };
 
-
     /**
      * Converts `Either` to `Maybe`.
      * `Left` becomes `Nothing`, `Reight(value)` becomes `Just(value)`.
@@ -223,7 +222,6 @@ export namespace Maybe {
     export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
         return either.map(Just).getOrElse(Nothing);
     };
-
 
     /**
      * Flattens nested `Maybe`s.
@@ -239,7 +237,6 @@ export namespace Maybe {
      * Just(42).tap(Just).tap(join) // Just(42)
      */
     export const join = <T>(maybe: Maybe<Maybe<T>>): Maybe<T> => maybe.chain(identity);
-
 
     /**
      * Take an object of `Maybe`s and return a `Maybe` with an object of values.
@@ -275,7 +272,6 @@ export namespace Maybe {
 
         return Just(acc);
     };
-
 
     /**
      * Take an array of `Maybe`s and return a `Maybe` with an array of values.
@@ -321,7 +317,6 @@ export namespace Maybe {
 
         return acc as Array<unknown extends T ? never : T>;
     };
-
 }
 
 /**
