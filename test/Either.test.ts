@@ -316,11 +316,11 @@ test('Either.prototype.getOrElse()', t => {
 });
 
 test('Either.prototype.fold()', t => {
-    const _1 /* string */ = Left('err').fold(err => err + '_', (a: number) => '_' + a * 2);
+    const _1 /* string */ = Left('err').fold(err => err + '_', (a: number) => '_' + a.toFixed(2));
     t.deepEqual(_1, 'err_');
 
-    const _2 /* string */ = Right(2).fold(err => err + '_', (a: number) => '_' + a * 2);
-    t.deepEqual(_2, '_4');
+    const _2 /* string */ = Right(2).fold((err: string) => err + '_', a => '_' + a.toFixed(2));
+    t.deepEqual(_2, '_2.00');
 });
 
 test('Either.prototype.cata()', t => {
@@ -373,7 +373,7 @@ test('Either.prototype.cata()', t => {
 
 test('Either.prototype.tap()', t => {
     const someFuncHandeEither = (eitherNumber: Either<string, number>): string => {
-        return eitherNumber.map(num => num * 2 + '_').getOrElse('_');
+        return eitherNumber.map(num => num.toFixed(2)).getOrElse('_');
     };
 
     t.is(
@@ -381,7 +381,7 @@ test('Either.prototype.tap()', t => {
             .orElse(() => Right(20))
             .map(a => a * a)
             .tap(someFuncHandeEither)
-            .replace('_', '|')
+            .replace('.', ',')
             .trim(),
 
         someFuncHandeEither(
@@ -389,7 +389,7 @@ test('Either.prototype.tap()', t => {
                 .orElse(() => Right(20))
                 .map(a => a * a)
         )
-        .replace('_', '|')
+        .replace('.', ',')
         .trim()
     );
 
