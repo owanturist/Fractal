@@ -3,41 +3,61 @@ import {
 } from '../Basics';
 import Either, { Left, Right } from '../Either';
 import {
-    Maybe,
+    Maybe as IMaybe,
     Pattern
 } from './index';
 
-export const Nothing: Maybe<never> = new class Nothing implements Maybe<never> {
+abstract class Maybe<T> implements IMaybe<T> {
     public isNothing(): boolean {
-        return true;
+        return false;
     }
 
     public isJust(): boolean {
         return false;
     }
 
-    public isEqual(another: Maybe<never>): boolean {
-        return this === another || another.isNothing();
+    public abstract isEqual<T_>(_another: IMaybe<WhenNever<T, T_>>): boolean;
+
+    public map<R>(_fn: (value: T) => R): IMaybe<R> {
+        return this as unknown as IMaybe<R>;
     }
 
-    public map(): Maybe<never> {
-        return this;
+    public chain<R>(_fn: (value: T) => IMaybe<R>): IMaybe<R> {
+        return this as unknown as IMaybe<R>;
     }
 
-    public chain(): Maybe<never> {
-        return this;
+    public filter<T_>(_fn: (value: WhenNever<T, T_>) => boolean): IMaybe<WhenNever<T, T_>> {
+        return this as unknown as IMaybe<WhenNever<T, T_>>;
     }
 
-    public filter(): Maybe<never> {
-        return this;
-    }
-
-    public orElse<T>(fn: () => Maybe<T>): Maybe<T> {
+    public orElse<T_>(fn: () => IMaybe<WhenNever<T, T_>>): IMaybe<WhenNever<T, T_>> {
         return fn();
     }
 
-    public getOrElse<T>(defaults: T): T {
+    public getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_> {
         return defaults;
+    }
+
+    public abstract fold<R>(onNothing: () => R, onJust: (value: T) => R): R;
+
+    public abstract cata<R>(pattern: Pattern<T, R>): R;
+
+    public toEither<E>(error: E): Either<E, T> {
+        return Left(error);
+    }
+
+    public tap<R>(fn: (that: IMaybe<T>) => R): R {
+        return fn(this);
+    }
+}
+
+export const Nothing: IMaybe<never> = new class Nothing extends Maybe<never> {
+    public isNothing(): boolean {
+        return true;
+    }
+
+    public isEqual(another: IMaybe<never>): boolean {
+        return another.isNothing();
     }
 
     public fold<R>(onNothing: () => R): R {
@@ -51,46 +71,36 @@ export const Nothing: Maybe<never> = new class Nothing implements Maybe<never> {
 
         return (pattern._ as () => R)();
     }
-
-    public tap<R>(fn: (that: Maybe<never>) => R): R {
-        return fn(this);
-    }
-
-    public toEither<E>(error: E): Either<E, never> {
-        return Left(error);
-    }
 }();
 
-export class Just<T> implements Maybe<T> {
-    public constructor(private readonly value: T) {}
-
-    public isNothing(): boolean {
-        return false;
+export class Just<T> extends Maybe<T> {
+    public constructor(private readonly value: T) {
+        super();
     }
 
     public isJust(): boolean {
         return true;
     }
 
-    public isEqual<T_>(another: Maybe<WhenNever<T, T_>>): boolean {
-        return this === another as Maybe<T>
+    public isEqual<T_>(another: IMaybe<WhenNever<T, T_>>): boolean {
+        return this === another as IMaybe<T>
             || another.map((value: WhenNever<T, T_>): boolean => this.value === value).getOrElse(false);
     }
 
-    public map<R>(fn: (value: T) => R): Maybe<R> {
+    public map<R>(fn: (value: T) => R): IMaybe<R> {
         return new Just(fn(this.value));
     }
 
-    public chain<R>(fn: (value: T) => Maybe<R>): Maybe<R> {
+    public chain<R>(fn: (value: T) => IMaybe<R>): IMaybe<R> {
         return fn(this.value);
     }
 
-    public filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): Maybe<WhenNever<T, T_>> {
-        return (fn(this.value as WhenNever<T, T_>) ? this : Nothing) as Maybe<WhenNever<T, T_>>;
+    public filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): IMaybe<WhenNever<T, T_>> {
+        return (fn(this.value as WhenNever<T, T_>) ? this : Nothing) as IMaybe<WhenNever<T, T_>>;
     }
 
-    public orElse<T_>(): Maybe<WhenNever<T, T_>> {
-        return this as unknown as Maybe<WhenNever<T, T_>>;
+    public orElse<T_>(): IMaybe<WhenNever<T, T_>> {
+        return this as unknown as IMaybe<WhenNever<T, T_>>;
     }
 
     public getOrElse<T_>(): WhenNever<T, T_> {
@@ -107,10 +117,6 @@ export class Just<T> implements Maybe<T> {
         }
 
         return (pattern._ as () => R)();
-    }
-
-    public tap<R>(fn: (that: Maybe<T>) => R): R {
-        return fn(this);
     }
 
     public toEither(): Either<never, T> {

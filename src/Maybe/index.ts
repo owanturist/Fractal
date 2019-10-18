@@ -135,6 +135,17 @@ export interface Maybe<T> {
     cata<R>(pattern: Pattern<T, R>): R;
 
     /**
+     * Convert to `Either`.
+     *
+     * @param error `Left` error when `Nothing`.
+     *
+     * @example
+     * Nothing.toEither('error')  // Left('error')
+     * Just(42).toEither('error') // Right(42)
+     */
+    toEither<E>(error: E): Either<E, T>;
+
+    /**
      * Apply the current `Maybe` to the predicate function.
      * Could be usefull to make code more "linear".
      *
@@ -160,17 +171,6 @@ export interface Maybe<T> {
      * ).toFixed(2)
      */
     tap<R>(fn: (that: Maybe<T>) => R): R;
-
-    /**
-     * Convert to `Either`.
-     *
-     * @param error `Left` error when `Nothing`.
-     *
-     * @example
-     * Nothing.toEither('error')  // Left('error')
-     * Just(42).toEither('error') // Right(42)
-     */
-    toEither<E>(error: E): Either<E, T>;
 }
 
 export namespace Maybe {
