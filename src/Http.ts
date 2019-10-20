@@ -6,9 +6,7 @@ import Either, { Right } from './Either';
 import {
     Task
 } from './Task';
-import {
-    Cmd
-} from './Platform/Cmd';
+import { Cmd } from './Platform';
 import * as Decode from './Json/Decode';
 import Encode from './Json/Encode';
 

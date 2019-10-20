@@ -2,9 +2,8 @@ import {
     IsNever,
     WhenNever
 } from './Basics';
-import { Router, Manager } from './Platform';
+import { Router, Manager, Cmd } from './Platform';
 import * as Scheduler from './Platform/Scheduler';
-import { Cmd } from './Platform/Cmd';
 import { Process } from './Process';
 import Either, { Left, Right } from './Either';
 

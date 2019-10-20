@@ -1,1 +1,0 @@
-export { Cmd } from './index';

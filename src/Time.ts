@@ -1,6 +1,5 @@
 import * as Scheduler from './Platform/Scheduler';
-import { Router, Manager } from './Platform';
-import { Sub } from './Platform/Sub';
+import { Router, Manager, Sub } from './Platform';
 import { Process } from './Process';
 import { Task } from './Task';
 
