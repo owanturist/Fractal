@@ -1,1 +1,1 @@
-export { Sub } from '../Core';
+export { Sub } from './index';

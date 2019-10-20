@@ -1,1 +1,1 @@
-export { Cmd } from '../Core';
+export { Cmd } from './index';

@@ -5,7 +5,7 @@ import Maybe, { Nothing, Just } from './Maybe';
 import Either, { Right } from './Either';
 import {
     Task
-} from './Core';
+} from './Task';
 import {
     Cmd
 } from './Platform/Cmd';

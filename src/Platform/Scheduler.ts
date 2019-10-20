@@ -93,12 +93,12 @@ export const receive = <M, E, T>(callback: (msg: M) => Task<E, T>): Task<E, T> =
  */
 
 type Stack<E, T>
-    = Nil
+    = Head
     | Ok<E, any, T>
     | Err<any, T, E>
     ;
 
-interface Nil {
+interface Head {
     readonly $: '_STACK_HEAD_';
 }
 
