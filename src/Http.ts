@@ -3,11 +3,8 @@ import {
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
 import Either, { Right } from './Either';
-import {
-    Task
-} from './Task';
-import { Cmd } from './Platform';
-import * as Decode from './Json/Decode';
+import { Task, Cmd } from './Platform';
+import Decode from './Json/Decode';
 import Encode from './Json/Encode';
 
 /* H E L P E R S */

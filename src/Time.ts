@@ -1,7 +1,5 @@
 import * as Scheduler from './Platform/Scheduler';
-import { Router, Manager, Sub } from './Platform';
-import { Process } from './Process';
-import { Task } from './Task';
+import { Router, Manager, Process, Task, Sub } from './Platform';
 
 type Processes = Map<number, Process>;
 
