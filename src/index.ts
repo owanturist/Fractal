@@ -252,6 +252,7 @@ class Runtime<AppMsg> {
 
         const router: Router<AppMsg, SelfMsg> = new Router(process, this.dispatch);
 
+        this.office.push(manager);
         this.processes.set(manager, process);
 
         return process;
