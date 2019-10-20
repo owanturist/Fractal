@@ -1,9 +1,9 @@
 import {
     Cata
 } from './Basics';
+import { Task, Cmd } from './index';
 import Maybe, { Nothing, Just } from './Maybe';
 import Either, { Right } from './Either';
-import { Task, Cmd } from './Platform';
 import Decode from './Json/Decode';
 import Encode from './Json/Encode';
 

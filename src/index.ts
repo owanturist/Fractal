@@ -1,8 +1,8 @@
 import {
     IsNever,
     WhenNever
-} from '../Basics';
-import Either, { Left, Right } from '../Either';
+} from './Basics';
+import Either, { Left, Right } from './Either';
 import * as Scheduler from './Scheduler';
 
 export class Router<AppMsg, SelfMsg> {
