@@ -12,8 +12,8 @@ export type Task<E, T>
     ;
 
 interface Succeed<T> {
-    $: '_TASK__SUCCEED_';
-    __value: T;
+    readonly $: '_TASK__SUCCEED_';
+    readonly __value: T;
 }
 
 export const succeed = <T>(value: T): Task<never, T> => ({
@@ -23,8 +23,8 @@ export const succeed = <T>(value: T): Task<never, T> => ({
 
 
 interface Fail<E> {
-    $: '_TASK__FAIL_';
-    __error: E;
+    readonly $: '_TASK__FAIL_';
+    readonly __error: E;
 }
 
 export const fail = <E>(error: E): Task<E, never> => ({
@@ -34,7 +34,7 @@ export const fail = <E>(error: E): Task<E, never> => ({
 
 
 interface Binding<E, T> {
-    $: '_TASK__BINDING';
+    readonly $: '_TASK__BINDING';
     __kill: void | (() => void);
     __callback(bind: (task: Task<E, T>) => void): void | (() => void);
 }
@@ -47,8 +47,8 @@ export const binding = <E, T>(callback: (done: (task: Task<E, T>) => void) => vo
 
 
 interface Chain<E, T, R> {
-    $: '_TASK__CHAIN_';
-    __task: Task<E, T>;
+    readonly $: '_TASK__CHAIN_';
+    readonly __task: Task<E, T>;
     __callback(value: T): Task<E, R>;
 }
 
@@ -63,8 +63,8 @@ export const chain = <E, T, R>(
 
 
 interface OnError<E, T, S> {
-    $: '_TASK__ON_ERROR_';
-    __task: Task<E, T>;
+    readonly $: '_TASK__ON_ERROR_';
+    readonly __task: Task<E, T>;
     __callback(error: E): Task<S, T>;
 }
 
@@ -79,7 +79,7 @@ export const onError = <E, T, S>(
 
 
 interface Receive<M, E, T> {
-    $: '_TASK__RECEIVE_';
+    readonly $: '_TASK__RECEIVE_';
     __callback(msg: M): Task<E, T>;
 }
 
@@ -99,7 +99,7 @@ type Stack<E, T>
     ;
 
 interface Nil {
-    $: '_STACK_HEAD_';
+    readonly $: '_STACK_HEAD_';
 }
 
 const head: Stack<never, never> = {
@@ -107,8 +107,8 @@ const head: Stack<never, never> = {
 };
 
 interface Ok<E, T, R> {
-    $: '_STACK_OK_';
-    __next: Stack<E, T>;
+    readonly $: '_STACK_OK_';
+    readonly __next: Stack<E, T>;
     __callback(value: T): Task<E, R>;
 }
 
@@ -123,8 +123,8 @@ const ok = <E, T, R>(
 
 
 interface Err<E, T, S> {
-    $: '_STACK_ERR_';
-    __next: Stack<E, T>;
+    readonly $: '_STACK_ERR_';
+    readonly __next: Stack<E, T>;
     __callback(error: E): Task<S, T>;
 }
 
@@ -145,7 +145,7 @@ const err = <E, T, S>(
 export interface Process<E = unknown, T = unknown, M = unknown> {
     __root?: Task<E, T>;
     __stack: Stack<E, T>;
-    __mailbox: Array<M>;
+    readonly __mailbox: Array<M>;
 }
 
 const process = <E, T, M>(root: Task<E, T>): Process<E, T, M> => ({

@@ -15,10 +15,9 @@
     "postbuild": "cp package.json ./dist & cp README.md ./dist",
     "test": "npm run build -- -p tsconfig.json && ava --verbose",
     "lint": "tslint --project tsconfig.json --config tslint.json",
-    "prepare": "npm run build",
     "preversion": "npm run test",
     "version": "git add -A src",
-    "postversion": "git push && git push --tags"
+    "postversion": "git push && git push --tags && npm run build"
   },
   "devDependencies": {
     "ava": "^1.2.1",
