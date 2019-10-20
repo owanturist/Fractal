@@ -2,7 +2,7 @@ import {
     IsNever,
     WhenNever
 } from './Basics';
-import { Router, Manager, createManager } from './Platform';
+import { Router, Manager } from './Platform';
 import * as Scheduler from './Platform/Scheduler';
 import { Cmd } from './Platform/Cmd';
 import { Process } from './Process';
@@ -107,22 +107,22 @@ export class Task<E, T> {
     }
 }
 
-const taskManager = createManager(class TaskManager<AppMsg> extends Manager<AppMsg, never, void> {
-    public init = Task.succeed(undefined);
+const manager: Manager = {
+    init: Task.succeed(undefined),
 
-    public onEffects(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, void> {
+    onEffects<AppMsg>(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, void> {
         return Task.sequence(
             commands.map((command: Perform<AppMsg>): Task<never, Process> => command.onEffects(router))
         ).map(() => undefined);
-    }
+    },
 
-    public onSelfMsg(): Task<never, void> {
+    onSelfMsg(): Task<never, void> {
         return Task.succeed(undefined);
     }
-});
+};
 
 class Perform<AppMsg> extends Cmd<AppMsg> {
-    protected readonly manager: Manager<AppMsg, never, void> = taskManager;
+    protected readonly manager = manager;
 
     public constructor(protected readonly task: Task<never, AppMsg>) {
         super();

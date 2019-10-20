@@ -22,23 +22,17 @@ export class Router<AppMsg, SelfMsg> {
     }
 }
 
-export abstract class Manager<AppMsg, SelfMsg, State> {
-    public abstract init: Task<never, State>;
+export interface Manager<AppMsg = unknown, SelfMsg = unknown, State = unknown> {
+    init: Task<never, State>;
 
-    public constructor(private readonly id: number) {}
-
-    public identity(): number {
-        return this.id;
-    }
-
-    public abstract onEffects(
+    onEffects(
         router: Router<AppMsg, SelfMsg>,
         commands: Array<Cmd<AppMsg>>,
         subscriptions: Array<Sub<AppMsg>>,
         state: State
     ): Task<never, State>;
 
-    public abstract onSelfMsg(
+    onSelfMsg(
         router: Router<AppMsg, SelfMsg>,
         msg: SelfMsg,
         state: State
@@ -51,13 +45,13 @@ interface Effects<AppMsg> {
 }
 
 abstract class Bag<T> {
-    public static gather<T>(effectDict: Map<number, Effects<T>>, bag: Bag<T>): void {
-        bag.gather(effectDict);
+    public static gather<T>(sequence: Array<Manager>, effectDict: WeakMap<Manager, Effects<T>>, bag: Bag<T>): void {
+        bag.gather(sequence, effectDict);
     }
 
     public abstract map<R>(fn: (effect: T) => R): Bag<R>;
 
-    protected abstract gather(effectDict: Map<number, Effects<T>>): void;
+    protected abstract gather(sequence: Array<Manager>, effectDict: WeakMap<Manager, Effects<T>>): void;
 }
 
 class Batch<T> extends Bag<T> {
@@ -77,9 +71,9 @@ class Batch<T> extends Bag<T> {
         return new Batch(result);
     }
 
-    protected gather(effectDict: Map<number, Effects<T>>): void {
+    protected gather(sequence: Array<Manager>, effectDict: Map<Manager, Effects<T>>): void {
         for (const bag of this.bags) {
-            Bag.gather(effectDict, bag);
+            Bag.gather(sequence, effectDict, bag);
         }
     }
 }
@@ -111,15 +105,16 @@ export abstract class Cmd<T> extends Bag<T> {
         return batch(cmds) as Cmd<T>;
     }
 
-    protected abstract readonly manager: Manager<T, unknown, unknown>;
+    protected abstract readonly manager: Manager<T>;
 
     public abstract map<R>(fn: (effect: T) => R): Cmd<R>;
 
-    protected gather(effectDict: Map<number, Effects<T>>): void {
-        const effects = effectDict.get(this.manager.identity());
+    protected gather(sequence: Array<Manager>, effectDict: WeakMap<Manager, Effects<T>>): void {
+        const effects = effectDict.get(this.manager);
 
         if (typeof effects === 'undefined') {
-            effectDict.set(this.manager.identity(), {
+            sequence.push(this.manager);
+            effectDict.set(this.manager, {
                 commands: [ this ],
                 subscriptions: []
             });
@@ -138,15 +133,16 @@ export abstract class Sub<T> extends Bag<T> {
         return batch(cmds) as Sub<T>;
     }
 
-    protected abstract readonly manager: Manager<T, unknown, unknown>;
+    protected abstract readonly manager: Manager<T>;
 
     public abstract map<R>(fn: (effect: T) => R): Sub<R>;
 
-    protected gather(effectDict: Map<number, Effects<T>>): void {
-        const effects = effectDict.get(this.manager.identity());
+    protected gather(sequence: Array<Manager>, effectDict: WeakMap<Manager, Effects<T>>): void {
+        const effects = effectDict.get(this.manager);
 
         if (typeof effects === 'undefined') {
-            effectDict.set(this.manager.identity(), {
+            sequence.push(this.manager);
+            effectDict.set(this.manager, {
                 commands: [],
                 subscriptions: [ this ]
             });
@@ -193,22 +189,51 @@ class SM<AppMsg, SelfMsg> extends IM<AppMsg, SelfMsg> {
 }
 
 class Runtime<AppMsg> {
-    public static createManager<AppMsg, SelfMsg, State>(
-        factory: new (id: number) => Manager<AppMsg, SelfMsg, State>
-    ): Manager<AppMsg, SelfMsg, State> {
-        const id = Runtime.office.size;
-        const manager = new factory(id);
+    private readonly office: Array<Manager> = [];
+    private readonly processes: WeakMap<Manager, Scheduler.Process> = new WeakMap();
 
-        Runtime.office.set(id, manager);
+    public constructor(
+        private readonly dispatch: (msg: AppMsg) => void
+    ) {}
 
-        return manager;
+    public dispatchEffects<Msg>(cmd: Cmd<Msg>, sub: Sub<Msg>) {
+        const incoming: Array<Manager<AppMsg>> = [];
+        const effectsDict: WeakMap<Manager, Effects<Msg>> = new WeakMap();
+
+        Cmd.gather(incoming, effectsDict, cmd);
+        Sub.gather(incoming, effectsDict, sub);
+
+        for (const id of incoming) {
+            const process = this.processes.get(id) || this.registerManager(id);
+
+            const effects = effectsDict.get(id) || {
+                commands: [],
+                subscriptions: []
+            };
+
+            Scheduler.rawSend(process, new AM<Msg, unknown>(effects));
+        }
+
+        for (const id of this.office) {
+            if (effectsDict.has(id)) {
+                continue;
+            }
+
+            const process = this.processes.get(id);
+
+            if (typeof process === 'undefined') {
+                continue;
+            }
+
+            Scheduler.rawSend(process, new AM({
+                commands: [],
+                subscriptions: []
+            }));
+        }
     }
 
-    private static readonly office: Map<number, Manager<unknown, unknown, unknown>> = new Map();
-
-    private static initManager<AppMsg, SelfMsg, State>(
-        manager: Manager<AppMsg, SelfMsg, State>,
-        dispatch: (msg: AppMsg) => void
+    private registerManager<SelfMsg, State>(
+        manager: Manager<AppMsg, SelfMsg, State>
     ): Scheduler.Process<never, unknown, IM<AppMsg, SelfMsg>> {
         const loop = (state: State): Scheduler.Task<never, State> => {
             return Scheduler.chain(
@@ -217,36 +242,83 @@ class Runtime<AppMsg> {
             );
         };
 
-        const process: Scheduler.Process<never, unknown, IM<AppMsg, SelfMsg>>
-            = Scheduler.rawSpawn(Scheduler.chain(loop, manager.init.execute()));
-        const router: Router<AppMsg, SelfMsg> = new Router(process, dispatch);
+        const process: Scheduler.Process<never, unknown, IM<AppMsg, SelfMsg>> = Scheduler.rawSpawn(
+            Scheduler.chain(loop, manager.init.execute())
+        );
+
+        const router: Router<AppMsg, SelfMsg> = new Router(process, this.dispatch);
+
+        this.processes.set(manager, process);
 
         return process;
     }
+}
 
-    private readonly processes: Map<number, Scheduler.Process> = new Map();
+export class Worker<Model, Msg> {
+    private model: Model;
+    private readonly runtime: Runtime<Msg>;
+    private readonly subscribers: Array<() => void> = [];
 
-    public constructor(dispatch: (msg: AppMsg) => void) {
-        for (const [key, manager] of Runtime.office) {
-            this.processes.set(key, Runtime.initManager(manager, dispatch));
+    public constructor(
+        [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
+        private readonly subscriptions: (model: Model) => Sub<Msg>
+    ) {
+        this.model = initialModel;
+        this.runtime = new Runtime((msg: Msg): void => this.dispatch(msg));
+
+        this.runtime.dispatchEffects(
+            initialCmd,
+            this.subscriptions(initialModel)
+        );
+    }
+
+    public getModel(): Model {
+        return this.model;
+    }
+
+    public dispatch(msg: Msg): void {
+        const [ nextModel, nextCmd ] = this.update(msg, this.model);
+
+        this.model = nextModel;
+
+        this.runtime.dispatchEffects(nextCmd, this.subscriptions(nextModel));
+
+        for (const subscriber of this.subscribers) {
+            subscriber();
         }
     }
 
-    public dispatchEffects<Msg>(cmd: Cmd<Msg>, sub: Sub<Msg>) {
-        const effectsDict: Map<number, Effects<Msg>> = new Map();
+    public subscribe(subscriber: () => void): () => void {
+        let subscribed = true;
 
-        Cmd.gather(effectsDict, cmd);
-        Sub.gather(effectsDict, sub);
+        this.subscribers.push(subscriber);
 
-        for (const [ id, process ] of this.processes) {
-            Scheduler.rawSend(process, new AM<Msg, unknown>(effectsDict.get(id) || {
-                commands: [],
-                subscriptions: []
-            }));
-        }
+        return () => {
+            if (subscribed) {
+                this.subscribers.splice(this.subscribers.indexOf(subscriber), 1);
+                subscribed = false;
+            }
+        };
     }
 }
 
-export const createManager = <AppMsg, SelfMsg, State>(
-    factory: new (id: number) => Manager<AppMsg, SelfMsg, State>
-): Manager<AppMsg, SelfMsg, State> => Runtime.createManager(factory);
+export class Program<Flags, Model, Msg> {
+    public static worker<Flags, Model, Msg>(config: {
+        init(flags: Flags): [ Model, Cmd<Msg> ];
+        update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+        subscriptions(model: Model): Sub<Msg>;
+    }): Program<Flags, Model, Msg> {
+        return new Program(config.init, config.update, config.subscriptions);
+    }
+
+    private constructor(
+        private readonly init_: (flags: Flags) => [ Model, Cmd<Msg> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
+        private readonly subscriptions: (model: Model) => Sub<Msg>
+    ) {}
+
+    public init(flags: Flags): Worker<Model, Msg> {
+        return new Worker(this.init_(flags), this.update, this.subscriptions);
+    }
+}

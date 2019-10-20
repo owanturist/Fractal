@@ -1,8 +1,8 @@
 import * as Scheduler from './Platform/Scheduler';
-import { Router, Manager, createManager } from './Platform';
+import { Router, Manager } from './Platform';
 import { Sub } from './Platform/Sub';
 import { Process } from './Process';
-import { Task } from 'Task';
+import { Task } from './Task';
 
 type Processes = Map<number, Process>;
 
@@ -13,13 +13,13 @@ interface State<AppMsg> {
     processes: Processes;
 }
 
-const manager = createManager(class TimeManager<AppMsg> extends Manager<AppMsg, number, State<AppMsg>> {
-    public init = Task.succeed({
+const manager: Manager = {
+    init: Task.succeed({
         taggers: new Map(),
         processes: new Map()
-    });
+    }),
 
-    public onEffects<AppMsg>(
+    onEffects<AppMsg>(
         router: Router<AppMsg, number>,
         _commands: Array<never>,
         subscriptions: Array<TimeSub<AppMsg>>,
@@ -61,9 +61,9 @@ const manager = createManager(class TimeManager<AppMsg> extends Manager<AppMsg, 
                 taggers: newTaggers,
                 processes: newProcesses
             }));
-    }
+    },
 
-    public onSelfMsg<AppMsg>(
+    onSelfMsg<AppMsg>(
         router: Router<AppMsg, number>,
         interval: number,
         state: State<AppMsg>
@@ -80,10 +80,10 @@ const manager = createManager(class TimeManager<AppMsg> extends Manager<AppMsg, 
             taggers.map((tagger: (posix: number) => AppMsg) => router.sendToApp(tagger(now)))
         ).map(() => state);
     }
-});
+};
 
 abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
-    protected readonly manager: Manager<AppMsg, number, State<AppMsg>> = manager;
+    protected readonly manager = manager;
 
     public abstract register(taggers: Taggers<AppMsg>): Taggers<AppMsg>;
 }
