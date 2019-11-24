@@ -138,9 +138,13 @@ interface Node<K extends Key<K>, T> {
 
     insert(key: K, value: T): Node<K, T>;
 
-    rotateLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
+    rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
 
-    rotateRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+    rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
+
+    rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+
+    rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 }
 
 const Null_: Node<never, never> = new class Null implements Node<never, never> {
@@ -167,18 +171,27 @@ const Null_: Node<never, never> = new class Null implements Node<never, never> {
     /**
      * @todo
      */
-    public rotateLeft<K extends Key<K>, T>(left: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateRedLeft<K extends Key<K>, T>(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
+    }
+    /**
+     * @todo
+     */
+    public rotateBlackLeft<K extends Key<K>, T>(left: Node<K, T>, key: K, value: T): Node<K, T> {
         return this;
     }
 
     /**
      * @todo
      */
-    public rotateRight<K extends Key<K>, T>(right: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateRedRight<K extends Key<K>, T>(right: Node<K, T>, key: K, value: T): Node<K, T> {
         return this;
     }
 
-    public flipColors<K extends Key<K>, T>(): Node<K, T> {
+    /**
+     * @todo
+     */
+    public rotateBlackRight<K extends Key<K>, T>(right: Node<K, T>, key: K, value: T): Node<K, T> {
         return this;
     }
 }();
@@ -205,9 +218,13 @@ abstract class Leaf<K extends Key<K>, T> implements Node<K, T> {
 
     public abstract insert(key: K, value: T): Node<K, T>;
 
-    public abstract rotateLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
+    public abstract rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
 
-    public abstract rotateRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+    public abstract rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
+
+    public abstract rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+
+    public abstract rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 }
 
 class Red<K extends Key<K>, T> extends Leaf<K, T> {
@@ -220,42 +237,33 @@ class Red<K extends Key<K>, T> extends Leaf<K, T> {
     }
 
     public insert(key: K, value: T): Node<K, T> {
-        return compare(key, this.key).cata({
-            LT: () => this.left.insert(key, value).rotateRight(this.right, this.key, this.value),
+        const order = compare(key, this.key);
 
-            GT: () => this.right.insert(key, value).rotateLeft(this.left, this.key, this.value),
-
-            EQ: () => new Red(this.left, this.right, this.key, value)
-        });
-    }
-
-    // only Black calls it on right child
-    public rotateLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
-        // left child of parent is Red - flip colors
-        if (left.isRed()) {
-            return new Red(left.toBlack(), this.toBlack(), key, value);
+        if (order.isLT()) {
+            return this.left.insert(key, value).rotateRedRight(this.right, this.key, this.value);
         }
 
-        // left child of parent is Black - rotate
-        return new Black(
-            new Red(left, this.left, key, value),
-            this.right,
-            this.key,
-            this.value
-        );
-    }
-
-    public rotateRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
-        if (!this.left.isRed()) {
-            return new Black(this, right, key, value);
+        if (order.isGT()) {
+            return this.right.insert(key, value).rotateRedLeft(this.left, this.key, this.value);
         }
 
-        return new Red(
-            this.left.toBlack(),
-            new Black(this.right, right, key, value),
-            this.key,
-            this.value
-        );
+        return new Red(this.left, this.right, this.key, value);
+    }
+
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
+    }
+
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
+    }
+
+    public rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
+    }
+
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
     }
 }
 
@@ -269,20 +277,32 @@ class Black<K extends Key<K>, T> extends Leaf<K, T> {
     }
 
     public insert(key: K, value: T): Node<K, T> {
-        return compare(key, this.key).cata({
-            LT: () => this.left.insert(key, value).rotateRight(this.right, this.key, this.value),
+        const order = compare(key, this.key);
 
-            GT: () => this.right.insert(key, value).rotateLeft(this.left, this.key, this.value),
+        if (order.isLT()) {
+            return this.left.insert(key, value).rotateBlackRight(this.right, this.key, this.value);
+        }
 
-            EQ: () => new Black(this.left, this.right, this.key, value)
-        });
+        if (order.isGT()) {
+            return this.right.insert(key, value).rotateBlackLeft(this.left, this.key, this.value);
+        }
+
+        return new Black(this.left, this.right, this.key, value);
     }
 
-    public rotateLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
-        return new Black(left, this, key, value);
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
     }
 
-    public rotateRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
-        return new Red(this, right, key, value);
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
+    }
+
+    public rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
+    }
+
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        return this;
     }
 }
