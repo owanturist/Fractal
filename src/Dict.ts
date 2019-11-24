@@ -35,7 +35,7 @@ const compare = <K>(left: K, right: K): Order => {
 
 // N O D E
 
-type Serialization<K, T> = null | {
+export type Serialization<K, T> = null | {
     color: 'red' | 'black';
     left: Serialization<K, T>;
     right: Serialization<K, T>;
@@ -165,7 +165,7 @@ class Red<K, T> extends Leaf<K, T> {
         const order = compare(key, this.key);
 
         if (order.isLT()) {
-            return this.left.insert(key, value).rotateRedRight(this.right, this.key, this.value);
+            return new Red(this.left.insert(key, value), this.right, this.key, this.value);
         }
 
         if (order.isGT()) {
@@ -179,16 +179,31 @@ class Red<K, T> extends Leaf<K, T> {
         return this;
     }
 
-    public rotateBlackLeft(_left: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Black(
+            new Red(left, this.left, key, value),
+            this.right,
+            this.key,
+            this.value
+        );
     }
 
     public rotateRedRight(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
         return this;
     }
 
-    public rotateBlackRight(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        if (!this.left.isRed()) {
+            return new Black(this, right, key, value);
+        }
+
+        // rotate right and flip
+        return new Red(
+            this.left.toBlack(),
+            new Black(this.right, right, key, value),
+            this.key,
+            this.value
+        );
     }
 
     public serialize(): Serialization<K, T> {
@@ -229,16 +244,16 @@ class Black<K, T> extends Leaf<K, T> {
         return this;
     }
 
-    public rotateBlackLeft(_left: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Black(left, this, key, value);
     }
 
     public rotateRedRight(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
         return this;
     }
 
-    public rotateBlackRight(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Black(this, right, key, value);
     }
 
     public serialize(): Serialization<K, T> {
@@ -406,13 +421,3 @@ export class Dict<K, T> {
 }
 
 export default Dict;
-
-// class ID implements Comparable<ID> {
-//     constructor(private readonly id: string) {}
-
-//     public compareTo(): Order {
-//         return Order.EQ;
-//     }
-// }
-
-// const foo = Dict.empty.insert(123, '').insert(12, '');
