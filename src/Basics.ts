@@ -65,3 +65,50 @@ export function toInt(input: string): Maybe<number> {
 
     return Nothing;
 }
+
+
+export interface Order {
+    cata<R>(pattern: Order.Pattern<R>): R;
+}
+
+export namespace Order {
+    export type Pattern<R> = Cata<{
+        LT(): R;
+        EQ(): R;
+        GT(): R;
+    }>;
+
+    export const LT: Order = inst(class LT implements Order {
+        public cata<R>(pattern: Pattern<R>): R {
+            if (typeof pattern.LT === 'function') {
+                return pattern.LT();
+            }
+
+            return (pattern._ as () => R)();
+        }
+    });
+
+    export const EQ: Order = inst(class EQ implements Order {
+        public cata<R>(pattern: Pattern<R>): R {
+            if (typeof pattern.EQ === 'function') {
+                return pattern.EQ();
+            }
+
+            return (pattern._ as () => R)();
+        }
+    });
+
+    export const GT: Order = inst(class GT implements Order {
+        public cata<R>(pattern: Pattern<R>): R {
+            if (typeof pattern.GT === 'function') {
+                return pattern.GT();
+            }
+
+            return (pattern._ as () => R)();
+        }
+    });
+}
+
+export interface Comparable<T> {
+    compareTo(another: Comparable<T>): boolean;
+}
