@@ -110,5 +110,5 @@ export namespace Order {
 }
 
 export interface Comparable<T> {
-    compareTo(another: Comparable<T>): boolean;
+    compareTo(another: T): Order;
 }
