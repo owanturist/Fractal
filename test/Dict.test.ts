@@ -1,5 +1,7 @@
 import test from 'ava';
 
+// import Dict from '../src/Dict';
+
 test.todo('Dict.get()');
 
 test.todo('Dict.member()');
