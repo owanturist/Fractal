@@ -30,79 +30,113 @@ export interface Collector<T> {
     iterator(): Iterable<T>;
 }
 
-export interface Dict<K, T> {
-    keys: Collector<K>;
+export class Dict<K, T> {
+    public keys: Collector<K>;
 
-    values: Collector<T>;
+    public values: Collector<T>;
 
-    entries: Collector<[ K, T ]>;
+    public entries: Collector<[ K, T ]>;
 
-    get<K_>(key: WhenNever<K, K_>): Maybe<T>;
+    public get<K_>(key: WhenNever<K, K_>): Maybe<T> {
+        throw new Error('get');
+    }
 
-    member<K_>(key: WhenNever<K, K_>): boolean;
+    public member<K_>(key: WhenNever<K, K_>): boolean {
+        throw new Error('member');
+    }
 
-    insert<K_, T_>(
+    public insert<K_, T_>(
         key: WhenNever<K, K_>,
         value: WhenNever<T, T_>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
+        throw new Error('insert');
+    }
 
-    update<K_, T_ = never>(
+    public update<K_, T_ = never>(
         key: WhenNever<K, K_>,
         fn: IsNever<T, (value: Maybe<T_>) => Maybe<T_>, (value: Maybe<T>) => Maybe<T>>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
+        throw new Error('update');
+    }
 
-    remove<K_>(key: WhenNever<K, K_>): Dict<WhenNever<K, K_>, T>;
+    public remove<K_>(key: WhenNever<K, K_>): Dict<WhenNever<K, K_>, T> {
+        throw new Error('remove');
+    }
 
-    size(): number;
+    public size(): number {
+        throw new Error('size');
+    }
 
-    isEmpty(): boolean;
+    public isEmpty(): boolean {
+        throw new Error('isEmpty');
+    }
 
-    map<K_, T_, R>(
+    public map<K_, T_, R>(
         fn: (key: WhenNever<K, K_>, value: WhenNever<T, T>) => R
-    ): Dict<WhenNever<K, K_>, R>;
+    ): Dict<WhenNever<K, K_>, R> {
+        throw new Error('map');
+    }
 
-    filter<K_, T_>(
+    public filter<K_, T_>(
         fn: (key: WhenNever<K, K_>, value: WhenNever<T, T>) => boolean
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T>>;
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T>> {
+        throw new Error('filter');
+    }
 
-    partition<K_, T_>(
+    public partition<K_, T_>(
         fn: (key: WhenNever<K, K_>, value: WhenNever<T, T>) => boolean
     ): [
         Dict<WhenNever<K, K_>, WhenNever<T, T>>,
         Dict<WhenNever<K, K_>, WhenNever<T, T>>
-    ];
+    ] {
+        throw new Error('partition');
+    }
 
-    foldl<K_, T_, R>(
+    public foldl<K_, T_, R>(
         fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>, acc: R) => R,
         acc: R
-    ): R;
+    ): R {
+        throw new Error('foldl');
+    }
 
-    foldr<K_, T_, R>(
+    public foldr<K_, T_, R>(
         fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>, acc: R) => R,
         acc: R
-    ): R;
+    ): R {
+        throw new Error('foldr');
+    }
 
-    union<K_, T_>(
+    public union<K_, T_>(
         another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
+        throw new Error('union');
+    }
 
-    intersect<K_, T_>(
+    public intersect<K_, T_>(
         another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
+        throw new Error('intersect');
+    }
 
-    diff<K_, T_>(
+    public diff<K_, T_>(
         another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
+        throw new Error('diff');
+    }
 
-    merge<K_, T_, P, R>(
+    public merge<K_, T_, P, R>(
         onLeft: (key: WhenNever<K, K_>, left: WhenNever<T, T_>, acc: R) => R,
         onBoth: (key: WhenNever<K, K_>, left: WhenNever<T, T_>, right: P, acc: R) => R,
         onRight: (key: WhenNever<K, K_>, right: P, acc: R) => R,
         right: Dict<WhenNever<K, K_>, P>,
         acc: R
-    ): R;
+    ): R {
+        throw new Error('merge');
+    }
 
-    tap<R>(fn: (that: Dict<K, T>) => R): R;
+    public tap<R>(fn: (that: Dict<K, T>) => R): R {
+        return fn(this);
+    }
 }
 
 export const empty: Dict<never, never> = null as never;
@@ -127,6 +161,14 @@ export function fromList<K extends Key<K>, T>(
 
 // N O D E
 
+type Serialization<K, T> = null | {
+    color: 'red' | 'black';
+    left: Serialization<K, T>;
+    right: Serialization<K, T>;
+    key: K;
+    value: T;
+};
+
 interface Node<K extends Key<K>, T> {
     size(): number;
 
@@ -145,6 +187,9 @@ interface Node<K extends Key<K>, T> {
     rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 
     rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+
+    // T E S T I N G
+    serialize(): Serialization<K, T>;
 }
 
 const Null_: Node<never, never> = new class Null implements Node<never, never> {
@@ -194,6 +239,10 @@ const Null_: Node<never, never> = new class Null implements Node<never, never> {
     public rotateBlackRight<K extends Key<K>, T>(right: Node<K, T>, key: K, value: T): Node<K, T> {
         return this;
     }
+
+    public serialize(): Serialization<never, never> {
+        return null;
+    }
 }();
 
 abstract class Leaf<K extends Key<K>, T> implements Node<K, T> {
@@ -212,7 +261,7 @@ abstract class Leaf<K extends Key<K>, T> implements Node<K, T> {
         return false;
     }
 
-    public abstract toBlack(): Node<never, never>;
+    public abstract toBlack(): Node<K, T>;
 
     public abstract isRed(): boolean;
 
@@ -225,6 +274,8 @@ abstract class Leaf<K extends Key<K>, T> implements Node<K, T> {
     public abstract rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 
     public abstract rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+
+    public abstract serialize(): Serialization<K, T>;
 }
 
 class Red<K extends Key<K>, T> extends Leaf<K, T> {
@@ -265,6 +316,16 @@ class Red<K extends Key<K>, T> extends Leaf<K, T> {
     public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
         return this;
     }
+
+    public serialize(): Serialization<K, T> {
+        return {
+            color: 'red',
+            left: this.left.serialize(),
+            right: this.right.serialize(),
+            key: this.key,
+            value: this.value
+        };
+    }
 }
 
 class Black<K extends Key<K>, T> extends Leaf<K, T> {
@@ -304,5 +365,15 @@ class Black<K extends Key<K>, T> extends Leaf<K, T> {
 
     public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
         return this;
+    }
+
+    public serialize(): Serialization<K, T> {
+        return {
+            color: 'black',
+            left: this.left.serialize(),
+            right: this.right.serialize(),
+            key: this.key,
+            value: this.value
+        };
     }
 }
