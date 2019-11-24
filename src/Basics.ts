@@ -68,6 +68,12 @@ export function toInt(input: string): Maybe<number> {
 
 
 export interface Order {
+    isLT(): boolean;
+
+    isEQ(): boolean;
+
+    isGT(): boolean;
+
     cata<R>(pattern: Order.Pattern<R>): R;
 }
 
@@ -79,6 +85,18 @@ export namespace Order {
     }>;
 
     export const LT: Order = inst(class LT implements Order {
+        public isLT(): boolean {
+            return true;
+        }
+
+        public isEQ(): boolean {
+            return false;
+        }
+
+        public isGT(): boolean {
+            return false;
+        }
+
         public cata<R>(pattern: Pattern<R>): R {
             if (typeof pattern.LT === 'function') {
                 return pattern.LT();
@@ -89,6 +107,18 @@ export namespace Order {
     });
 
     export const EQ: Order = inst(class EQ implements Order {
+        public isLT(): boolean {
+            return false;
+        }
+
+        public isEQ(): boolean {
+            return true;
+        }
+
+        public isGT(): boolean {
+            return false;
+        }
+
         public cata<R>(pattern: Pattern<R>): R {
             if (typeof pattern.EQ === 'function') {
                 return pattern.EQ();
@@ -99,6 +129,18 @@ export namespace Order {
     });
 
     export const GT: Order = inst(class GT implements Order {
+        public isLT(): boolean {
+            return false;
+        }
+
+        public isEQ(): boolean {
+            return false;
+        }
+
+        public isGT(): boolean {
+            return true;
+        }
+
         public cata<R>(pattern: Pattern<R>): R {
             if (typeof pattern.GT === 'function') {
                 return pattern.GT();
@@ -112,3 +154,7 @@ export namespace Order {
 export interface Comparable<T> {
     compareTo(another: T): Order;
 }
+
+export const isComparable = <T>(something: any): something is Comparable<T> => {
+    return something && typeof something.compareTo === 'function';
+};
