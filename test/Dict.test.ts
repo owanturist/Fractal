@@ -23,7 +23,7 @@ test.todo('Dict.get()');
 test.todo('Dict.member()');
 
 test('Dict.insert()', t => {
-    const _0_0: Dict<string, number> = Dict.empty.insert('S', 0);
+    const _0_0 = Dict.singleton('S', 0);
 
     t.deepEqual(
         _0_0.serialize(),

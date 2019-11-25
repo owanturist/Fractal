@@ -5,7 +5,7 @@ import {
     Order,
     isComparable
 } from './Basics';
-import Maybe from './Maybe';
+import Maybe, { Nothing, Just } from './Maybe';
 
 export type Key<K> = string | number | Date | Comparable<K>;
 
@@ -52,6 +52,8 @@ interface Node<K, T> {
 
     isRed(): boolean;
 
+    get(key: K): Maybe<T>;
+
     insert(key: K, value: T): Node<K, T>;
 
     rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
@@ -79,6 +81,10 @@ const Null_: Node<never, never> = new class Null<K, T> implements Node<K, T> {
 
     public isRed(): boolean {
         return false;
+    }
+
+    public get(): Maybe<T> {
+        return Nothing;
     }
 
     public insert(key: K, value: T): Node<K, T> {
@@ -121,6 +127,20 @@ abstract class Leaf<K, T> implements Node<K, T> {
     public abstract toBlack(): Node<K, T>;
 
     public abstract isRed(): boolean;
+
+    public get(key: K): Maybe<T> {
+        const order = compare(key, this.key);
+
+        if (order.isLT()) {
+            return this.left.get(key);
+        }
+
+        if (order.isGT()) {
+            return this.right.get(key);
+        }
+
+        return Just(this.value);
+    }
 
     public abstract insert(key: K, value: T): Node<K, T>;
 
@@ -262,32 +282,45 @@ export interface Collector<T> {
 export class Dict<K, T> {
     public static empty: Dict<never, never> = new Dict(Null_);
 
-    public static singleton<K extends Key<K>, T>(_key: K, _value: T): Dict<K, T> {
-        throw new Error('');
+    public static singleton<K extends Key<K>, T>(key: K, value: T): Dict<Cast<K>, T> {
+        return new Dict(
+            (Null_ as Node<Cast<K>, T>).insert(key as unknown as Cast<K>, value).toBlack()
+        );
     }
 
     public static fromList<K extends Key<K>, T>(
-        pairs: Array<[ K, T ]>
-    ): Dict<unknown extends K ? never : K, unknown extends T ? never : T>;
+        pairs: Array<[ Cast<K>, T ]>
+    ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>;
     public static fromList<K extends Key<K>, T>(
         toKey: (value: T) => K,
         values: Array<T>
-    ): Dict<unknown extends K ? never : K, unknown extends T ? never : T>;
+    ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>;
     public static fromList<K extends Key<K>, T>(
-        _arg0: ((value: T) => K) | Array<[ K, T ]>,
-        _arg1?: Array<T>
-    ): Dict<unknown extends K ? never : K, unknown extends T ? never : T> {
-        throw new Error('');
+        ...args: [ Array<[ K, T ]> ] | [ (value: T) => K, Array<T> ]
+    ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T> {
+        let root: Node<K, T> = Null_;
+
+        if (args.length === 1) {
+            for (const [ key, value ] of args[ 0 ]) {
+                root = root.insert(key, value).toBlack();
+            }
+        } else {
+            for (const value of args[ 1 ]) {
+                root = root.insert(args[ 0 ](value), value).toBlack();
+            }
+        }
+
+        return new Dict(root as unknown as Node<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>);
     }
 
     private constructor(private readonly root: Node<K, T>) {}
 
-    public get<K_ extends Key<K_>>(_key: WhenNever<K, K_>): Maybe<T> {
-        throw new Error('get');
+    public get<K_ extends Key<K_>>(key: WhenNever<K, K_>): Maybe<T> {
+        return this.root.get(key as K);
     }
 
-    public member<K_ extends Key<K_>>(_key: WhenNever<K, K_>): boolean {
-        throw new Error('member');
+    public member<K_ extends Key<K_>>(key: WhenNever<K, K_>): boolean {
+        return this.get(key).isJust();
     }
 
     public insert<K_ extends Key<K_>, T_>(
