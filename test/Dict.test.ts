@@ -11,6 +11,11 @@ const node = <K, T>(
     right: Serialization<K, T>
 ): Serialization<K, T> => ({ color, left, right, key, value });
 
+const alphabet = Dict.fromList(
+    char => char.charCodeAt(0) - 'A'.charCodeAt(0),
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+);
+
 // class ID implements Comparable<ID> {
 //     constructor(private readonly id: string) {}
 
@@ -35,11 +40,7 @@ test('Dict.get()', t => {
         Maybe.Just(0)
     );
 
-    const _0 = Dict.fromList(
-        char => char.charCodeAt(0) - 'A'.charCodeAt(0),
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-    );
-    const _1 = Dict.fromList([
+    const _0 = Dict.fromList([
         [ 'Q', 16 ],
         [ 'O', 14 ],
         [ 'W', 22 ],
@@ -68,89 +69,123 @@ test('Dict.get()', t => {
         [ 'C', 2 ]
     ]);
 
-    t.deepEqual(_0.get(-1), Maybe.Nothing);
-    t.deepEqual(_1.get('-'), Maybe.Nothing);
+    t.deepEqual(alphabet.get(-1), Maybe.Nothing);
+    t.deepEqual(_0.get('-'), Maybe.Nothing);
 
-    t.deepEqual(_0.get(0), Maybe.Just('A'));
-    t.deepEqual(_1.get('A'), Maybe.Just(0));
+    t.deepEqual(alphabet.get(0), Maybe.Just('A'));
+    t.deepEqual(_0.get('A'), Maybe.Just(0));
 
-    t.deepEqual(_0.get(1), Maybe.Just('B'));
-    t.deepEqual(_1.get('B'), Maybe.Just(1));
+    t.deepEqual(alphabet.get(1), Maybe.Just('B'));
+    t.deepEqual(_0.get('B'), Maybe.Just(1));
 
-    t.deepEqual(_0.get(2), Maybe.Just('C'));
-    t.deepEqual(_1.get('C'), Maybe.Just(2));
+    t.deepEqual(alphabet.get(2), Maybe.Just('C'));
+    t.deepEqual(_0.get('C'), Maybe.Just(2));
 
-    t.deepEqual(_0.get(3), Maybe.Just('D'));
-    t.deepEqual(_1.get('D'), Maybe.Just(3));
+    t.deepEqual(alphabet.get(3), Maybe.Just('D'));
+    t.deepEqual(_0.get('D'), Maybe.Just(3));
 
-    t.deepEqual(_0.get(4), Maybe.Just('E'));
-    t.deepEqual(_1.get('E'), Maybe.Just(4));
+    t.deepEqual(alphabet.get(4), Maybe.Just('E'));
+    t.deepEqual(_0.get('E'), Maybe.Just(4));
 
-    t.deepEqual(_0.get(5), Maybe.Just('F'));
-    t.deepEqual(_1.get('F'), Maybe.Just(5));
+    t.deepEqual(alphabet.get(5), Maybe.Just('F'));
+    t.deepEqual(_0.get('F'), Maybe.Just(5));
 
-    t.deepEqual(_0.get(6), Maybe.Just('G'));
-    t.deepEqual(_1.get('G'), Maybe.Just(6));
+    t.deepEqual(alphabet.get(6), Maybe.Just('G'));
+    t.deepEqual(_0.get('G'), Maybe.Just(6));
 
-    t.deepEqual(_0.get(7), Maybe.Just('H'));
-    t.deepEqual(_1.get('H'), Maybe.Just(7));
+    t.deepEqual(alphabet.get(7), Maybe.Just('H'));
+    t.deepEqual(_0.get('H'), Maybe.Just(7));
 
-    t.deepEqual(_0.get(8), Maybe.Just('I'));
-    t.deepEqual(_1.get('I'), Maybe.Just(8));
+    t.deepEqual(alphabet.get(8), Maybe.Just('I'));
+    t.deepEqual(_0.get('I'), Maybe.Just(8));
 
-    t.deepEqual(_0.get(9), Maybe.Just('J'));
-    t.deepEqual(_1.get('J'), Maybe.Just(9));
+    t.deepEqual(alphabet.get(9), Maybe.Just('J'));
+    t.deepEqual(_0.get('J'), Maybe.Just(9));
 
-    t.deepEqual(_0.get(10), Maybe.Just('K'));
-    t.deepEqual(_1.get('K'), Maybe.Just(10));
+    t.deepEqual(alphabet.get(10), Maybe.Just('K'));
+    t.deepEqual(_0.get('K'), Maybe.Just(10));
 
-    t.deepEqual(_0.get(11), Maybe.Just('L'));
-    t.deepEqual(_1.get('L'), Maybe.Just(11));
+    t.deepEqual(alphabet.get(11), Maybe.Just('L'));
+    t.deepEqual(_0.get('L'), Maybe.Just(11));
 
-    t.deepEqual(_0.get(12), Maybe.Just('M'));
-    t.deepEqual(_1.get('M'), Maybe.Just(12));
+    t.deepEqual(alphabet.get(12), Maybe.Just('M'));
+    t.deepEqual(_0.get('M'), Maybe.Just(12));
 
-    t.deepEqual(_0.get(13), Maybe.Just('N'));
-    t.deepEqual(_1.get('N'), Maybe.Just(13));
+    t.deepEqual(alphabet.get(13), Maybe.Just('N'));
+    t.deepEqual(_0.get('N'), Maybe.Just(13));
 
-    t.deepEqual(_0.get(14), Maybe.Just('O'));
-    t.deepEqual(_1.get('O'), Maybe.Just(14));
+    t.deepEqual(alphabet.get(14), Maybe.Just('O'));
+    t.deepEqual(_0.get('O'), Maybe.Just(14));
 
-    t.deepEqual(_0.get(15), Maybe.Just('P'));
-    t.deepEqual(_1.get('P'), Maybe.Just(15));
+    t.deepEqual(alphabet.get(15), Maybe.Just('P'));
+    t.deepEqual(_0.get('P'), Maybe.Just(15));
 
-    t.deepEqual(_0.get(16), Maybe.Just('Q'));
-    t.deepEqual(_1.get('Q'), Maybe.Just(16));
+    t.deepEqual(alphabet.get(16), Maybe.Just('Q'));
+    t.deepEqual(_0.get('Q'), Maybe.Just(16));
 
-    t.deepEqual(_0.get(17), Maybe.Just('R'));
-    t.deepEqual(_1.get('R'), Maybe.Just(17));
+    t.deepEqual(alphabet.get(17), Maybe.Just('R'));
+    t.deepEqual(_0.get('R'), Maybe.Just(17));
 
-    t.deepEqual(_0.get(18), Maybe.Just('S'));
-    t.deepEqual(_1.get('S'), Maybe.Just(18));
+    t.deepEqual(alphabet.get(18), Maybe.Just('S'));
+    t.deepEqual(_0.get('S'), Maybe.Just(18));
 
-    t.deepEqual(_0.get(19), Maybe.Just('T'));
-    t.deepEqual(_1.get('T'), Maybe.Just(19));
+    t.deepEqual(alphabet.get(19), Maybe.Just('T'));
+    t.deepEqual(_0.get('T'), Maybe.Just(19));
 
-    t.deepEqual(_0.get(20), Maybe.Just('U'));
-    t.deepEqual(_1.get('U'), Maybe.Just(20));
+    t.deepEqual(alphabet.get(20), Maybe.Just('U'));
+    t.deepEqual(_0.get('U'), Maybe.Just(20));
 
-    t.deepEqual(_0.get(21), Maybe.Just('V'));
-    t.deepEqual(_1.get('V'), Maybe.Just(21));
+    t.deepEqual(alphabet.get(21), Maybe.Just('V'));
+    t.deepEqual(_0.get('V'), Maybe.Just(21));
 
-    t.deepEqual(_0.get(22), Maybe.Just('W'));
-    t.deepEqual(_1.get('W'), Maybe.Just(22));
+    t.deepEqual(alphabet.get(22), Maybe.Just('W'));
+    t.deepEqual(_0.get('W'), Maybe.Just(22));
 
-    t.deepEqual(_0.get(23), Maybe.Just('X'));
-    t.deepEqual(_1.get('X'), Maybe.Just(23));
+    t.deepEqual(alphabet.get(23), Maybe.Just('X'));
+    t.deepEqual(_0.get('X'), Maybe.Just(23));
 
-    t.deepEqual(_0.get(24), Maybe.Just('Y'));
-    t.deepEqual(_1.get('Y'), Maybe.Just(24));
+    t.deepEqual(alphabet.get(24), Maybe.Just('Y'));
+    t.deepEqual(_0.get('Y'), Maybe.Just(24));
 
-    t.deepEqual(_0.get(25), Maybe.Just('Z'));
-    t.deepEqual(_1.get('Z'), Maybe.Just(25));
+    t.deepEqual(alphabet.get(25), Maybe.Just('Z'));
+    t.deepEqual(_0.get('Z'), Maybe.Just(25));
 });
 
-test.todo('Dict.member()');
+test('Dict.member()', t => {
+    t.false(Dict.empty.member('A'));
+
+    t.false(Dict.singleton('B', 1).member('A'));
+
+    t.true(Dict.singleton('A', 0).member('A'));
+
+    t.false(alphabet.member(-1));
+    t.true(alphabet.member(0));
+    t.true(alphabet.member(1));
+    t.true(alphabet.member(2));
+    t.true(alphabet.member(3));
+    t.true(alphabet.member(4));
+    t.true(alphabet.member(5));
+    t.true(alphabet.member(6));
+    t.true(alphabet.member(7));
+    t.true(alphabet.member(8));
+    t.true(alphabet.member(9));
+    t.true(alphabet.member(10));
+    t.true(alphabet.member(11));
+    t.true(alphabet.member(12));
+    t.true(alphabet.member(13));
+    t.true(alphabet.member(14));
+    t.true(alphabet.member(15));
+    t.true(alphabet.member(16));
+    t.true(alphabet.member(17));
+    t.true(alphabet.member(18));
+    t.true(alphabet.member(19));
+    t.true(alphabet.member(20));
+    t.true(alphabet.member(21));
+    t.true(alphabet.member(22));
+    t.true(alphabet.member(23));
+    t.true(alphabet.member(24));
+    t.true(alphabet.member(25));
+});
 
 test('Dict.insert()', t => {
     const _0_0 = Dict.singleton('S', 0);
