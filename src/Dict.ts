@@ -289,7 +289,7 @@ export class Dict<K, T> {
     }
 
     public static fromList<K extends Key<K>, T>(
-        pairs: Array<[ Cast<K>, T ]>
+        pairs: Array<[ K, T ]>
     ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>;
     public static fromList<K extends Key<K>, T>(
         toKey: (value: T) => K,

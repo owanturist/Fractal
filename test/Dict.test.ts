@@ -1,6 +1,7 @@
 import test from 'ava';
 
 import Dict, { Serialization } from '../src/Dict';
+import Maybe from '../src/Maybe';
 
 const node = <K, T>(
     color: 'red' | 'black',
@@ -18,7 +19,136 @@ const node = <K, T>(
 //     }
 // }
 
-test.todo('Dict.get()');
+test('Dict.get()', t => {
+    t.deepEqual(
+        Dict.empty.get('A'),
+        Maybe.Nothing
+    );
+
+    t.deepEqual(
+        Dict.singleton('B', 1).get('A'),
+        Maybe.Nothing
+    );
+
+    t.deepEqual(
+        Dict.singleton('A', 0).get('A'),
+        Maybe.Just(0)
+    );
+
+    const _0 = Dict.fromList(
+        char => char.charCodeAt(0) - 'A'.charCodeAt(0),
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+    );
+    const _1 = Dict.fromList([
+        [ 'Q', 16 ],
+        [ 'O', 14 ],
+        [ 'W', 22 ],
+        [ 'I', 8 ],
+        [ 'U', 20 ],
+        [ 'L', 11 ],
+        [ 'Z', 25 ],
+        [ 'D', 3 ],
+        [ 'V', 21 ],
+        [ 'E', 4 ],
+        [ 'M', 12 ],
+        [ 'R', 17 ],
+        [ 'G', 6 ],
+        [ 'S', 18 ],
+        [ 'T', 19 ],
+        [ 'B', 1 ],
+        [ 'X', 23 ],
+        [ 'N', 13 ],
+        [ 'J', 9 ],
+        [ 'F', 5 ],
+        [ 'H', 7 ],
+        [ 'A', 0 ],
+        [ 'Y', 24 ],
+        [ 'K', 10 ],
+        [ 'P', 15 ],
+        [ 'C', 2 ]
+    ]);
+
+    t.deepEqual(_0.get(-1), Maybe.Nothing);
+    t.deepEqual(_1.get('-'), Maybe.Nothing);
+
+    t.deepEqual(_0.get(0), Maybe.Just('A'));
+    t.deepEqual(_1.get('A'), Maybe.Just(0));
+
+    t.deepEqual(_0.get(1), Maybe.Just('B'));
+    t.deepEqual(_1.get('B'), Maybe.Just(1));
+
+    t.deepEqual(_0.get(2), Maybe.Just('C'));
+    t.deepEqual(_1.get('C'), Maybe.Just(2));
+
+    t.deepEqual(_0.get(3), Maybe.Just('D'));
+    t.deepEqual(_1.get('D'), Maybe.Just(3));
+
+    t.deepEqual(_0.get(4), Maybe.Just('E'));
+    t.deepEqual(_1.get('E'), Maybe.Just(4));
+
+    t.deepEqual(_0.get(5), Maybe.Just('F'));
+    t.deepEqual(_1.get('F'), Maybe.Just(5));
+
+    t.deepEqual(_0.get(6), Maybe.Just('G'));
+    t.deepEqual(_1.get('G'), Maybe.Just(6));
+
+    t.deepEqual(_0.get(7), Maybe.Just('H'));
+    t.deepEqual(_1.get('H'), Maybe.Just(7));
+
+    t.deepEqual(_0.get(8), Maybe.Just('I'));
+    t.deepEqual(_1.get('I'), Maybe.Just(8));
+
+    t.deepEqual(_0.get(9), Maybe.Just('J'));
+    t.deepEqual(_1.get('J'), Maybe.Just(9));
+
+    t.deepEqual(_0.get(10), Maybe.Just('K'));
+    t.deepEqual(_1.get('K'), Maybe.Just(10));
+
+    t.deepEqual(_0.get(11), Maybe.Just('L'));
+    t.deepEqual(_1.get('L'), Maybe.Just(11));
+
+    t.deepEqual(_0.get(12), Maybe.Just('M'));
+    t.deepEqual(_1.get('M'), Maybe.Just(12));
+
+    t.deepEqual(_0.get(13), Maybe.Just('N'));
+    t.deepEqual(_1.get('N'), Maybe.Just(13));
+
+    t.deepEqual(_0.get(14), Maybe.Just('O'));
+    t.deepEqual(_1.get('O'), Maybe.Just(14));
+
+    t.deepEqual(_0.get(15), Maybe.Just('P'));
+    t.deepEqual(_1.get('P'), Maybe.Just(15));
+
+    t.deepEqual(_0.get(16), Maybe.Just('Q'));
+    t.deepEqual(_1.get('Q'), Maybe.Just(16));
+
+    t.deepEqual(_0.get(17), Maybe.Just('R'));
+    t.deepEqual(_1.get('R'), Maybe.Just(17));
+
+    t.deepEqual(_0.get(18), Maybe.Just('S'));
+    t.deepEqual(_1.get('S'), Maybe.Just(18));
+
+    t.deepEqual(_0.get(19), Maybe.Just('T'));
+    t.deepEqual(_1.get('T'), Maybe.Just(19));
+
+    t.deepEqual(_0.get(20), Maybe.Just('U'));
+    t.deepEqual(_1.get('U'), Maybe.Just(20));
+
+    t.deepEqual(_0.get(21), Maybe.Just('V'));
+    t.deepEqual(_1.get('V'), Maybe.Just(21));
+
+    t.deepEqual(_0.get(22), Maybe.Just('W'));
+    t.deepEqual(_1.get('W'), Maybe.Just(22));
+
+    t.deepEqual(_0.get(23), Maybe.Just('X'));
+    t.deepEqual(_1.get('X'), Maybe.Just(23));
+
+    t.deepEqual(_0.get(24), Maybe.Just('Y'));
+    t.deepEqual(_1.get('Y'), Maybe.Just(24));
+
+    t.deepEqual(_0.get(25), Maybe.Just('Z'));
+    t.deepEqual(_1.get('Z'), Maybe.Just(25));
+});
 
 test.todo('Dict.member()');
 
