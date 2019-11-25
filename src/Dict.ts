@@ -335,7 +335,20 @@ export class Dict<K, T> {
         return new Dict(root as unknown as Node<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>);
     }
 
-    private constructor(private readonly root: Node<K, T>) {}
+    // T E S T I N G
+    protected static serialize<K, T>(dict: Dict<K, T>): Serialization<K, T> {
+        return dict.root.serialize();
+    }
+
+    protected static height<K, T>(dict: Dict<K, T>): Maybe<number> {
+        return dict.root.height();
+    }
+
+    protected static isValid<K, T>(dict: Dict<K, T>): boolean {
+        return dict.root.height().isJust();
+    }
+
+    protected constructor(private readonly root: Node<K, T>) {}
 
     public get<K_ extends Key<K_>>(key: WhenNever<K, K_>): Maybe<T> {
         return this.root.get(key as K);
@@ -453,18 +466,6 @@ export class Dict<K, T> {
 
     public tap<R>(fn: (that: Dict<K, T>) => R): R {
         return fn(this);
-    }
-
-    public serialize(): Serialization<K, T> {
-        return this.root.serialize();
-    }
-
-    public height(): Maybe<number> {
-        return this.root.height();
-    }
-
-    public isValid(): boolean {
-        return this.height().isJust();
     }
 }
 

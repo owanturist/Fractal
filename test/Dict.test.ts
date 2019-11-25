@@ -16,6 +16,20 @@ const alphabet = Dict.fromList(
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 );
 
+class TestDict extends Dict<never, never> {
+    public static serialize<K, T>(dict: Dict<K, T>): Serialization<K, T> {
+        return super.serialize(dict);
+    }
+
+    public static height<K, T>(dict: Dict<K, T>): Maybe<number> {
+        return super.height(dict);
+    }
+
+    public static isValid<K, T>(dict: Dict<K, T>): boolean {
+        return super.isValid(dict);
+    }
+}
+
 // class ID implements Comparable<ID> {
 //     constructor(private readonly id: string) {}
 
@@ -69,8 +83,8 @@ test('Dict.get()', t => {
         [ 'C', 2 ]
     ]);
 
-    t.true(alphabet.isValid());
-    t.true(_0.isValid());
+    t.true(TestDict.isValid(alphabet));
+    t.true(TestDict.isValid(_0));
 
     t.deepEqual(alphabet.get(-1), Maybe.Nothing);
     t.deepEqual(_0.get('-'), Maybe.Nothing);
@@ -193,83 +207,83 @@ test('Dict.member()', t => {
 test('Dict.insert()', t => {
     const _0 = Dict.empty.insert('A', 0);
     t.deepEqual(
-        _0.serialize(),
+        TestDict.serialize(_0),
         node('black', 'A', 0, null, null)
     );
-    t.deepEqual(_0.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_0), Maybe.Just(1));
 
     const _1 = Dict.singleton('A', 0).insert('A', 1);
     t.deepEqual(
-        _1.serialize(),
+        TestDict.serialize(_1),
         node('black', 'A', 1, null, null)
     );
-    t.deepEqual(_1.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_1), Maybe.Just(1));
 
     const _2 = Dict.singleton('A', 0).insert('B', 1);
     t.deepEqual(
-        _2.serialize(),
+        TestDict.serialize(_2),
         node('black', 'B', 1,
             node('red', 'A', 0, null, null),
             null
         )
     );
-    t.deepEqual(_2.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_2), Maybe.Just(1));
 
     const _3 = Dict.singleton('A', 0).insert('B', 1).insert('A', 2);
     t.deepEqual(
-        _3.serialize(),
+        TestDict.serialize(_3),
         node('black', 'B', 1,
             node('red', 'A', 2, null, null),
             null
         )
     );
-    t.deepEqual(_3.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_3), Maybe.Just(1));
 
     const _4 = Dict.singleton('A', 0).insert('B', 1).insert('B', 2);
     t.deepEqual(
-        _4.serialize(),
+        TestDict.serialize(_4),
         node('black', 'B', 2,
             node('red', 'A', 0, null, null),
             null
         )
     );
-    t.deepEqual(_4.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_4), Maybe.Just(1));
 });
 
 test('Dict.insert() random order insertion', t => {
     const _0 = Dict.singleton('S', 0);
     t.deepEqual(
-        _0.serialize(),
+        TestDict.serialize(_0),
         node('black', 'S', 0, null, null),
         'S-0'
     );
-    t.deepEqual(_0.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_0), Maybe.Just(1));
 
     const _1 = _0.insert('E', 1);
     t.deepEqual(
-        _1.serialize(),
+        TestDict.serialize(_1),
         node('black', 'S', 0,
             node('red', 'E', 1, null, null),
             null
         ),
         'S-0 E-1'
     );
-    t.deepEqual(_1.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_1), Maybe.Just(1));
 
     const _2 = _1.insert('A', 2);
     t.deepEqual(
-        _2.serialize(),
+        TestDict.serialize(_2),
         node('black', 'E', 1,
             node('black', 'A', 2, null, null),
             node('black', 'S', 0, null, null)
         ),
         'S-0 E-1 A-2'
     );
-    t.deepEqual(_2.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_2), Maybe.Just(2));
 
     const _3 = _2.insert('R', 3);
     t.deepEqual(
-        _3.serialize(),
+        TestDict.serialize(_3),
         node('black', 'E', 1,
             node('black', 'A', 2, null, null),
             node('black', 'S', 0,
@@ -279,11 +293,11 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3'
     );
-    t.deepEqual(_3.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_3), Maybe.Just(2));
 
     const _4 = _3.insert('C', 4);
     t.deepEqual(
-        _4.serialize(),
+        TestDict.serialize(_4),
         node('black', 'E', 1,
             node('black', 'C', 4,
                 node('red', 'A', 2, null, null),
@@ -296,11 +310,11 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3 C-4'
     );
-    t.deepEqual(_4.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_4), Maybe.Just(2));
 
     const _5 = _4.insert('H', 5);
     t.deepEqual(
-        _5.serialize(),
+        TestDict.serialize(_5),
         node('black', 'R', 3,
             node('red', 'E', 1,
                 node('black', 'C', 4,
@@ -313,11 +327,11 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3 C-4 H-5'
     );
-    t.deepEqual(_5.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_5), Maybe.Just(2));
 
     const _6 = _5.insert('X', 6);
     t.deepEqual(
-        _6.serialize(),
+        TestDict.serialize(_6),
         node('black', 'R', 3,
             node('red', 'E', 1,
                 node('black', 'C', 4,
@@ -333,11 +347,11 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6'
     );
-    t.deepEqual(_6.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_6), Maybe.Just(2));
 
     const _7 = _6.insert('M', 7);
     t.deepEqual(
-        _7.serialize(),
+        TestDict.serialize(_7),
         node('black', 'R', 3,
             node('red', 'E', 1,
                 node('black', 'C', 4,
@@ -356,11 +370,11 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7'
     );
-    t.deepEqual(_7.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_7), Maybe.Just(2));
 
     const _8 = _7.insert('P', 8);
     t.deepEqual(
-        _8.serialize(),
+        TestDict.serialize(_8),
         node('black', 'M', 7,
             node('black', 'E', 1,
                 node('black', 'C', 4,
@@ -379,11 +393,11 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8'
     );
-    t.deepEqual(_8.height(), Maybe.Just(3));
+    t.deepEqual(TestDict.height(_8), Maybe.Just(3));
 
     const _9 = _8.insert('L', 9);
     t.deepEqual(
-        _9.serialize(),
+        TestDict.serialize(_9),
         node('black', 'M', 7,
             node('black', 'E', 1,
                 node('black', 'C', 4,
@@ -405,43 +419,43 @@ test('Dict.insert() random order insertion', t => {
         ),
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8 L-9'
     );
-    t.deepEqual(_9.height(), Maybe.Just(3));
+    t.deepEqual(TestDict.height(_9), Maybe.Just(3));
 });
 
 test('Dict.insert() increasing order insertion', t => {
     const _0: Dict<string, number> = Dict.empty.insert('A', 0);
     t.deepEqual(
-        _0.serialize(),
+        TestDict.serialize(_0),
         node('black', 'A', 0, null, null),
         'A-0'
     );
-    t.deepEqual(_0.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_0), Maybe.Just(1));
 
     const _1 = _0.insert('C', 1);
     t.deepEqual(
-        _1.serialize(),
+        TestDict.serialize(_1),
         node('black', 'C', 1,
             node('red', 'A', 0, null, null),
             null
         ),
         'A-0 C-1'
     );
-    t.deepEqual(_1.height(), Maybe.Just(1));
+    t.deepEqual(TestDict.height(_1), Maybe.Just(1));
 
     const _2 = _1.insert('E', 2);
     t.deepEqual(
-        _2.serialize(),
+        TestDict.serialize(_2),
         node('black', 'C', 1,
             node('black', 'A', 0, null, null),
             node('black', 'E', 2, null, null)
         ),
         'A-0 C-1 E-2'
     );
-    t.deepEqual(_2.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_2), Maybe.Just(2));
 
     const _3 = _2.insert('H', 3);
     t.deepEqual(
-        _3.serialize(),
+        TestDict.serialize(_3),
         node('black', 'C', 1,
             node('black', 'A', 0, null, null),
             node('black', 'H', 3,
@@ -451,11 +465,11 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3'
     );
-    t.deepEqual(_3.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_3), Maybe.Just(2));
 
     const _4 = _3.insert('L', 4);
     t.deepEqual(
-        _4.serialize(),
+        TestDict.serialize(_4),
         node('black', 'H', 3,
             node('red', 'C', 1,
                 node('black', 'A', 0, null, null),
@@ -465,11 +479,11 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3 L-4'
     );
-    t.deepEqual(_4.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_4), Maybe.Just(2));
 
     const _5 = _4.insert('M', 5);
     t.deepEqual(
-        _5.serialize(),
+        TestDict.serialize(_5),
         node('black', 'H', 3,
             node('red', 'C', 1,
                 node('black', 'A', 0, null, null),
@@ -482,11 +496,11 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3 L-4 M-5'
     );
-    t.deepEqual(_5.height(), Maybe.Just(2));
+    t.deepEqual(TestDict.height(_5), Maybe.Just(2));
 
     const _6 = _5.insert('P', 6);
     t.deepEqual(
-        _6.serialize(),
+        TestDict.serialize(_6),
         node('black', 'H', 3,
             node('black', 'C', 1,
                 node('black', 'A', 0, null, null),
@@ -499,11 +513,11 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6'
     );
-    t.deepEqual(_6.height(), Maybe.Just(3));
+    t.deepEqual(TestDict.height(_6), Maybe.Just(3));
 
     const _7 = _6.insert('R', 7);
     t.deepEqual(
-        _7.serialize(),
+        TestDict.serialize(_7),
         node('black', 'H', 3,
             node('black', 'C', 1,
                 node('black', 'A', 0, null, null),
@@ -519,11 +533,11 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7'
     );
-    t.deepEqual(_7.height(), Maybe.Just(3));
+    t.deepEqual(TestDict.height(_7), Maybe.Just(3));
 
     const _8 = _7.insert('S', 8);
     t.deepEqual(
-        _8.serialize(),
+        TestDict.serialize(_8),
         node('black', 'H', 3,
             node('black', 'C', 1,
                 node('black', 'A', 0, null, null),
@@ -539,11 +553,11 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7 S-8'
     );
-    t.deepEqual(_8.height(), Maybe.Just(3));
+    t.deepEqual(TestDict.height(_8), Maybe.Just(3));
 
     const _9 = _8.insert('X', 9);
     t.deepEqual(
-        _9.serialize(),
+        TestDict.serialize(_9),
         node('black', 'H', 3,
             node('black', 'C', 1,
                 node('black', 'A', 0, null, null),
@@ -562,7 +576,7 @@ test('Dict.insert() increasing order insertion', t => {
         ),
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7 S-8 X-9'
     );
-    t.deepEqual(_9.height(), Maybe.Just(3));
+    t.deepEqual(TestDict.height(_9), Maybe.Just(3));
 });
 
 test.todo('Dict.update()');
