@@ -346,11 +346,11 @@ export class Dict<K, T> {
     }
 
     public size(): number {
-        throw new Error('size');
+        return this.root.size();
     }
 
     public isEmpty(): boolean {
-        throw new Error('isEmpty');
+        return this.root.isEmpty();
     }
 
     public map<K_ extends Key<K_>, T_, R>(
