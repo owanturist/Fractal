@@ -64,6 +64,8 @@ interface Node<K, T> {
 
     // T E S T I N G
     serialize(): Serialization<K, T>;
+
+    height(): Maybe<number>;
 }
 
 const Null_: Node<never, never> = new class Null<K, T> implements Node<K, T> {
@@ -105,6 +107,10 @@ const Null_: Node<never, never> = new class Null<K, T> implements Node<K, T> {
 
     public serialize(): Serialization<K, T> {
         return null;
+    }
+
+    public height(): Maybe<number> {
+        return Just(0);
     }
 }();
 
@@ -151,6 +157,8 @@ abstract class Leaf<K, T> implements Node<K, T> {
     public abstract rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 
     public abstract serialize(): Serialization<K, T>;
+
+    public abstract height(): Maybe<number>;
 }
 
 class Red<K, T> extends Leaf<K, T> {
@@ -224,6 +232,13 @@ class Red<K, T> extends Leaf<K, T> {
             value: this.value
         };
     }
+
+    public height(): Maybe<number> {
+        return Maybe.shape({
+            left: this.left.height(),
+            right: this.right.height()
+        }).chain(({ left, right}) => left === right ? Just(left) : Nothing);
+    }
 }
 
 class Black<K, T> extends Leaf<K, T> {
@@ -269,6 +284,13 @@ class Black<K, T> extends Leaf<K, T> {
             key: this.key,
             value: this.value
         };
+    }
+
+    public height(): Maybe<number> {
+        return Maybe.shape({
+            left: this.left.height(),
+            right: this.right.height()
+        }).chain(({ left, right}) => left === right ? Just(left + 1) : Nothing);
     }
 }
 
@@ -435,6 +457,14 @@ export class Dict<K, T> {
 
     public serialize(): Serialization<K, T> {
         return this.root.serialize();
+    }
+
+    public height(): Maybe<number> {
+        return this.root.height();
+    }
+
+    public isValid(): boolean {
+        return this.height().isJust();
     }
 }
 
