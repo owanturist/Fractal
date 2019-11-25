@@ -98,7 +98,99 @@ test('Dict.insert()', t => {
             ),
             node('black', 'S', 0, null, null)
         ),
-        'S-0 E-1 A-2 R-3 C-4'
+        'S-0 E-1 A-2 R-3 C-4 H-5'
+    );
+
+    const _6 = _5.insert('X', 6);
+
+    t.deepEqual(
+        _6.serialize(),
+        node('black', 'R', 3,
+            node('red', 'E', 1,
+                node('black', 'C', 4,
+                    node('red', 'A', 2, null, null),
+                    null
+                ),
+                node('black', 'H', 5, null, null)
+            ),
+            node('black', 'X', 6,
+                node('red', 'S', 0, null, null),
+                null
+            )
+        ),
+        'S-0 E-1 A-2 R-3 C-4 H-5 X-6'
+    );
+
+    const _7 = _6.insert('M', 7);
+
+    t.deepEqual(
+        _7.serialize(),
+        node('black', 'R', 3,
+            node('red', 'E', 1,
+                node('black', 'C', 4,
+                    node('red', 'A', 2, null, null),
+                    null
+                ),
+                node('black', 'M', 7,
+                    node('red', 'H', 5, null, null),
+                    null
+                )
+            ),
+            node('black', 'X', 6,
+                node('red', 'S', 0, null, null),
+                null
+            )
+        ),
+        'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7'
+    );
+
+    const _8 = _7.insert('P', 8);
+
+    t.deepEqual(
+        _8.serialize(),
+        node('black', 'M', 7,
+            node('black', 'E', 1,
+                node('black', 'C', 4,
+                    node('red', 'A', 2, null, null),
+                    null
+                ),
+                node('black', 'H', 5, null, null)
+            ),
+            node('black', 'R', 3,
+                node('black', 'P', 8, null, null),
+                node('black', 'X', 6,
+                    node('red', 'S', 0, null, null),
+                    null
+                )
+            )
+        ),
+        'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8'
+    );
+
+    const _9 = _8.insert('L', 9);
+
+    t.deepEqual(
+        _9.serialize(),
+        node('black', 'M', 7,
+            node('black', 'E', 1,
+                node('black', 'C', 4,
+                    node('red', 'A', 2, null, null),
+                    null
+                ),
+                node('black', 'L', 9,
+                    node('red', 'H', 5, null, null),
+                    null
+                )
+            ),
+            node('black', 'R', 3,
+                node('black', 'P', 8, null, null),
+                node('black', 'X', 6,
+                    node('red', 'S', 0, null, null),
+                    null
+                )
+            )
+        ),
+        'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8 L-9'
     );
 });
 

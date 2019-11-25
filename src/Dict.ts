@@ -58,15 +58,13 @@ interface Node<K, T> {
 
     rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
 
-    rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
-
     rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 
     // T E S T I N G
     serialize(): Serialization<K, T>;
 }
 
-const Null_: Node<never, never> = new class Null implements Node<never, never> {
+const Null_: Node<never, never> = new class Null<K, T> implements Node<K, T> {
     public size(): number {
         return 0;
     }
@@ -75,7 +73,7 @@ const Null_: Node<never, never> = new class Null implements Node<never, never> {
         return true;
     }
 
-    public toBlack(): Node<never, never> {
+    public toBlack(): Node<K, T> {
         return this;
     }
 
@@ -83,38 +81,23 @@ const Null_: Node<never, never> = new class Null implements Node<never, never> {
         return false;
     }
 
-    public insert<K, T>(key: K, value: T): Node<K, T> {
+    public insert(key: K, value: T): Node<K, T> {
         return new Red(Null_, Null_, key, value);
     }
 
-    /**
-     * @todo
-     */
-    public rotateRedLeft<K, T>(_left: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
-    }
-    /**
-     * @todo
-     */
-    public rotateBlackLeft<K, T>(_left: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Red(left, this, key, value);
     }
 
-    /**
-     * @todo
-     */
-    public rotateRedRight<K, T>(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Black(left, this, key, value);
     }
 
-    /**
-     * @todo
-     */
-    public rotateBlackRight<K, T>(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Black(this, right, key, value);
     }
 
-    public serialize(): Serialization<never, never> {
+    public serialize(): Serialization<K, T> {
         return null;
     }
 }();
@@ -145,8 +128,6 @@ abstract class Leaf<K, T> implements Node<K, T> {
 
     public abstract rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
 
-    public abstract rotateRedRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
-
     public abstract rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
 
     public abstract serialize(): Serialization<K, T>;
@@ -175,12 +156,9 @@ class Red<K, T> extends Leaf<K, T> {
         return new Red(this.left, this.right, this.key, value);
     }
 
-    public rotateRedLeft(_left: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
-    }
-
-    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
-        return new Black(
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        // rotate left
+        return new Red(
             new Red(left, this.left, key, value),
             this.right,
             this.key,
@@ -188,8 +166,19 @@ class Red<K, T> extends Leaf<K, T> {
         );
     }
 
-    public rotateRedRight(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        // flip colors
+        if (left.isRed()) {
+            return new Red(left.toBlack(), this.toBlack(), key, value);
+        }
+
+        // rotate left
+        return new Black(
+            new Red(left, this.left, key, value),
+            this.right,
+            this.key,
+            this.value
+        );
     }
 
     public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
@@ -240,16 +229,12 @@ class Black<K, T> extends Leaf<K, T> {
         return new Black(this.left, this.right, this.key, value);
     }
 
-    public rotateRedLeft(_left: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+        return new Red(left, this, key, value);
     }
 
     public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
         return new Black(left, this, key, value);
-    }
-
-    public rotateRedRight(_right: Node<K, T>, _key: K, _value: T): Node<K, T> {
-        return this;
     }
 
     public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
