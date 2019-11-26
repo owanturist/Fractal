@@ -58,6 +58,8 @@ interface Node<K, T> {
 
     removeMax(): Node<K, T>;
 
+    moveRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+
     // T E S T I N G
     serialize(): Serialization<K, T>;
 
@@ -90,6 +92,11 @@ const Null_: Node<never, never> = new class Null<K, T> implements Node<K, T> {
     }
 
     public removeMax(): Node<K, T> {
+        return this;
+    }
+
+    // It's were removing happens
+    public moveRight(): Node<K, T> {
         return this;
     }
 
@@ -138,16 +145,13 @@ abstract class Leaf<K, T> implements Node<K, T> {
 
     public abstract insert(key: K, value: T): Leaf<K, T>;
 
-    // can be called only in Black because root node is always Black
     public removeMax(): Node<K, T> {
-        return this;
+        return this.left.moveRight(this.right, this.key, this.value);
     }
 
     // H E L P E R S
 
-    // public abstract moveRedRight(): Node<K, T>;
-
-    // public abstract moveBlackRight(): Node<K, T>;
+    public abstract moveRight(right: Node<K, T>, key: K, value: T): Leaf<K, T>;
 
     public abstract rotateRedLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T>;
 
@@ -181,6 +185,15 @@ class Red<K, T> extends Leaf<K, T> {
         }
 
         return new Red(this.left, this.right, this.key, value);
+    }
+
+    public moveRight(right: Node<K, T>, key: K, value: T): Leaf<K, T> {
+        if (right.isEmpty()) {
+            return new Black(Null_, Null_, this.key, this.value);
+        }
+
+        // rotate right before removing and rotate left after
+        return new Black(this, right.removeMax(), key, value);
     }
 
     public rotateRedLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
@@ -261,6 +274,15 @@ class Black<K, T> extends Leaf<K, T> {
         }
 
         return new Black(this.left, this.right, this.key, value);
+    }
+
+    public moveRight(right: Node<K, T>, key: K, value: T): Leaf<K, T> {
+        return new Black(
+            new Red(this.left, this.right, this.key, this.value),
+            right.removeMax(),
+            key,
+            value
+        );
     }
 
     public rotateRedLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
@@ -383,9 +405,7 @@ export class Dict<K, T> {
     }
 
     public removeMax(): Dict<K, T> {
-        return this.isEmpty()
-            ? this
-            : new Dict(this.root.removeMax().toBlack());
+        return this.isEmpty() ? this : new Dict(this.root.removeMax());
     }
 
     public size(): number {

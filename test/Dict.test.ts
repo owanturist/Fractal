@@ -9,7 +9,7 @@ const node = <K, T>(
     value: T,
     left: Serialization<K, T>,
     right: Serialization<K, T>
-): Serialization<K, T> => ({ color, left, right, key, value });
+): Serialization<K, T> => ({ color, key, value, left, right });
 
 const alphabet = Dict.fromList(
     char => char.charCodeAt(0) - 'A'.charCodeAt(0),
@@ -19,6 +19,10 @@ const alphabet = Dict.fromList(
 class TestDict extends Dict<never, never> {
     public static serialize<K, T>(dict: Dict<K, T>): Serialization<K, T> {
         return super.serialize(dict);
+    }
+
+    public static stringify<K, T>(indent: number, dict: Dict<K, T>): string {
+        return JSON.stringify(super.serialize(dict), null, indent);
     }
 
     public static height<K, T>(dict: Dict<K, T>): Maybe<number> {
@@ -583,7 +587,130 @@ test.todo('Dict.update()');
 
 test.todo('Dict.remove()');
 
-test('Dict.removeMax() case 1', t => {
+test('Dict.removeMax() empty', t => {
+    const _0 = Dict.empty;
+
+    t.is(_0.size(), 0);
+    t.deepEqual(TestDict.height(_0), Maybe.Just(0));
+    t.deepEqual(
+        TestDict.serialize(_0),
+        null
+    );
+
+    const _1 = _0.removeMax();
+
+    t.is(_1.size(), 0);
+    t.deepEqual(TestDict.height(_1), Maybe.Just(0));
+    t.deepEqual(
+        TestDict.serialize(_1),
+        null
+    );
+});
+
+test('Dict.removeMax() singleton', t => {
+    const _0 = Dict.singleton('A', 0);
+
+    t.is(_0.size(), 1);
+    t.deepEqual(TestDict.height(_0), Maybe.Just(1));
+    t.deepEqual(
+        TestDict.serialize(_0),
+        node('black', 'A', 0, null, null)
+    );
+
+    const _1 = _0.removeMax();
+
+    t.is(_1.size(), 0);
+    t.deepEqual(TestDict.height(_1), Maybe.Just(0));
+    t.deepEqual(
+        TestDict.serialize(_1),
+        null
+    );
+});
+
+test('Dict.removeMax() 2 nodes', t => {
+    const _0 = Dict.fromList([
+        [ 'B', 0 ],
+        [ 'A', 1 ]
+    ]);
+
+    t.is(_0.size(), 2);
+    t.deepEqual(TestDict.height(_0), Maybe.Just(1));
+    t.deepEqual(
+        TestDict.serialize(_0),
+        node('black', 'B', 0,
+            node('red', 'A', 1, null, null),
+            null
+        )
+    );
+
+    const _1 = _0.removeMax();
+
+    t.is(_1.size(), 1);
+    t.deepEqual(TestDict.height(_1), Maybe.Just(1));
+    t.deepEqual(
+        TestDict.serialize(_1),
+        node('black', 'A', 1, null, null)
+    );
+
+    const _2 = _1.removeMax();
+
+    t.is(_2.size(), 0);
+    t.deepEqual(TestDict.height(_2), Maybe.Just(0));
+    t.deepEqual(
+        TestDict.serialize(_2),
+        null
+    );
+});
+
+test('Dict.removeMax() 3 nodes', t => {
+    const _0 = Dict.fromList([
+        [ 'B', 0 ],
+        [ 'A', 1 ],
+        [ 'C', 2 ]
+    ]);
+
+    t.is(_0.size(), 3);
+    t.deepEqual(TestDict.height(_0), Maybe.Just(2));
+    t.deepEqual(
+        TestDict.serialize(_0),
+        node('black', 'B', 0,
+            node('black', 'A', 1, null, null),
+            node('black', 'C', 2, null, null)
+        )
+    );
+
+    const _1 = _0.removeMax();
+
+    t.is(_1.size(), 2);
+    t.deepEqual(TestDict.height(_1), Maybe.Just(1));
+    t.deepEqual(
+        TestDict.serialize(_1),
+        node('black', 'B', 0,
+            node('red', 'A', 1, null, null),
+            null
+        )
+    );
+
+    const _2 = _1.removeMax();
+
+    t.is(_2.size(), 1);
+    t.deepEqual(TestDict.height(_2), Maybe.Just(1));
+    t.deepEqual(
+        TestDict.serialize(_2),
+        node('black', 'A', 1, null, null)
+    );
+
+    const _3 = _2.removeMax();
+
+    t.is(_3.size(), 0);
+    t.deepEqual(TestDict.height(_3), Maybe.Just(0));
+    t.deepEqual(
+        TestDict.serialize(_3),
+        null
+    );
+});
+
+test('Dict.removeMax() 15 nodes', t => {
     const _0 = Dict.fromList([
         [ 'H', 0 ],
         [ 'D', 1 ],
@@ -602,6 +729,7 @@ test('Dict.removeMax() case 1', t => {
         [ 'O', 14 ]
     ]);
 
+    t.is(_0.size(), 15);
     t.deepEqual(TestDict.height(_0), Maybe.Just(4));
     t.deepEqual(
         TestDict.serialize(_0),
@@ -628,29 +756,13 @@ test('Dict.removeMax() case 1', t => {
             )
         )
     );
-});
 
-test('Dict.removeMax() case 2', t => {
-    const _0 = Dict.fromList([
-        [ 'H', 0 ],
-        [ 'D', 1 ],
-        [ 'L', 2 ],
-        [ 'B', 3 ],
-        [ 'F', 4 ],
-        [ 'J', 5 ],
-        [ 'N', 6 ],
-        [ 'A', 7 ],
-        [ 'C', 8 ],
-        [ 'E', 9 ],
-        [ 'G', 10 ],
-        [ 'I', 11 ],
-        [ 'K', 12 ],
-        [ 'M', 13 ]
-    ]);
+    const _1 = _0.removeMax();
 
-    t.deepEqual(TestDict.height(_0), Maybe.Just(3));
+    t.is(_1.size(), 14);
+    t.deepEqual(TestDict.height(_1), Maybe.Just(3));
     t.deepEqual(
-        TestDict.serialize(_0),
+        TestDict.serialize(_1),
         node('black', 'H', 0,
             node('red', 'D', 1,
                 node('black', 'B', 3,
@@ -673,7 +785,61 @@ test('Dict.removeMax() case 2', t => {
                 )
             )
         )
-    )
+    );
+
+    const _2 = _1.removeMax();
+
+    t.is(_2.size(), 13);
+    t.deepEqual(TestDict.height(_2), Maybe.Just(3));
+    t.deepEqual(
+        TestDict.serialize(_2),
+        node('black', 'H', 0,
+            node('red', 'D', 1,
+                node('black', 'B', 3,
+                    node('black', 'A', 7, null, null),
+                    node('black', 'C', 8, null, null)
+                ),
+                node('black', 'F', 4,
+                    node('black', 'E', 9, null, null),
+                    node('black', 'G', 10, null, null)
+                )
+            ),
+            node('black', 'L', 2,
+                node('red', 'J', 5,
+                    node('black', 'I', 11, null, null),
+                    node('black', 'K', 12, null, null)
+                ),
+                node('black', 'M', 13, null, null)
+            )
+        )
+    );
+
+    const _3 = _2.removeMax();
+
+    t.is(_3.size(), 12);
+    t.deepEqual(TestDict.height(_3), Maybe.Just(3));
+    t.deepEqual(
+        TestDict.serialize(_3),
+        node('black', 'H', 0,
+            node('red', 'D', 1,
+                node('black', 'B', 3,
+                    node('black', 'A', 7, null, null),
+                    node('black', 'C', 8, null, null)
+                ),
+                node('black', 'F', 4,
+                    node('black', 'E', 9, null, null),
+                    node('black', 'G', 10, null, null)
+                )
+            ),
+            node('black', 'L', 2,
+                node('red', 'J', 5,
+                    node('black', 'I', 11, null, null),
+                    node('black', 'K', 12, null, null)
+                ),
+                null
+            )
+        )
+    );
 });
 
 test.todo('Dict.size()');
