@@ -26,7 +26,7 @@ class TestDict extends Dict<never, never> {
     }
 
     public static isValid<K, T>(dict: Dict<K, T>): boolean {
-        return super.isValid(dict);
+        return super.height(dict).isJust();
     }
 }
 

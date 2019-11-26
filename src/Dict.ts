@@ -344,10 +344,6 @@ export class Dict<K, T> {
         return dict.root.height();
     }
 
-    protected static isValid<K, T>(dict: Dict<K, T>): boolean {
-        return dict.root.height().isJust();
-    }
-
     protected constructor(private readonly root: Node<K, T>) {}
 
     public get<K_ extends Key<K_>>(key: WhenNever<K, K_>): Maybe<T> {
