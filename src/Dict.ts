@@ -370,6 +370,13 @@ export class Dict<K, T> {
         throw new Error('update');
     }
 
+    public upgrade<K_ extends Key<K_>, T_>(
+        _key: WhenNever<K, K_>,
+        _fn: IsNever<T, (value: T_) => T_, (value: T) => T>
+    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+        throw new Error('upgrade');
+    }
+
     public remove<K_ extends Key<K_>>(
         _key: WhenNever<K, K_>
     ): Dict<WhenNever<K, K_>, T> {
