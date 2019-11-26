@@ -383,6 +383,10 @@ export class Dict<K, T> {
         throw new Error('remove');
     }
 
+    public removeMax(): Dict<K, T> {
+        throw new Error('removeMax');
+    }
+
     public size(): number {
         return this.root.size();
     }

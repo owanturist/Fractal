@@ -583,6 +583,99 @@ test.todo('Dict.update()');
 
 test.todo('Dict.remove()');
 
+test('Dict.removeMax() case 1', t => {
+    const _0 = Dict.fromList([
+        [ 'H', 0 ],
+        [ 'D', 1 ],
+        [ 'L', 2 ],
+        [ 'B', 3 ],
+        [ 'F', 4 ],
+        [ 'J', 5 ],
+        [ 'N', 6 ],
+        [ 'A', 7 ],
+        [ 'C', 8 ],
+        [ 'E', 9 ],
+        [ 'G', 10 ],
+        [ 'I', 11 ],
+        [ 'K', 12 ],
+        [ 'M', 13 ],
+        [ 'O', 14 ]
+    ]);
+
+    t.deepEqual(TestDict.height(_0), Maybe.Just(4));
+    t.deepEqual(
+        TestDict.serialize(_0),
+        node('black', 'H', 0,
+            node('black', 'D', 1,
+                node('black', 'B', 3,
+                    node('black', 'A', 7, null, null),
+                    node('black', 'C', 8, null, null)
+                ),
+                node('black', 'F', 4,
+                    node('black', 'E', 9, null, null),
+                    node('black', 'G', 10, null, null)
+                )
+            ),
+            node('black', 'L', 2,
+                node('black', 'J', 5,
+                    node('black', 'I', 11, null, null),
+                    node('black', 'K', 12, null, null)
+                ),
+                node('black', 'N', 6,
+                    node('black', 'M', 13, null, null),
+                    node('black', 'O', 14, null, null)
+                )
+            )
+        )
+    );
+});
+
+test('Dict.removeMax() case 2', t => {
+    const _0 = Dict.fromList([
+        [ 'H', 0 ],
+        [ 'D', 1 ],
+        [ 'L', 2 ],
+        [ 'B', 3 ],
+        [ 'F', 4 ],
+        [ 'J', 5 ],
+        [ 'N', 6 ],
+        [ 'A', 7 ],
+        [ 'C', 8 ],
+        [ 'E', 9 ],
+        [ 'G', 10 ],
+        [ 'I', 11 ],
+        [ 'K', 12 ],
+        [ 'M', 13 ]
+    ]);
+
+    t.deepEqual(TestDict.height(_0), Maybe.Just(3));
+    t.deepEqual(
+        TestDict.serialize(_0),
+        node('black', 'H', 0,
+            node('red', 'D', 1,
+                node('black', 'B', 3,
+                    node('black', 'A', 7, null, null),
+                    node('black', 'C', 8, null, null)
+                ),
+                node('black', 'F', 4,
+                    node('black', 'E', 9, null, null),
+                    node('black', 'G', 10, null, null)
+                )
+            ),
+            node('black', 'L', 2,
+                node('red', 'J', 5,
+                    node('black', 'I', 11, null, null),
+                    node('black', 'K', 12, null, null)
+                ),
+                node('black', 'N', 6,
+                    node('red', 'M', 13, null, null),
+                    null
+                )
+            )
+        )
+    )
+});
+
 test.todo('Dict.size()');
 
 test.todo('Dict.isEmpty()');
