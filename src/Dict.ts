@@ -54,13 +54,9 @@ interface Node<K, T> {
 
     get(key: K): Maybe<T>;
 
-    insert(key: K, value: T): Node<K, T>;
+    insert(key: K, value: T): Leaf<K, T>;
 
-    rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
-
-    rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
-
-    rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+    removeMax(): Node<K, T>;
 
     // T E S T I N G
     serialize(): Serialization<K, T>;
@@ -89,20 +85,12 @@ const Null_: Node<never, never> = new class Null<K, T> implements Node<K, T> {
         return Nothing;
     }
 
-    public insert(key: K, value: T): Node<K, T> {
+    public insert(key: K, value: T): Leaf<K, T> {
         return new Red(Null_, Null_, key, value);
     }
 
-    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
-        return new Red(left, this, key, value);
-    }
-
-    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
-        return new Black(left, this, key, value);
-    }
-
-    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
-        return new Black(this, right, key, value);
+    public removeMax(): Node<K, T> {
+        return this;
     }
 
     public serialize(): Serialization<K, T> {
@@ -148,13 +136,24 @@ abstract class Leaf<K, T> implements Node<K, T> {
         return Just(this.value);
     }
 
-    public abstract insert(key: K, value: T): Node<K, T>;
+    public abstract insert(key: K, value: T): Leaf<K, T>;
 
-    public abstract rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
+    // can be called only in Black because root node is always Black
+    public removeMax(): Node<K, T> {
+        return this;
+    }
 
-    public abstract rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T>;
+    // H E L P E R S
 
-    public abstract rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T>;
+    // public abstract moveRedRight(): Node<K, T>;
+
+    // public abstract moveBlackRight(): Node<K, T>;
+
+    public abstract rotateRedLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T>;
+
+    public abstract rotateBlackLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T>;
+
+    public abstract rotateBlackRight(right: Node<K, T>, key: K, value: T): Leaf<K, T>;
 
     public abstract serialize(): Serialization<K, T>;
 
@@ -170,7 +169,7 @@ class Red<K, T> extends Leaf<K, T> {
         return true;
     }
 
-    public insert(key: K, value: T): Node<K, T> {
+    public insert(key: K, value: T): Leaf<K, T> {
         const order = compare(key, this.key);
 
         if (order.isLT()) {
@@ -184,7 +183,7 @@ class Red<K, T> extends Leaf<K, T> {
         return new Red(this.left, this.right, this.key, value);
     }
 
-    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
         // rotate left
         return new Red(
             new Red(left, this.left, key, value),
@@ -194,7 +193,7 @@ class Red<K, T> extends Leaf<K, T> {
         );
     }
 
-    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
         // flip colors
         if (left.isRed()) {
             return new Red(left.toBlack(), this.toBlack(), key, value);
@@ -209,7 +208,7 @@ class Red<K, T> extends Leaf<K, T> {
         );
     }
 
-    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Leaf<K, T> {
         if (!this.left.isRed()) {
             return new Black(this, right, key, value);
         }
@@ -250,7 +249,7 @@ class Black<K, T> extends Leaf<K, T> {
         return false;
     }
 
-    public insert(key: K, value: T): Node<K, T> {
+    public insert(key: K, value: T): Leaf<K, T> {
         const order = compare(key, this.key);
 
         if (order.isLT()) {
@@ -264,15 +263,15 @@ class Black<K, T> extends Leaf<K, T> {
         return new Black(this.left, this.right, this.key, value);
     }
 
-    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateRedLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
         return new Red(left, this, key, value);
     }
 
-    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateBlackLeft(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
         return new Black(left, this, key, value);
     }
 
-    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Node<K, T> {
+    public rotateBlackRight(right: Node<K, T>, key: K, value: T): Leaf<K, T> {
         return new Black(this, right, key, value);
     }
 
@@ -384,7 +383,9 @@ export class Dict<K, T> {
     }
 
     public removeMax(): Dict<K, T> {
-        throw new Error('removeMax');
+        return this.isEmpty()
+            ? this
+            : new Dict(this.root.removeMax().toBlack());
     }
 
     public size(): number {
