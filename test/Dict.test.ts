@@ -831,12 +831,36 @@ test('Dict.removeMax() 15 nodes', t => {
                     node('black', 'G', 10, null, null)
                 )
             ),
-            node('black', 'L', 2,
-                node('red', 'J', 5,
-                    node('black', 'I', 11, null, null),
-                    node('black', 'K', 12, null, null)
+            node('black', 'J', 5,
+                node('black', 'I', 11, null, null),
+                node('black', 'L', 2,
+                    node('red', 'K', 12, null, null),
+                    null
+                )
+            )
+        )
+    );
+
+    const _4 = _3.removeMax();
+
+    t.is(_4.size(), 11);
+    t.deepEqual(TestDict.height(_4), Maybe.Just(3));
+    t.deepEqual(
+        TestDict.serialize(_4),
+        node('black', 'H', 0,
+            node('red', 'D', 1,
+                node('black', 'B', 3,
+                    node('black', 'A', 7, null, null),
+                    node('black', 'C', 8, null, null)
                 ),
-                null
+                node('black', 'F', 4,
+                    node('black', 'E', 9, null, null),
+                    node('black', 'G', 10, null, null)
+                )
+            ),
+            node('black', 'J', 5,
+                node('black', 'I', 11, null, null),
+                node('black', 'K', 12, null, null)
             )
         )
     );
