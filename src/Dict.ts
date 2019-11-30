@@ -1,21 +1,11 @@
 import {
     IsNever,
     WhenNever,
-    Comparable,
     Order,
+    Comparable,
     isComparable
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
-
-export type Key<K> = string | number | Date | Comparable<K>;
-
-type Cast<K>
-    = K extends string ? string
-    : K extends number ? number
-    : K extends Date ? Date
-    : K extends Comparable<K> ? Comparable<K>
-    : never
-    ;
 
 const compare = <K>(left: K, right: K): Order => {
     if (isComparable(left)) {
@@ -284,10 +274,25 @@ class Black<K, T> extends Leaf<K, T> {
 
 // D I C T
 
-export interface Collector<T> {
-    (): Array<T>;
-    iterator(): Iterable<T>;
+export namespace Dict {
+    export type Key<K> = string | number | Date | Comparable<K>;
+
+    export interface Collector<T> {
+        (): Array<T>;
+        iterator(): Iterable<T>;
+    }
 }
+
+export type Key<K> = Dict.Key<K>;
+
+export interface Collector<T> extends Dict.Collector<T> {}
+
+type Cast<K>
+    = K extends string ? string
+    : K extends number ? number
+    : K extends Date ? Date
+    : Comparable<K>
+    ;
 
 export class Dict<K, T> {
     public static empty: Dict<never, never> = new Dict(Null_);
@@ -307,7 +312,7 @@ export class Dict<K, T> {
     ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>;
     public static fromList<K extends Key<K>, T>(
         ...args: [ Array<[ K, T ]> ] | [ (value: T) => K, Array<T> ]
-    ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T> {
+    ): Dict<unknown extends K ? never : K, unknown extends T ? never : T> {
         let root: Node<K, T> = Null_;
 
         if (args.length === 1) {
@@ -320,7 +325,7 @@ export class Dict<K, T> {
             }
         }
 
-        return new Dict(root as unknown as Node<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>);
+        return new Dict(root as unknown as Node<unknown extends K ? never : K, unknown extends T ? never : T>);
     }
 
     // T E S T I N G
@@ -345,23 +350,23 @@ export class Dict<K, T> {
     public insert<K_ extends Key<K_>, T_>(
         key: WhenNever<K, K_>,
         value: WhenNever<T, T_>
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         return new Dict(
             this.root.insert(key as K, value as T).toBlack()
-        ) as unknown as Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>>;
+        ) as unknown as Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
     }
 
     public update<K_ extends Key<K_>, T_ = never>(
         _key: WhenNever<K, K_>,
         _fn: IsNever<T, (value: Maybe<T_>) => Maybe<T_>, (value: Maybe<T>) => Maybe<T>>
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('update');
     }
 
     public upgrade<K_ extends Key<K_>, T_>(
         _key: WhenNever<K, K_>,
         _fn: IsNever<T, (value: T_) => T_, (value: T) => T>
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('upgrade');
     }
 
@@ -385,21 +390,21 @@ export class Dict<K, T> {
 
     public map<K_ extends Key<K_>, T_, R>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>) => R
-    ): Dict<WhenNever<K, Cast<K_>>, R> {
+    ): Dict<WhenNever<K, K_>, R> {
         throw new Error('map');
     }
 
     public filter<K_ extends Key<K_>, T_>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>) => boolean
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T>> {
         throw new Error('filter');
     }
 
     public partition<K_ extends Key<K_>, T_>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>) => boolean
     ): [
-        Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T>>,
-        Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T>>
+        Dict<WhenNever<K, K_>, WhenNever<T, T>>,
+        Dict<WhenNever<K, K_>, WhenNever<T, T>>
     ] {
         throw new Error('partition');
     }
@@ -420,19 +425,19 @@ export class Dict<K, T> {
 
     public union<K_ extends Key<K_>, T_>(
         _another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('union');
     }
 
     public intersect<K_ extends Key<K_>, T_>(
         _another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('intersect');
     }
 
     public diff<K_ extends Key<K_>, T_>(
         _another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
-    ): Dict<WhenNever<K, Cast<K_>>, WhenNever<T, T_>> {
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('diff');
     }
 
