@@ -609,7 +609,7 @@ test.todo('Dict.update()');
 
 test.todo('Dict.remove()');
 
-test.skip('Dict.removeMax() empty', t => {
+test('Dict.removeMax() empty', t => {
     const _0 = Dict.empty;
 
     t.is(_0.size(), 0);
@@ -629,7 +629,7 @@ test.skip('Dict.removeMax() empty', t => {
     );
 });
 
-test.skip('Dict.removeMax() singleton', t => {
+test('Dict.removeMax() singleton', t => {
     const _0 = Dict.singleton('A', 0);
 
     t.is(_0.size(), 1);
@@ -649,7 +649,7 @@ test.skip('Dict.removeMax() singleton', t => {
     );
 });
 
-test.skip('Dict.removeMax() 2 nodes', t => {
+test('Dict.removeMax() 2 nodes', t => {
     const _0 = Dict.fromList([
         [ 'B', 0 ],
         [ 'A', 1 ]
@@ -684,7 +684,7 @@ test.skip('Dict.removeMax() 2 nodes', t => {
     );
 });
 
-test.skip('Dict.removeMax() 3 nodes', t => {
+test('Dict.removeMax() 3 nodes', t => {
     const _0 = Dict.fromList([
         [ 'B', 0 ],
         [ 'A', 1 ],
@@ -732,7 +732,7 @@ test.skip('Dict.removeMax() 3 nodes', t => {
     );
 });
 
-test.skip('Dict.removeMax() 15 nodes', t => {
+test('Dict.removeMax() 15 nodes', t => {
     const _0 = Dict.fromList([
         [ 'H', 0 ],
         [ 'D', 1 ],
