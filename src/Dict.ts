@@ -40,7 +40,7 @@ interface Node<K, T> {
 
     size(): number;
 
-    isNull(): this is typeof Null;
+    isNull(): boolean;
 
     get(key: K): Maybe<T>;
 
@@ -136,11 +136,7 @@ abstract class Leaf<K, T> implements Node<K, T> {
     public abstract insert(key: K, value: T): Leaf<K, T>;
 
     public removeMax(): Maybe<[ Node<K, T>, K, T ]> {
-        return Just(this.left.moveRight(
-            this.right.traceRight(this.key, this.value),
-            this.key,
-            this.value
-        ));
+        return Just(this.traceRight());
     }
 
     // H E L P E R S
@@ -298,6 +294,19 @@ class Black<K, T> extends Leaf<K, T> {
         parentKey: K,
         parentValue: T
     ): [ Node<K, T>, K, T ] {
+        if (this.left.isRed()) {
+            return [
+                new Black(
+                    this.left.toBlack(),
+                    new Black(this.right, Null, parentKey, parentValue),
+                    this.key,
+                    this.value
+                ),
+                maxKey,
+                maxValue
+            ];
+        }
+
         return [
             new Black(
                 new Red(this.left, this.right, this.key, this.value),

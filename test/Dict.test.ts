@@ -853,12 +853,12 @@ test('Dict.removeMax() 15 nodes', t => {
                     node('black', 'G', 10, null, null)
                 )
             ),
-            node('black', 'J', 5,
-                node('black', 'I', 11, null, null),
-                node('black', 'L', 2,
-                    node('red', 'K', 12, null, null),
+            node('black', 'K', 12,
+                node('black', 'J', 5,
+                    node('red', 'I', 11, null, null),
                     null
-                )
+                ),
+                node('black', 'L', 2, null, null)
             )
         )
     );
@@ -886,6 +886,11 @@ test('Dict.removeMax() 15 nodes', t => {
             )
         )
     );
+
+    const _5 = _4.removeMax();
+
+    t.is(_5.size(), 10);
+    t.deepEqual(TestDict.validate(_5), Maybe.Nothing);
 });
 
 test.todo('Dict.size()');
