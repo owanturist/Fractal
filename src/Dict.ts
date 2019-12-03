@@ -25,14 +25,6 @@ const compare = <K>(left: K, right: K): Order => {
 
 // N O D E
 
-export type Serialization<K, T> = null | {
-    color: 'red' | 'black';
-    left: Serialization<K, T>;
-    right: Serialization<K, T>;
-    key: K;
-    value: T;
-};
-
 interface Node<K, T> {
     isRed(): this is Red<K, T>;
 
@@ -51,10 +43,6 @@ interface Node<K, T> {
     traceRight(key: K, value: T): [ Node<K, T>, K, T ];
 
     moveRight(max: [ Node<K, T>, K, T ], parentKey: K, parentValue: T): [ Node<K, T>, K, T ];
-
-    // T E S T I N G
-
-    serialize(): Serialization<K, T>;
 }
 
 const Null: Node<never, never> = new class Null<K, T> implements Node<K, T> {
@@ -92,10 +80,6 @@ const Null: Node<never, never> = new class Null<K, T> implements Node<K, T> {
 
     public moveRight(max: [ Node<K, T>, K, T ]): [ Node<K, T>, K, T ] {
         return max;
-    }
-
-    public serialize(): Serialization<K, T> {
-        return null;
     }
 }();
 
@@ -156,16 +140,6 @@ abstract class Leaf<K, T> implements Node<K, T> {
     public abstract rotateLeftBlack(left: Node<K, T>, key: K, value: T): Leaf<K, T>;
 
     public abstract rotateRight(right: Node<K, T>, key: K, value: T): Leaf<K, T>;
-
-    public serialize(): Serialization<K, T> {
-        return {
-            color: this.isRed() ? 'red' : 'black',
-            left: this.left.serialize(),
-            right: this.right.serialize(),
-            key: this.key,
-            value: this.value
-        };
-    }
 }
 
 class Red<K, T> extends Leaf<K, T> {
@@ -388,12 +362,7 @@ export class Dict<K, T> {
         return new Dict(root as unknown as Node<unknown extends K ? never : K, unknown extends T ? never : T>);
     }
 
-    // T E S T I N G
-    protected static serialize<K, T>(dict: Dict<K, T>): Serialization<K, T> {
-        return dict.root.serialize();
-    }
-
-    protected constructor(private readonly root: Node<K, T>) {}
+    private constructor(private readonly root: Node<K, T>) {}
 
     public get<K_ extends Key<K_>>(key: WhenNever<K, K_>): Maybe<T> {
         return this.root.get(key as K);
