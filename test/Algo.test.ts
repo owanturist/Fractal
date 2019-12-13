@@ -1,5 +1,16 @@
 import test from 'ava';
 
+const swap = <T>(x: number, y: number, arr: Array<T>): void => {
+    if (x === y) {
+        return;
+    }
+
+    const tmp = arr[ x ];
+
+    arr[ x ] = arr[ y ];
+    arr[ y ] = tmp;
+};
+
 const range = (start: number, end: number): Array<number> => {
     const [ step, n ] = start < end ? [ 1, end - start + 1 ] : [ -1, start - end + 1 ];
     const arr = new Array(n);
@@ -48,15 +59,15 @@ test('Algo.range', t => {
     );
 });
 
-const shuffle = (arr: Array<number>): Array<number> => {
+const shuffle = <T>(arr: Array<T>): Array<T> => {
     const acc = arr.slice();
 
     for (let i = 0; i < acc.length; i++) {
-        const target = i + Math.floor(Math.random() * (acc.length - i));
-        const tmp = acc[ target ];
-
-        acc[ target ] = acc[ i ];
-        acc[ i ] = tmp;
+        swap(
+            i + Math.floor(Math.random() * (acc.length - i)),
+            i,
+            acc
+        );
     }
 
     return acc;
@@ -68,4 +79,86 @@ test('Algo.shuffle', t => {
 
     t.notDeepEqual(arr, shuffled);
     t.deepEqual(arr, shuffled.slice().sort((a, b) => a - b));
+});
+
+function quicksort(arr: Array<number>): Array<number>;
+function quicksort(lo: number, hi: number, arr: Array<number>): Array<number>;
+function quicksort(...params: [ Array<number> ] | [ number, number, Array<number>]): Array<number> {
+    const [ lo, hi, arr ] = params.length === 1
+        ? [ 0, params[ 0 ].length, params[ 0 ] ]
+        : params;
+
+    const copy = shuffle(arr);
+
+    quicksortRoutine(Math.max(0, lo), Math.min(arr.length, hi), copy);
+
+    return copy;
+}
+
+//                     v
+// 0 1 2 3 4 5 6 7 8 9
+//                   ^
+
+// 7 1 0 2 8 3 6 4 9 5
+const quicksortRoutine = (lo: number, hi: number, arr: Array<number>): void => {
+    if (lo >= hi) {
+        return;
+    }
+
+    const el = arr[ lo ];
+    let left = lo + 1;
+    let right = hi - 1;
+
+    while (true) {
+        while (left <= right && arr[ left ] <= el) {
+            left++;
+        }
+
+        while (left <= right && arr[ right ] >= el) {
+            right--;
+        }
+
+        if (left >= right) {
+            break;
+        }
+
+        swap(left++, right--, arr);
+    }
+
+    const target = right;
+
+    swap(target, lo, arr);
+
+    quicksortRoutine(lo, target, arr);
+    quicksortRoutine(target + 1, hi, arr);
+};
+
+test('Algo.quicksort', t => {
+    t.deepEqual(
+        quicksort([]),
+        []
+    );
+
+    t.deepEqual(
+        quicksort([ 0 ]),
+        [ 0 ]
+    );
+
+    const _0 = range(0, 9);
+    t.deepEqual(
+        quicksort(shuffle(_0)),
+        _0
+    );
+
+    const _1 = range(0, 999);
+    t.deepEqual(
+        quicksort(shuffle(_1)),
+        _1
+    );
+
+    const _2 = [ 0, 0, 0, 0, 1, 2, 3, 3, 3, 4, 5, 5, 6, 7, 8, 8, 8, 8, 9 ];
+    t.deepEqual(
+        quicksort(shuffle(_2)),
+        _2
+    );
 });
