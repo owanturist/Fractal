@@ -11,6 +11,14 @@ const swap = <T>(x: number, y: number, arr: Array<T>): void => {
     arr[ y ] = tmp;
 };
 
+const bounds = <T>(...params: [ Array<T> ] | [ number, number, Array<T>]): [ number, number, Array<T> ] => {
+    const [ lo, hi, arr ] = params.length === 1
+        ? [ 0, params[ 0 ].length, params[ 0 ] ]
+        : params;
+
+    return [ Math.max(0, lo), Math.min(arr.length, hi), arr ];
+};
+
 const range = (start: number, end: number): Array<number> => {
     const [ step, n ] = start < end ? [ 1, end - start + 1 ] : [ -1, start - end + 1 ];
     const arr = new Array(n);
@@ -59,19 +67,23 @@ test('Algo.range', t => {
     );
 });
 
-const shuffle = <T>(arr: Array<T>): Array<T> => {
+function shuffle<T>(arr: Array<T>): Array<T>;
+function shuffle<T>(lo: number, hi: number, arr: Array<T>): Array<T>;
+function shuffle<T>(...params: [ Array<T> ] | [ number, number, Array<T>]): Array<T> {
+    const [ lo, hi, arr ] = bounds(...params);
+
     const acc = arr.slice();
 
-    for (let i = 0; i < acc.length; i++) {
+    for (let i = lo; i < hi; i++) {
         swap(
-            i + Math.floor(Math.random() * (acc.length - i)),
+            i + Math.floor(Math.random() * (hi - i)),
             i,
             acc
         );
     }
 
     return acc;
-};
+}
 
 test('Algo.shuffle', t => {
     const arr = range(0, 99);
@@ -84,13 +96,11 @@ test('Algo.shuffle', t => {
 function quicksort(arr: Array<number>): Array<number>;
 function quicksort(lo: number, hi: number, arr: Array<number>): Array<number>;
 function quicksort(...params: [ Array<number> ] | [ number, number, Array<number>]): Array<number> {
-    const [ lo, hi, arr ] = params.length === 1
-        ? [ 0, params[ 0 ].length, params[ 0 ] ]
-        : params;
+    const [ lo, hi, arr ] = bounds(...params);
 
-    const copy = shuffle(arr);
+    const copy = shuffle(lo, hi, arr);
 
-    quicksortRoutine(Math.max(0, lo), Math.min(arr.length, hi), copy);
+    quicksortRoutine(lo, hi, copy);
 
     return copy;
 }
@@ -160,5 +170,11 @@ test('Algo.quicksort', t => {
     t.deepEqual(
         quicksort(shuffle(_2)),
         _2
+    );
+
+    const _3 = [ 7, 1, 0, 2, 8, 3, 6, 4, 9, 5 ];
+    t.deepEqual(
+        quicksort(3, 7, _3),
+        [ 7, 1, 0, 2, 3, 6, 8, 4, 9, 5 ]
     );
 });
