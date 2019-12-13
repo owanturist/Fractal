@@ -332,3 +332,176 @@ test('Algo.mergesort', t => {
         _4
     );
 });
+
+class PriorityQueue<T> {
+    public static empty<T extends string | number>(): PriorityQueue<T>;
+    public static empty<T>(comparator: Comparator<T>): PriorityQueue<T>;
+    public static empty<T>(comparator = defaultComparator): PriorityQueue<T> {
+        return new PriorityQueue(comparator as Comparator<T>);
+    }
+
+    private readonly heap: Array<T> = new Array(1);
+
+    private constructor(private readonly cmp: Comparator<T>) {}
+
+    public size(): number {
+        return this.heap.length - 1;
+    }
+
+    public isEmpty(): boolean {
+        return this.size() === 0;
+    }
+
+    public peek(): null | T {
+        if (this.isEmpty()) {
+            return null;
+        }
+
+        return this.heap[ 1 ];
+    }
+
+    public add(value: T): void {
+        this.heap.push(value);
+        this.swim(this.heap.length - 1);
+        this.validate(1);
+    }
+
+    public poll(): null | T {
+        if (this.isEmpty()) {
+            return null;
+        }
+
+        const value = this.heap[ 1 ];
+        const last = this.heap.pop();
+
+        this.heap[ 1 ] = last as T;
+        this.sink(1);
+
+        return value;
+    }
+
+    private compare(left: number, right: number): number {
+        return this.cmp(this.heap[ left ], this.heap[ right ]);
+    }
+
+    private swim(index: number): void {
+        let child = index;
+
+        while (child > 1 && this.compare(Math.floor(child / 2), child) > 0) {
+            const parent = Math.floor(child / 2);
+
+            swap(child, parent, this.heap);
+            child = parent;
+        }
+    }
+
+    private sink(index: number): void {
+        const size = this.size();
+        let parent = index;
+
+        while (parent * 2 <= size) {
+            let child = parent * 2;
+
+            if (child < size && this.compare(child, child + 1) > 0) {
+                child++;
+            }
+
+            if (this.compare(child, parent) >= 0) {
+                break;
+            }
+
+            swap(child, parent, this.heap);
+
+            parent = child;
+        }
+    }
+
+    private validate(parent: number): void {
+        const child = parent * 2;
+
+        if (child > this.size()) {
+            return;
+        }
+
+        if (this.compare(parent, child) > 0) {
+            throw new Error(`${this.heap[ parent ]}(${parent}) > ${this.heap[ child ]}(${child})`);
+        }
+
+        if (child !== this.size() && this.compare(parent, child + 1) > 0) {
+            throw new Error(`${this.heap[ parent ]}(${parent}) > ${this.heap[ child + 1 ]}(${child + 1})`);
+        }
+
+        this.validate(child);
+        this.validate(child + 1);
+    }
+}
+
+const heapsort: Sorting = <T>(...params
+    : [ Array<T> ]
+    | [ Array<T>, Comparator<T> ]
+    | [ number, number, Array<T> ]
+    | [ number, number, Array<T>, Comparator<T> ]
+): Array<T> => {
+    const [ lo, hi, arr, cmp ] = attributes(params);
+    const pq = PriorityQueue.empty(cmp);
+
+    for (let i = lo; i < hi; i++) {
+        pq.add(arr[ i ]);
+    }
+
+    const res = new Array(arr.length);
+
+    for (let i = 0; i < arr.length; i++) {
+        if (i < lo || i >= hi) {
+            res[ i ] = arr[ i ];
+        } else {
+            res[ i ] = pq.poll();
+        }
+    }
+
+    return res;
+};
+
+test('Algo.heapsort', t => {
+    t.deepEqual(
+        heapsort([]),
+        []
+    );
+
+    t.deepEqual(
+        heapsort([ 0 ]),
+        [ 0 ]
+    );
+
+    t.deepEqual(
+        heapsort(shuffle(range(0, 9))),
+        range(0, 9)
+    );
+
+    t.deepEqual(
+        heapsort(shuffle(range(0, 999))),
+        range(0, 999)
+    );
+
+    t.deepEqual(
+        heapsort(shuffle(range(999, 0)), (a, b) => b - a),
+        range(999, 0)
+    );
+
+    const _1 = [ 0, 0, 0, 0, 1, 2, 3, 3, 3, 4, 5, 5, 6, 7, 8, 8, 8, 8, 9 ];
+    t.deepEqual(
+        heapsort(shuffle(_1)),
+        _1
+    );
+
+    t.deepEqual(
+        heapsort(3, 7, [ 7, 1, 0, 2, 8, 3, 6, 4, 9, 5 ]),
+        [ 7, 1, 0, 2, 3, 6, 8, 4, 9, 5 ]
+    );
+
+    const _2 = 'ABCDEFGH'.split('');
+    t.deepEqual(
+        heapsort(shuffle(_2)),
+        _2
+    );
+});
