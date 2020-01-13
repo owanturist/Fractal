@@ -74,6 +74,8 @@ export interface Order {
 
     isGT(): boolean;
 
+    fold<R>(onLT: () => R, onEQ: () => R, onGT: () => R): R;
+
     cata<R>(pattern: Order.Pattern<R>): R;
 }
 
@@ -95,6 +97,10 @@ export namespace Order {
 
         public isGT(): boolean {
             return false;
+        }
+
+        public fold<R>(onLT: () => R): R {
+            return onLT();
         }
 
         public cata<R>(pattern: Pattern<R>): R {
@@ -119,6 +125,10 @@ export namespace Order {
             return false;
         }
 
+        public fold<R>(_onLT: () => R, onEQ: () => R): R {
+            return onEQ();
+        }
+
         public cata<R>(pattern: Pattern<R>): R {
             if (typeof pattern.EQ === 'function') {
                 return pattern.EQ();
@@ -139,6 +149,10 @@ export namespace Order {
 
         public isGT(): boolean {
             return true;
+        }
+
+        public fold<R>(_onLT: () => R, _onEQ: () => R, onGT: () => R): R {
+            return onGT();
         }
 
         public cata<R>(pattern: Pattern<R>): R {

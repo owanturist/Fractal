@@ -39,7 +39,7 @@ const validateNode = <K, T>(x: Serialization<K, T>): Either<string, number> => {
     });
 };
 
-const validate = <K, T>(dict: Dict<K, T>): Maybe<string> => {
+const validate = <K extends Dict.Key, T>(dict: Dict<K, T>): Maybe<string> => {
     return validateNode(serializeNode((dict as any).root)).swap().toMaybe();
 };
 
@@ -53,7 +53,7 @@ const serializeNode = (x: any): Serialization<any, any> => {
     };
 };
 
-const serialize = <K, T>(dict: Dict<K, T>): string | Serialization<K, T> => {
+const serialize = <K extends Dict.Key, T>(dict: Dict<K, T>): string | Serialization<K, T> => {
     const serialization = serializeNode((dict as any).root);
 
     return validateNode(serialization).fold<string | Serialization<K, T>>(

@@ -2,7 +2,6 @@ import {
     IsNever,
     WhenNever,
     Order,
-    Comparable,
     isComparable
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
@@ -56,16 +55,19 @@ const Null: Node<never, never> = new class Null implements Node<never, never> {
 
 class Leaf<K, T> implements Node<K, T> {
     public static singleton<K, T>(key: K, value: T): Leaf<K, T> {
-        return new Leaf(1, key, value, Null, Null);
+        return new Leaf(key, value, Null, Null);
     }
 
+    public readonly height: number;
+
     public constructor(
-        public readonly height: number,
         private readonly key: K,
         private readonly value: T,
         private readonly left: Node<K, T>,
         private readonly right: Node<K, T>
-    ) {}
+    ) {
+        this.height = Math.max(left.height, right.height) + 1;
+    }
 
     public insert(key: K, value: T): [ boolean, Node<K, T> ] {
         return [ false, this ];
@@ -76,20 +78,25 @@ class Leaf<K, T> implements Node<K, T> {
     }
 
     public get(key: K): Maybe<T> {
-        return compare(key, this.key).cata({
-            LT: () => this.left.get(key),
-
-            GT: () => this.right.get(key),
-
-            EQ: () => Just(this.value)
-        });
+        return compare(key, this.key).fold(
+            () => this.left.get(key),
+            () => Just(this.value),
+            () => this.right.get(key)
+        );
     }
 }
 
 // D I C T
 
+type Cast<K>
+    = K extends string ? string
+    : K extends number ? number
+    : K extends Date ? Date
+    : K
+    ;
+
 export namespace Dict {
-    export type Key<K> = string | number | Date | Comparable<K>;
+    export type Key = string | number | Date;
 
     export interface Collector<T> {
         (): Array<T>;
@@ -97,37 +104,27 @@ export namespace Dict {
     }
 }
 
-export type Key<K> = Dict.Key<K>;
+export type Key = Dict.Key;
 
 export interface Collector<T> extends Dict.Collector<T> {}
 
-type Cast<K>
-    = K extends string ? string
-    : K extends number ? number
-    : K extends Date ? Date
-    : Comparable<K>
-    ;
-
-export class Dict<K, T> {
+export class Dict<K extends Key, T> {
     public static empty: Dict<never, never> = new Dict(0, Null);
 
-    public static singleton<K extends Key<K>, T>(key: K, value: T): Dict<Cast<K>, T> {
-        return new Dict(
-            1,
-            Leaf.singleton(key as unknown as Cast<K>, value)
-        );
+    public static singleton<K extends Key, T>(key: K, value: T): Dict<Cast<K>, T> {
+        return new Dict(1, Leaf.singleton(key as Cast<K>, value));
     }
 
-    public static fromList<K extends Key<K>, T>(
+    public static fromList<K extends Key, T>(
         pairs: Array<[ K, T ]>
-    ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>;
-    public static fromList<K extends Key<K>, T>(
+    ): unknown extends T ? Dict<never, never> : Dict<Cast<K>, T>;
+    public static fromList<K extends Key, T>(
         toKey: (value: T) => K,
         values: Array<T>
-    ): Dict<unknown extends K ? never : Cast<K>, unknown extends T ? never : T>;
-    public static fromList<K extends Key<K>, T>(
+    ): unknown extends T ? Dict<never, never> : Dict<Cast<K>, T>;
+    public static fromList<K extends Key, T>(
         ...args: [ Array<[ K, T ]> ] | [ (value: T) => K, Array<T> ]
-    ): Dict<unknown extends K ? never : K, unknown extends T ? never : T> {
+    ): Dict<K, T> {
         let count = 0;
         let root: Node<K, T> = Null;
 
@@ -147,10 +144,7 @@ export class Dict<K, T> {
             }
         }
 
-        return new Dict(
-            count,
-            root as unknown as Node<unknown extends K ? never : K, unknown extends T ? never : T>
-        );
+        return new Dict(count, root);
     }
 
     private constructor(
@@ -158,39 +152,46 @@ export class Dict<K, T> {
         private readonly root: Node<K, T>
     ) {}
 
-    public get<K_ extends Key<K_>>(key: WhenNever<K, K_>): Maybe<T> {
-        return this.root.get(key as K);
+    public get<K_ extends Key>(key: WhenNever<K, K_>): Maybe<T>;
+    public get(key: K): Maybe<T> {
+        return this.root.get(key);
     }
 
-    public member<K_ extends Key<K_>>(key: WhenNever<K, K_>): boolean {
+    public member<K_ extends Key>(key: WhenNever<K, K_>): boolean {
         return this.get(key).isJust();
     }
 
-    public insert<K_ extends Key<K_>, T_>(
+    public insert<K_ extends Key, T_>(
         key: WhenNever<K, K_>,
         value: WhenNever<T, T_>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
-        const [ added, nextRoot ] = this.root.insert(key as K, value as T);
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    public insert(key: K, value: T): Dict<K, T> {
+        const [ added, nextRoot ] = this.root.insert(key, value);
 
         return new Dict(
             added ? this.count + 1 : this.count,
             nextRoot
-        ) as unknown as Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+        );
     }
 
-    public update<K_ extends Key<K_>, T_ = never>(
-        _key: WhenNever<K, K_>,
-        _fn: IsNever<T, (value: Maybe<T_>) => Maybe<T_>, (value: Maybe<T>) => Maybe<T>>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
-        throw new Error('update');
+    public update<K_ extends Key, T_ = never>(
+        key: WhenNever<K, K_>,
+        fn: IsNever<T, (value: Maybe<T_>) => Maybe<T_>, (value: Maybe<T>) => Maybe<T>>
+    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
+    public update(key: K, fn: (value: Maybe<T>) => Maybe<T>): Dict<K, T> {
+        const probe = this.get(key);
+
+        return fn(probe).fold(
+            () => probe.isNothing() ? this : this.remove(key),
+            (value: T) => this.insert(key, value)
+        );
     }
 
-    public remove<K_ extends Key<K_>>(
-        key: WhenNever<K, K_>
-    ): Dict<WhenNever<K, K_>, T> {
-        return this.root.remove(key as K)
+    public remove<K_ extends Key>(key: WhenNever<K, K_>): Dict<WhenNever<K, K_>, T>;
+    public remove(key: K): Dict<K, T> {
+        return this.root.remove(key)
             .map((nextRoot: Node<K, T>) => new Dict(this.count - 1, nextRoot))
-            .getOrElse(this) as Dict<WhenNever<K, K_>, T>;
+            .getOrElse(this);
     }
 
     public size(): number {
@@ -201,19 +202,19 @@ export class Dict<K, T> {
         return this.count === 0;
     }
 
-    public map<K_ extends Key<K_>, T_, R>(
+    public map<K_ extends Key, T_, R>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>) => R
     ): Dict<WhenNever<K, K_>, R> {
         throw new Error('map');
     }
 
-    public filter<K_ extends Key<K_>, T_>(
+    public filter<K_ extends Key, T_>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>) => boolean
     ): Dict<WhenNever<K, K_>, WhenNever<T, T>> {
         throw new Error('filter');
     }
 
-    public partition<K_ extends Key<K_>, T_>(
+    public partition<K_ extends Key, T_>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>) => boolean
     ): [
         Dict<WhenNever<K, K_>, WhenNever<T, T>>,
@@ -222,39 +223,39 @@ export class Dict<K, T> {
         throw new Error('partition');
     }
 
-    public foldl<K_ extends Key<K_>, T_, R>(
+    public foldl<K_ extends Key, T_, R>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>, acc: R) => R,
         _acc: R
     ): R {
         throw new Error('foldl');
     }
 
-    public foldr<K_ extends Key<K_>, T_, R>(
+    public foldr<K_ extends Key, T_, R>(
         _fn: (key: WhenNever<K, K_>, value: WhenNever<T, T_>, acc: R) => R,
         _acc: R
     ): R {
         throw new Error('foldr');
     }
 
-    public union<K_ extends Key<K_>, T_>(
+    public union<K_ extends Key, T_>(
         _another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
     ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('union');
     }
 
-    public intersect<K_ extends Key<K_>, T_>(
+    public intersect<K_ extends Key, T_>(
         _another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
     ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('intersect');
     }
 
-    public diff<K_ extends Key<K_>, T_>(
+    public diff<K_ extends Key, T_>(
         _another: Dict<WhenNever<K, K_>, WhenNever<T, T_>>
     ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
         throw new Error('diff');
     }
 
-    public merge<K_ extends Key<K_>, T_, P, R>(
+    public merge<K_ extends Key, T_, P, R>(
         _onLeft: (key: WhenNever<K, K_>, left: WhenNever<T, T_>, acc: R) => R,
         _onBoth: (key: WhenNever<K, K_>, left: WhenNever<T, T_>, right: P, acc: R) => R,
         _onRight: (key: WhenNever<K, K_>, right: P, acc: R) => R,
