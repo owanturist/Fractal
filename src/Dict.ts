@@ -26,283 +26,63 @@ const compare = <K>(left: K, right: K): Order => {
 // N O D E
 
 interface Node<K, T> {
-    isRed(): this is Red<K, T>;
+    height: number;
 
-    toBlack(): Node<K, T>;
-
-    size(): number;
-
-    isNull(): boolean;
+    insert(key: K, value: T): [ boolean, Node<K, T> ];
 
     get(key: K): Maybe<T>;
 
-    insert(key: K, value: T): Leaf<K, T>;
-
-    removeMax(): Maybe<[ Node<K, T>, K, T ]>;
-
-    traceRight(key: K, value: T): [ Node<K, T>, K, T ];
-
-    moveRight(max: [ Node<K, T>, K, T ], parentKey: K, parentValue: T): [ Node<K, T>, K, T ];
+    remove(key: K): Maybe<Node<K, T>>;
 }
 
-const Null: Node<never, never> = new class Null<K, T> implements Node<K, T> {
-    public isRed(): boolean {
-        return false;
+const Null: Node<never, never> = new class Null implements Node<never, never> {
+    public height: number = 0;
+
+    public insert<K, T>(key: K, value: T): [ boolean, Node<K, T> ] {
+        return [
+            true,
+            Leaf.singleton(key, value)
+        ];
     }
 
-    public toBlack(): Node<K, T> {
-        return this;
-    }
-
-    public size(): number {
-        return 0;
-    }
-
-    public isNull(): boolean {
-        return true;
-    }
-
-    public get(): Maybe<T> {
+    public remove(): Maybe<Node<never, never>> {
         return Nothing;
     }
 
-    public insert(key: K, value: T): Leaf<K, T> {
-        return new Red(this, this, key, value);
-    }
-
-    public removeMax(): Maybe<[ Node<K, T>, K, T ]> {
+    public get(): Maybe<never> {
         return Nothing;
-    }
-
-    public traceRight(key: K, value: T): [ Node<K, T>, K, T ] {
-        return [ this, key, value ];
-    }
-
-    public moveRight(max: [ Node<K, T>, K, T ]): [ Node<K, T>, K, T ] {
-        return max;
     }
 }();
 
-abstract class Leaf<K, T> implements Node<K, T> {
-    public constructor(
-        protected readonly left: Node<K, T>,
-        protected readonly right: Node<K, T>,
-        protected readonly key: K,
-        protected readonly value: T
-    ) {}
-
-    public abstract isRed(): boolean;
-
-    public abstract toBlack(): Node<K, T>;
-
-    public size(): number {
-        return this.left.size() + 1 + this.right.size();
+class Leaf<K, T> implements Node<K, T> {
+    public static singleton<K, T>(key: K, value: T): Leaf<K, T> {
+        return new Leaf(1, key, value, Null, Null);
     }
 
-    public isNull(): boolean {
-        return false;
+    public constructor(
+        public readonly height: number,
+        private readonly key: K,
+        private readonly value: T,
+        private readonly left: Node<K, T>,
+        private readonly right: Node<K, T>
+    ) {}
+
+    public insert(key: K, value: T): [ boolean, Node<K, T> ] {
+        return [ false, this ];
+    }
+
+    public remove(key: K): Maybe<Node<K, T>> {
+        return Nothing;
     }
 
     public get(key: K): Maybe<T> {
-        const order = compare(key, this.key);
+        return compare(key, this.key).cata({
+            LT: () => this.left.get(key),
 
-        if (order.isLT()) {
-            return this.left.get(key);
-        }
+            GT: () => this.right.get(key),
 
-        if (order.isGT()) {
-            return this.right.get(key);
-        }
-
-        return Just(this.value);
-    }
-
-    public abstract insert(key: K, value: T): Leaf<K, T>;
-
-    public removeMax(): Maybe<[ Node<K, T>, K, T ]> {
-        return Just(this.traceRight());
-    }
-
-    // H E L P E R S
-
-    public traceRight(): [ Node<K, T>, K, T ] {
-        return this.left.moveRight(
-            this.right.traceRight(this.key, this.value),
-            this.key,
-            this.value
-        );
-    }
-
-    public abstract moveRight(max: [ Node<K, T>, K, T ], parentKey: K, parentValue: T): [ Node<K, T>, K, T ];
-
-    public abstract rotateLeftRed(left: Node<K, T>, key: K, value: T): Leaf<K, T>;
-
-    public abstract rotateLeftBlack(left: Node<K, T>, key: K, value: T): Leaf<K, T>;
-
-    public abstract rotateRight(right: Node<K, T>, key: K, value: T): Leaf<K, T>;
-}
-
-class Red<K, T> extends Leaf<K, T> {
-    public isRed(): boolean {
-        return true;
-    }
-
-    public toBlack(): Node<K, T> {
-        return new Black(this.left, this.right, this.key, this.value);
-    }
-
-    public insert(key: K, value: T): Leaf<K, T> {
-        const order = compare(key, this.key);
-
-        if (order.isLT()) {
-            return new Red(this.left.insert(key, value), this.right, this.key, this.value);
-        }
-
-        if (order.isGT()) {
-            return this.right.insert(key, value).rotateLeftRed(this.left, this.key, this.value);
-        }
-
-        return new Red(this.left, this.right, this.key, value);
-    }
-
-    public moveRight(
-        [ right, maxKey, maxValue ]: [ Node<K, T>, K, T ],
-        parentKey: K,
-        parentValue: T
-    ): [ Node<K, T>, K, T ] {
-        if (this.left.isNull()) {
-            return [
-                new Black(Null, Null, this.key, this.value),
-                parentKey,
-                parentValue
-            ];
-        }
-
-        if (!right.isNull()) {
-            return [
-                new Black(this, right, parentKey, parentValue),
-                maxKey,
-                maxValue
-            ];
-        }
-
-        const [ newLeft, newParentKey, newParentValue ] = this.traceRight();
-
-        return [
-            new Black(
-                newLeft,
-                new Black(Null, Null, parentKey, parentValue),
-                newParentKey,
-                newParentValue
-            ),
-            maxKey,
-            maxValue
-        ];
-    }
-
-    public rotateLeftRed(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
-        // rotate left
-        return new Red(
-            new Red(left, this.left, key, value),
-            this.right,
-            this.key,
-            this.value
-        );
-    }
-
-    public rotateLeftBlack(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
-        // flip colors
-        if (left.isRed()) {
-            return new Red(left.toBlack(), this.toBlack(), key, value);
-        }
-
-        // rotate left
-        return new Black(
-            new Red(left, this.left, key, value),
-            this.right,
-            this.key,
-            this.value
-        );
-    }
-
-    public rotateRight(right: Node<K, T>, key: K, value: T): Leaf<K, T> {
-        if (!this.left.isRed()) {
-            return new Black(this, right, key, value);
-        }
-
-        // rotate right and flip
-        return new Red(
-            this.left.toBlack(),
-            new Black(this.right, right, key, value),
-            this.key,
-            this.value
-        );
-    }
-}
-
-class Black<K, T> extends Leaf<K, T> {
-    public isRed(): boolean {
-        return false;
-    }
-
-    public toBlack(): Node<K, T> {
-        return this;
-    }
-
-    public insert(key: K, value: T): Leaf<K, T> {
-        const order = compare(key, this.key);
-
-        if (order.isLT()) {
-            return this.left.insert(key, value).rotateRight(this.right, this.key, this.value);
-        }
-
-        if (order.isGT()) {
-            return this.right.insert(key, value).rotateLeftBlack(this.left, this.key, this.value);
-        }
-
-        return new Black(this.left, this.right, this.key, value);
-    }
-
-    public moveRight(
-        [ right, maxKey, maxValue ]: [ Node<K, T>, K, T ],
-        parentKey: K,
-        parentValue: T
-    ): [ Node<K, T>, K, T ] {
-        if (this.left.isRed()) {
-            return [
-                new Black(
-                    this.left.toBlack(),
-                    new Black(this.right, Null, parentKey, parentValue),
-                    this.key,
-                    this.value
-                ),
-                maxKey,
-                maxValue
-            ];
-        }
-
-        return [
-            new Black(
-                new Red(this.left, this.right, this.key, this.value),
-                right,
-                parentKey,
-                parentValue
-            ),
-            maxKey,
-            maxValue
-        ];
-    }
-
-    public rotateLeftRed(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
-        return new Red(left, this, key, value);
-    }
-
-    public rotateLeftBlack(left: Node<K, T>, key: K, value: T): Leaf<K, T> {
-        return new Black(left, this, key, value);
-    }
-
-    public rotateRight(right: Node<K, T>, key: K, value: T): Leaf<K, T> {
-        return new Black(this, right, key, value);
+            EQ: () => Just(this.value)
+        });
     }
 }
 
@@ -329,11 +109,12 @@ type Cast<K>
     ;
 
 export class Dict<K, T> {
-    public static empty: Dict<never, never> = new Dict(Null);
+    public static empty: Dict<never, never> = new Dict(0, Null);
 
     public static singleton<K extends Key<K>, T>(key: K, value: T): Dict<Cast<K>, T> {
         return new Dict(
-            (Null as Node<Cast<K>, T>).insert(key as unknown as Cast<K>, value).toBlack()
+            1,
+            Leaf.singleton(key as unknown as Cast<K>, value)
         );
     }
 
@@ -347,22 +128,35 @@ export class Dict<K, T> {
     public static fromList<K extends Key<K>, T>(
         ...args: [ Array<[ K, T ]> ] | [ (value: T) => K, Array<T> ]
     ): Dict<unknown extends K ? never : K, unknown extends T ? never : T> {
+        let count = 0;
         let root: Node<K, T> = Null;
 
         if (args.length === 1) {
             for (const [ key, value ] of args[ 0 ]) {
-                root = root.insert(key, value).toBlack();
+                const [ added, nextRoot ] = root.insert(key, value);
+
+                count += added ? 1 : 0;
+                root = nextRoot;
             }
         } else {
             for (const value of args[ 1 ]) {
-                root = root.insert(args[ 0 ](value), value).toBlack();
+                const [ added, nextRoot ] = root.insert(args[ 0 ](value), value);
+
+                count += added ? 1 : 0;
+                root = nextRoot;
             }
         }
 
-        return new Dict(root as unknown as Node<unknown extends K ? never : K, unknown extends T ? never : T>);
+        return new Dict(
+            count,
+            root as unknown as Node<unknown extends K ? never : K, unknown extends T ? never : T>
+        );
     }
 
-    private constructor(private readonly root: Node<K, T>) {}
+    private constructor(
+        private readonly count: number,
+        private readonly root: Node<K, T>
+    ) {}
 
     public get<K_ extends Key<K_>>(key: WhenNever<K, K_>): Maybe<T> {
         return this.root.get(key as K);
@@ -376,8 +170,11 @@ export class Dict<K, T> {
         key: WhenNever<K, K_>,
         value: WhenNever<T, T_>
     ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
+        const [ added, nextRoot ] = this.root.insert(key as K, value as T);
+
         return new Dict(
-            this.root.insert(key as K, value as T).toBlack()
+            added ? this.count + 1 : this.count,
+            nextRoot
         ) as unknown as Dict<WhenNever<K, K_>, WhenNever<T, T_>>;
     }
 
@@ -388,31 +185,20 @@ export class Dict<K, T> {
         throw new Error('update');
     }
 
-    public upgrade<K_ extends Key<K_>, T_>(
-        _key: WhenNever<K, K_>,
-        _fn: IsNever<T, (value: T_) => T_, (value: T) => T>
-    ): Dict<WhenNever<K, K_>, WhenNever<T, T_>> {
-        throw new Error('upgrade');
-    }
-
     public remove<K_ extends Key<K_>>(
-        _key: WhenNever<K, K_>
+        key: WhenNever<K, K_>
     ): Dict<WhenNever<K, K_>, T> {
-        throw new Error('remove');
-    }
-
-    public removeMax(): Dict<K, T> {
-        return this.root.removeMax()
-            .map(([ nextRoot ]: [ Node<K, T>, K, T ]): Dict<K, T> => new Dict(nextRoot))
-            .getOrElse(this);
+        return this.root.remove(key as K)
+            .map((nextRoot: Node<K, T>) => new Dict(this.count - 1, nextRoot))
+            .getOrElse(this) as Dict<WhenNever<K, K_>, T>;
     }
 
     public size(): number {
-        return this.root.size();
+        return this.count;
     }
 
     public isEmpty(): boolean {
-        return this.root.isNull();
+        return this.count === 0;
     }
 
     public map<K_ extends Key<K_>, T_, R>(
@@ -477,7 +263,6 @@ export class Dict<K, T> {
     ): R {
         throw new Error('merge');
     }
-
 
     public get keys(): Collector<K> {
         throw new Error('');
