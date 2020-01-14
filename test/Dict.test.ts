@@ -5,61 +5,88 @@ import Maybe from '../src/Maybe';
 import Either from '../src/Either';
 
 export type Serialization<K, T> = null | {
-    color: 'red' | 'black';
-    left: Serialization<K, T>;
-    right: Serialization<K, T>;
+    height: number;
     key: K;
     value: T;
+    left: Serialization<K, T>;
+    right: Serialization<K, T>;
 };
 
 const node = <K, T>(
-    color: 'red' | 'black',
+    height: number,
     key: K,
     value: T,
     left: Serialization<K, T>,
     right: Serialization<K, T>
-): Serialization<K, T> => ({ color, key, value, left, right });
+): Serialization<K, T> => ({ height, key, value, left, right });
 
-const validateNode = <K, T>(x: Serialization<K, T>): Either<string, number> => {
+interface Validation {
+    count: number;
+    height: number;
+}
+
+const validateNode = <K, T>(x: Serialization<K, T>): Either<string, Validation> => {
     if (x === null) {
-        return Either.Right(0);
+        return Either.Right({ count: 0, height: 0 });
     }
 
-    if (x.right !== null && x.right.color === 'red') {
-        return Either.Left(`Right node of "${x.key}" is Red`);
-    }
-
-    return Either.shape<string, { left: number; right: number }>({
+    return Either.shape<string, { left: Validation; right: Validation }>({
         left: validateNode(x.left),
         right: validateNode(x.right)
     }).chain(({ left, right }) => {
-        return left === right
-            ? Either.Right(x.color === 'black' ? left + 1 : left)
-            : Either.Left(`Different subtrees heights of "${x.key}": ${left} vs ${right}`);
+        const lh = x.left === null ? 0 : x.left.height;
+        const rh = x.right === null ? 0 : x.right.height;
+
+        if (lh !== left.height) {
+            return Either.Left(`Left height of '${x.key}' is ${lh} but expects ${left.height}`);
+        }
+
+        if (rh !== right.height) {
+            return Either.Left(`Right height of '${x.key}' is ${rh} but expects ${right.height}`);
+        }
+
+        const diff = lh - rh;
+
+        if (diff < - 1 || diff > 1) {
+            return Either.Left(`Unbalanced node '${x.key}': ${diff}`);
+        }
+
+        if (x.left !== null && x.left.key >= x.key) {
+            return Either.Left(`Left sub-tree of violates order '${x.left.key}' < '${x.key}'`);
+        }
+
+        if (x.right !== null && x.right.key <= x.key) {
+            return Either.Left(`Right sub-tree of violates order '${x.right.key}' > '${x.key}'`);
+        }
+
+        return Either.Right({
+            count: left.count + right.count + 1,
+            height: Math.max(left.height, right.height) + 1
+        });
     });
 };
 
 const validate = <K extends Dict.Key, T>(dict: Dict<K, T>): Maybe<string> => {
-    return validateNode(serializeNode((dict as any).root)).swap().toMaybe();
-};
-
-const serializeNode = (x: any): Serialization<any, any> => {
-    return x.isNull() ? null : {
-        color: x.isRed() ? 'red' : 'black',
-        key: x.key,
-        value: x.value,
-        left: serializeNode(x.left),
-        right: serializeNode(x.right)
-    };
-};
-
-const serialize = <K extends Dict.Key, T>(dict: Dict<K, T>): string | Serialization<K, T> => {
-    const serialization = serializeNode((dict as any).root);
-
-    return validateNode(serialization).fold<string | Serialization<K, T>>(
-        error => error,
-        () => serialization
+    return validateNode(serializeNode((dict as any).root)).fold(
+        Maybe.Just,
+        ({ count }) => dict.size() === count
+            ? Maybe.Nothing
+            : Maybe.Just(`Size is ${dict.size} but expects ${count}`)
     );
+};
+
+const serializeNode = (node: any): Serialization<any, any> => {
+    return 'key' in node ? {
+        height: node.height,
+        key: node.key,
+        value: node.value,
+        left: serializeNode(node.left),
+        right: serializeNode(node.right)
+    } : null;
+};
+
+const serialize = <K extends Dict.Key, T>(dict: Dict<K, T>): Serialization<K, T> => {
+    return serializeNode((dict as any).root);
 };
 
 const alphabet = Dict.fromList(
