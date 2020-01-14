@@ -1,25 +1,24 @@
 import {
     IsNever,
     WhenNever,
-    Order,
     isComparable
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
 
-const compare = <K>(left: K, right: K): Order => {
+const compare = <K, R>(left: K, right: K, onLT: () => R, onEQ: () => R, onGT: () => R): R => {
     if (isComparable(left)) {
-        return left.compareTo(right);
+        return left.compareTo(right).fold(onLT, onEQ, onGT);
     }
 
     if (left < right) {
-        return Order.LT;
+        return onLT();
     }
 
     if (left > right) {
-        return Order.GT;
+        return onGT();
     }
 
-    return Order.EQ;
+    return onEQ();
 };
 
 // N O D E
@@ -78,7 +77,9 @@ class Leaf<K, T> implements Node<K, T> {
     }
 
     public get(key: K): Maybe<T> {
-        return compare(key, this.key).fold(
+        return compare(
+            key,
+            this.key,
             () => this.left.get(key),
             () => Just(this.value),
             () => this.right.get(key)
