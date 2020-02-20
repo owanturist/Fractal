@@ -23,6 +23,18 @@ const compare = <K, R>(left: K, right: K, onLT: () => R, onEQ: () => R, onGT: ()
 
 // N O D E
 
+const balance = <K, T>(pk: K, pv: T, pl: Node<K, T>, pr: Node<K, T>): Node<K, T> => {
+    if (pl.height - pr.height < -1) {
+        return pr.rotateLeft(pk, pv, pl);
+    }
+
+    if (pl.height - pr.height > 1) {
+        return pl.rotateRight(pk, pv, pr);
+    }
+
+    return new Leaf(pk, pv, pl, pr);
+};
+
 interface Node<K, T> {
     height: number;
 
@@ -37,6 +49,16 @@ interface Node<K, T> {
     foldl<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R;
 
     foldr<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R;
+
+    // balance
+
+    rotateLeft(pk: K, pv: T, pl: Node<K, T>): Node<K, T>;
+
+    rotateLeftLeft(pk: K, pv: T, pl: Node<K, T>, rk: K, rv: T, rr: Node<K, T>): Node<K, T>;
+
+    rotateRight(pk: K, pv: T, pr: Node<K, T>): Node<K, T>;
+
+    rotateRightRight(pk: K, pv: T, lk: K, lv: T, ll: Node<K, T>, pr: Node<K, T>): Node<K, T>;
 }
 
 const Null: Node<unknown, unknown> = new class Null<K, T> implements Node<K, T> {
@@ -68,6 +90,32 @@ const Null: Node<unknown, unknown> = new class Null<K, T> implements Node<K, T> 
     public foldr<R>(_fn: (key: K, value: T, acc: R) => R, acc: R): R {
         return acc;
     }
+
+    public rotateLeft(pk: K, pv: T, pl: Node<K, T>): Node<K, T> {
+        return new Leaf(pk, pv, pl, this as Node<K, T>);
+    }
+
+    public rotateLeftLeft(pk: K, pv: T, pl: Node<K, T>, rk: K, rv: T, rr: Node<K, T>): Node<K, T> {
+        return new Leaf(
+            rk,
+            rv,
+            new Leaf(pk, pv, pl, Null as unknown as Node<K, T>),
+            rr
+        );
+    }
+
+    public rotateRight(pk: K, pv: T, pr: Node<K, T>): Node<K, T> {
+        return new Leaf(pk, pv, this as Node<K, T>, pr);
+    }
+
+    public rotateRightRight(pk: K, pv: T, lk: K, lv: T, ll: Node<K, T>, pr: Node<K, T>): Node<K, T> {
+        return new Leaf(
+            lk,
+            lv,
+            ll,
+            new Leaf(pk, pv, Null as unknown as Node<K, T>, pr)
+        );
+    }
 }();
 
 class Leaf<K, T> implements Node<K, T> {
@@ -97,10 +145,27 @@ class Leaf<K, T> implements Node<K, T> {
     }
 
     public insert(key: K, value: T): [ boolean, Node<K, T> ] {
-        return [ false, this ];
+        return compare(
+            key,
+            this.key,
+            () => {
+                const [ added, nextLeft ] = this.left.insert(key, value);
+
+                return [ added, balance(this.key, this.value, nextLeft, this.right) ];
+            },
+            () => {
+                const [ added, nextRight ] = this.right.insert(key, value);
+
+                return [ added, balance(this.key, this.value, this.left, nextRight) ];
+            },
+            () => [
+                false,
+                new Leaf(key, value, this.left, this.right)
+            ]
+        );
     }
 
-    public remove(key: K): Maybe<Node<K, T>> {
+    public remove(_key: K): Maybe<Node<K, T>> {
         return Nothing;
     }
 
@@ -132,6 +197,50 @@ class Leaf<K, T> implements Node<K, T> {
                 this.value,
                 this.right.foldl(fn, acc)
             )
+        );
+    }
+
+    public rotateLeft(pk: K, pv: T, pl: Node<K, T>): Node<K, T> {
+        return this.left.rotateLeftLeft(pk, pv, pl, this.key, this.value, this.right);
+    }
+
+    public rotateLeftLeft(pk: K, pv: T, pl: Node<K, T>, rk: K, rv: T, rr: Node<K, T>): Node<K, T> {
+        if (this.height > rr.height) {
+            return new Leaf(
+                this.key,
+                this.value,
+                new Leaf(pk, pv, pl, this.left),
+                new Leaf(rk, rv, this.right, rr)
+            );
+        }
+
+        return new Leaf(
+            rk,
+            rv,
+            new Leaf(pk, pv, pl, this),
+            rr
+        );
+    }
+
+    public rotateRight(pk: K, pv: T, pr: Node<K, T>): Node<K, T> {
+        return this.right.rotateRightRight(pk, pv, this.key, this.value, this.left, pr);
+    }
+
+    public rotateRightRight(pk: K, pv: T, lk: K, lv: T, ll: Node<K, T>, pr: Node<K, T>): Node<K, T> {
+        if (this.height > ll.height) {
+            return new Leaf(
+                this.key,
+                this.value,
+                new Leaf(lk, lv, ll, this.left),
+                new Leaf(pk, pv, this.right, pr)
+            );
+        }
+
+        return new Leaf(
+            lk,
+            lv,
+            ll,
+            new Leaf(pk, pv, this, pr)
         );
     }
 }
