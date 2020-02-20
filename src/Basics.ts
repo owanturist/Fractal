@@ -14,6 +14,8 @@ export type IsNever<A, T, F> = [ A ] extends [ never ] ? T : F;
 
 export type WhenNever<A, T> = [ A, T ] extends [ T, A ] ? A : IsNever<A, T, A>;
 
+export type WhenUnknown<T, R> = unknown extends T ? R : T;
+
 export type Cata<O extends {[ K in keyof O ]: (...args: Array<unknown>) => unknown } & { _?: never }>
     = O extends {[ K in keyof O ]: (...args: Array<unknown>) => infer R }
     ? Compute<O & { _?(): never }> | Compute<Optional<O> & { _(): R }>
