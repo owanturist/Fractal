@@ -1,3 +1,5 @@
+// tslint:disable:max-line-length
+
 import test from 'ava';
 
 import * as Basics from '../src/Basics';
@@ -75,12 +77,26 @@ const validateNode = <K, T>(minKey: Maybe<K>, maxKey: Maybe<K>, x: Serialization
     });
 };
 
-export const validate = <K extends Dict.Key<K>, T>(dict: Dict<K, T>): Maybe<string> => {
+export const validate = <K extends Dict.Key, T>(dict: Dict<K, T>): Maybe<string> => {
     return validateNode(Maybe.Nothing, Maybe.Nothing, serializeNode((dict as any).root)).fold(
         Maybe.Just,
         ({ count }) => dict.size() === count
             ? Maybe.Nothing
             : Maybe.Just(`Size is ${dict.size} but expects ${count}`)
+    );
+};
+
+export const validateBatch = <K extends Dict.Key, T>(pairs: Array<[ K, T ]>): Either<string, Dict<K, T>> => {
+    return pairs.reduce(
+        (acc, [ key, value ]) => acc.chain(dict => {
+            const next = dict.insert(key, value);
+
+            return validate(next).fold(
+                () => Either.Right(next),
+                Either.Left
+            );
+        }),
+        Either.Right(Dict.empty as Dict<K, T>)
     );
 };
 
@@ -94,8 +110,36 @@ const serializeNode = (node: any): Serialization<any, any> => {
     } : null;
 };
 
-export const serialize = <K extends Dict.Key<K>, T>(dict: Dict<K, T>): Serialization<K, T> => {
+export const serialize = <K extends Dict.Key, T>(dict: Dict<K, T>): Serialization<K, T> => {
     return serializeNode((dict as any).root);
+};
+
+export const toList = <K extends Dict.Key, T>(dict: Dict<K, T>): Either<string, Array<[ K, T ]>> => {
+    return validate(dict).fold<Either<string, Array<[ K, T ]>>>(
+        () => Either.Right(dict.entries()),
+        Either.Left
+    );
+};
+
+export const toKeyValueString = <K extends Dict.Key, T>(
+    keyToString: (key: K) => string,
+    valueToString: (key: T) => string,
+    dict: Dict<K, T>
+): Either<string, string> => {
+    return toList(dict).map(
+        list => list.map(([ key, value ]) => keyToString(key) + '-' + valueToString(value)).join(' ')
+    );
+};
+
+const range = (start: number, end: number): Array<number> => {
+    const [ lo, hi ] = start < end ? [ start, end ] : [ end, start ];
+    const sequence: Array<number> = new Array(hi - lo + 1);
+
+    for (let i = 0; i < sequence.length; i++) {
+        sequence[ i ] = lo + i;
+    }
+
+    return sequence;
 };
 
 const alphabet = Dict.fromList(
@@ -150,6 +194,9 @@ test('Dict.get()', t => {
 
     t.deepEqual(validate(alphabet), Maybe.Nothing);
     t.deepEqual(validate(_0), Maybe.Nothing);
+
+    t.is(alphabet.size(), 26);
+    t.is(_0.size(), 26);
 
     t.deepEqual(alphabet.get(-1), Maybe.Nothing);
     t.deepEqual(_0.get('-'), Maybe.Nothing);
@@ -271,100 +318,104 @@ test('Dict.member()', t => {
 
 test('Dict.insert()', t => {
     const _0 = Dict.empty.insert('A', 0);
-    t.deepEqual(validate(_0), Maybe.Nothing);
+    t.deepEqual(toList(_0), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ]]));
 
     const _1 = Dict.singleton('A', 0).insert('A', 1);
-    t.deepEqual(validate(_1), Maybe.Nothing);
+    t.deepEqual(toList(_1), Either.Right<Array<[ string, number ]>>([[ 'A', 1 ]]));
 
     const _2 = Dict.singleton('A', 0).insert('B', 1);
-    t.deepEqual(validate(_2), Maybe.Nothing);
+    t.deepEqual(toList(_2), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ], [ 'B', 1 ]]));
 
     const _3 = Dict.singleton('A', 0).insert('B', 1).insert('A', 2);
-    t.deepEqual(validate(_3), Maybe.Nothing);
+    t.deepEqual(toList(_3), Either.Right<Array<[ string, number ]>>([[ 'A', 2 ], [ 'B', 1 ]]));
 
     const _4 = Dict.singleton('A', 0).insert('B', 1).insert('B', 2);
-    t.deepEqual(validate(_4), Maybe.Nothing);
+    t.deepEqual(toList(_4), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ], [ 'B', 2 ]]));
 });
 
 test('Dict.insert() random order insertion', t => {
     const _0 = Dict.singleton('S', 0);
     t.deepEqual(
-        validate(_0),
-        Maybe.Nothing,
-        'S-0'
+        toKeyValueString(String, String, _0),
+        Either.Right('S-0')
     );
 
     const _1 = _0.insert('E', 1);
     t.deepEqual(
-        validate(_1),
-        Maybe.Nothing,
-        'S-0 E-1'
+        toKeyValueString(String, String, _1),
+        Either.Right('E-1 S-0')
     );
 
     const _2 = _1.insert('A', 2);
     t.deepEqual(
-        validate(_2),
-        Maybe.Nothing,
-        'S-0 E-1 A-2'
+        toKeyValueString(String, String, _2),
+        Either.Right('A-2 E-1 S-0')
     );
 
     const _3 = _2.insert('R', 3);
     t.deepEqual(
-        validate(_3),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3'
+        toKeyValueString(String, String, _3),
+        Either.Right('A-2 E-1 R-3 S-0')
     );
 
     const _4 = _3.insert('C', 4);
     t.deepEqual(
-        validate(_4),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3 C-4'
+        toKeyValueString(String, String, _4),
+        Either.Right('A-2 C-4 E-1 R-3 S-0')
     );
 
     const _5 = _4.insert('H', 5);
     t.deepEqual(
-        validate(_5),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3 C-4 H-5'
+        toKeyValueString(String, String, _5),
+        Either.Right('A-2 C-4 E-1 H-5 R-3 S-0')
     );
 
     const _6 = _5.insert('X', 6);
     t.deepEqual(
-        validate(_6),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3 C-4 H-5 X-6'
+        toKeyValueString(String, String, _6),
+        Either.Right('A-2 C-4 E-1 H-5 R-3 S-0 X-6')
     );
 
     const _7 = _6.insert('M', 7);
     t.deepEqual(
-        validate(_7),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7'
+        toKeyValueString(String, String, _7),
+        Either.Right('A-2 C-4 E-1 H-5 M-7 R-3 S-0 X-6')
     );
 
     const _8 = _7.insert('P', 8);
     t.deepEqual(
-        validate(_8),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8'
+        toKeyValueString(String, String, _8),
+        Either.Right('A-2 C-4 E-1 H-5 M-7 P-8 R-3 S-0 X-6')
     );
 
     const _9 = _8.insert('L', 9);
     t.deepEqual(
-        validate(_9),
-        Maybe.Nothing,
-        'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8 L-9'
+        toKeyValueString(String, String, _9),
+        Either.Right('A-2 C-4 E-1 H-5 L-9 M-7 P-8 R-3 S-0 X-6')
     );
 });
 
 test('Dict.insert() increasing order insertion', t => {
-    const _0: Dict<string, number> = Dict.empty.insert('A', 0);
-    t.deepEqual(
-        validate(_0),
-        Maybe.Nothing,
-        'A-0'
+    const pairs: Array<[ number, string ]> = range(0, 999).map(i => [ i, `_${i}_`]);
+
+    const _0 = pairs.reduce(
+        (acc, [ key, value ]) => acc.chain(dict => {
+            const next = dict.insert(key, value);
+
+            return validate(next).fold<Either<string, Dict<number, string>>>(
+                () => Either.Right(next),
+                Either.Left
+            );
+        }),
+        Either.Right(Dict.empty as Dict<number, string>)
     );
+
+    // const _0: Dict<string, number> = Dict.empty.insert('A', 0);
+    // t.deepEqual(
+    //     validate(_0),
+    //     Maybe.Nothing,
+    //     'A-0'
+    // );
 
     const _1 = _0.insert('C', 1);
     t.deepEqual(
