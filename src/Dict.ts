@@ -1,5 +1,4 @@
 import {
-    WhenUnknown,
     isComparable,
     Comparable
 } from './Basics';
@@ -312,13 +311,8 @@ export class Dict<K, T> {
         return new Dict(1, Leaf.singleton(key, value));
     }
 
-    public static fromList<K extends Key, T>(
-        pairs: Array<[ K, T ]>
-    ): unknown extends T ? Dict<unknown, unknown> : Dict<Cast<K>, T>;
-    public static fromList<K extends Key, T>(
-        toKey: (value: T) => K,
-        values: Array<T>
-    ): unknown extends T ? Dict<unknown, unknown> : Dict<Cast<K>, T>;
+    public static fromList<K extends Key, T>(pairs: Array<[ K, T ]>): Dict<Cast<K>, T>;
+    public static fromList<K extends Key, T>(toKey: (value: T) => K, values: Array<T>): Dict<Cast<K>, T>;
     public static fromList<K, T>(
         ...args: [ Array<[ K, T ]> ] | [ (value: T) => K, Array<T> ]
     ): Dict<K, T> {
@@ -342,45 +336,36 @@ export class Dict<K, T> {
         private readonly root: Node<K, T>
     ) {}
 
-    public get<K_ extends Key>(key: WhenUnknown<K, K_>): Maybe<T>;
     public get(key: K): Maybe<T> {
         return this.root.get(key);
     }
 
-    public member<K_ extends Key>(key: WhenUnknown<K, K_>): boolean {
+    public member(key: K): boolean {
         return this.get(key).isJust();
     }
 
-    public insert<K_ extends Key, T_>(
-        key: WhenUnknown<K, K_>,
-        value: WhenUnknown<T, T_>
-    ): Dict<WhenUnknown<Cast<K>, Cast<K_>>, WhenUnknown<T, T_>>;
-    public insert(key: K, value: T): Dict<Cast<K>, T> {
+    public insert(key: K, value: T): Dict<K, T> {
         const [ added, nextRoot ] = this.root.insert(key, value);
 
         return new Dict(
             added ? this.count + 1 : this.count,
             nextRoot
-        ) as unknown as Dict<Cast<K>, T>;
+        );
     }
 
-    public remove<K_ extends Key>(key: WhenUnknown<K, K_>): Dict<WhenUnknown<K, Cast<K_>>, T>;
-    public remove(key: K): Dict<WhenUnknown<K, K>, T> {
+    public remove(key: K): Dict<K, T> {
         return this.root.remove(key)
             .map((nextRoot: Node<K, T>) => new Dict(this.count - 1, nextRoot))
-            .getOrElse(this) as unknown as Dict<WhenUnknown<K, K>, T>;
+            .getOrElse(this);
     }
 
-    public update<K_ extends Key, T_>(
-        key: WhenUnknown<K, K_>,
-        fn: (value: Maybe<WhenUnknown<T, T_>>) => Maybe<WhenUnknown<T, T_>>
-    ): Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>> {
-        const probe = this.get(key) as Maybe<WhenUnknown<T, T_>>;
+    public update(key: K, fn: (value: Maybe<T>) => Maybe<T>): Dict<K, T> {
+        const probe = this.get(key);
 
         return fn(probe).fold(
             () => probe.isNothing() ? this : this.remove(key),
-            value => this.insert(key, value) as unknown as Dict<WhenUnknown<K, Cast<K_>>, T>
-        ) as unknown as Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>;
+            value => this.insert(key, value)
+        );
     }
 
     public size(): number {
@@ -391,104 +376,80 @@ export class Dict<K, T> {
         return this.count === 0;
     }
 
-    public map<K_ extends Key, T_, R>(
-        fn: (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>) => R
-    ): Dict<WhenUnknown<K, Cast<K_>>, R> {
+    public map<R>(
+        fn: (key: K, value: T) => R
+    ): Dict<K, R> {
         return new Dict(
             this.count,
             this.root.map(fn as (key: K, value: T) => R)
-        ) as unknown as Dict<WhenUnknown<K, Cast<K_>>, R>;
+        );
     }
 
-    public filter<K_ extends Key, T_>(
-        fn: (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>) => boolean
-    ): Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>> {
+    public filter(
+        fn: (key: K, value: T) => boolean
+    ): Dict<K, T> {
         const builder = this.foldl(
-            (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>, acc) => {
+            (key: K, value: T, acc: Builder<K, T>) => {
                 return fn(key, value) ? build(key, value, acc) : acc;
             },
 
-            initialBuilder as Builder<WhenUnknown<K, K_>, WhenUnknown<T, T_>>
+            initialBuilder
         );
 
-        return new Dict(builder.count, builder.root as unknown as Node<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>);
+        return new Dict(builder.count, builder.root);
     }
 
-    public partition<K_ extends Key, T_>(
-        fn: (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>) => boolean
-    ): [
-        Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>,
-        Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>
-    ] {
+    public partition(fn: (key: K, value: T) => boolean): [ Dict<K, T>, Dict<K, T> ] {
         const pair = this.foldl(
-            (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>, [ left, right ]) => {
+            (key: K, value: T, [ left, right ]: [ Builder<K, T>, Builder<K, T> ]) => {
                 return fn(key, value)
                     ? [ build(key, value, left), right ]
                     : [ left, build(key, value, right) ];
             },
 
             [
-                initialBuilder as Builder<WhenUnknown<K, K_>, WhenUnknown<T, T_>>,
-                initialBuilder as Builder<WhenUnknown<K, K_>, WhenUnknown<T, T_>>
+                initialBuilder,
+                initialBuilder
             ]
         );
 
         return [
-            new Dict(pair[ 0 ].count, pair[ 0 ].root as unknown as Node<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>),
-            new Dict(pair[ 1 ].count, pair[ 1 ].root as unknown as Node<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>)
+            new Dict(pair[ 0 ].count, pair[ 0 ].root),
+            new Dict(pair[ 1 ].count, pair[ 1 ].root)
         ];
     }
 
-    public foldl<K_ extends Key, T_, R>(
-        fn: (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>, acc: R) => R,
-        acc: R
-    ): R {
-        return (this.root as Node<WhenUnknown<K, K_>, WhenUnknown<T, T_>>).foldl(fn, acc);
+    public foldl<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R {
+        return (this.root).foldl(fn, acc);
     }
 
-    public foldr<K_ extends Key, T_, R>(
-        fn: (key: WhenUnknown<K, K_>, value: WhenUnknown<T, T_>, acc: R) => R,
-        acc: R
-    ): R {
-        return (this.root as Node<WhenUnknown<K, K_>, WhenUnknown<T, T_>>).foldr(fn, acc);
+    public foldr<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R {
+        return (this.root).foldr(fn, acc);
     }
 
-    public union<K_ extends Key, T_>(
-        another: Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>
-    ): Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>> {
+    public union(another: Dict<K, T>): Dict<K, T> {
         return this.foldl(
-            (key, value, acc) => acc.insert(
-                key as unknown as WhenUnknown<WhenUnknown<K, Cast<K_>>, K_>,
-                value as unknown as WhenUnknown<WhenUnknown<T, T_>, T_>
-            ) as unknown as Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>,
+            (key: K, value: T, acc: Dict<K, T>) => acc.insert(key, value),
             another
         );
     }
 
-    public intersect<K_ extends Key, T_>(
-        another: Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>
-    ): Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>> {
-        return this.filter(
-            key => another.member(key as unknown as WhenUnknown<WhenUnknown<K, Cast<K_>>, K_>)
-        );
+    public intersect(another: Dict<K, T>): Dict<K, T> {
+        return this.filter((key: K) => another.member(key));
     }
 
-    public diff<K_ extends Key, T_>(
-        another: Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>
-    ): Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>> {
+    public diff(another: Dict<K, T>): Dict<K, T> {
         return another.foldl(
-            (key, _value, acc) => acc.remove(
-                key
-            ) as unknown as Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>,
-            this as unknown as Dict<WhenUnknown<K, Cast<K_>>, WhenUnknown<T, T_>>
+            (key: K, _value, acc: Dict<K, T>) => acc.remove(key),
+            this
         );
     }
 
-    public merge<K_ extends Key, T_, D, R>(
-        onLeft: (key: WhenUnknown<K, K_>, left: WhenUnknown<T, T_>, acc: R) => R,
-        onBoth: (key: WhenUnknown<K, K_>, left: WhenUnknown<T, T_>, right: D, acc: R) => R,
-        onRight: (key: WhenUnknown<K, K_>, right: D, acc: R) => R,
-        right: Dict<WhenUnknown<K, Cast<K_>>, D>,
+    public merge<D, R>(
+        onLeft: (key: K, left: T, acc: R) => R,
+        onBoth: (key: K, left: T, right: D, acc: R) => R,
+        onRight: (key: K, right: D, acc: R) => R,
+        right: Dict<K, D>,
         acc: R
     ): R {
         let result = acc;
@@ -498,8 +459,8 @@ export class Dict<K, T> {
         const rightEntiries = right.entries();
 
         while (i < this.count && j < right.count) {
-            const [ leftKey, leftValue ] = leftEntiries[ i ] as unknown as [ WhenUnknown<K, K_>, WhenUnknown<T, T_> ];
-            const [ rightKey, rightValue ] = rightEntiries[ j ] as unknown as [ WhenUnknown<K, K_>, D ];
+            const [ leftKey, leftValue ] = leftEntiries[ i ] as unknown as [ K, T ];
+            const [ rightKey, rightValue ] = rightEntiries[ j ] as unknown as [ K, D ];
 
             result = compare(
                 leftKey,
@@ -521,13 +482,13 @@ export class Dict<K, T> {
         }
 
         while (i++ < this.count) {
-            const [ key, value ] = leftEntiries[ i ] as [ WhenUnknown<K, K_>, WhenUnknown<T, T_> ];
+            const [ key, value ] = leftEntiries[ i ] as [ K, T ];
 
             result = onLeft(key, value, result);
         }
 
         while (j++ < right.count) {
-            const [ key, value ] = rightEntiries[ j ] as unknown as [ WhenUnknown<K, K_>, D ];
+            const [ key, value ] = rightEntiries[ j ] as unknown as [ K, D ];
 
             result = onRight(key, value, result);
         }

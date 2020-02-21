@@ -91,7 +91,7 @@ export const validateBatch = <K extends Dict.Key, T>(pairs: Array<[ K, T ]>): Ei
         (acc, [ key, value ]) => acc.chain(dict => {
             const next = dict.insert(key, value);
 
-            return validate(next).fold(
+            return validate(next).fold<Either<string, Dict<K, T>>>(
                 () => Either.Right(next),
                 Either.Left
             );
@@ -317,7 +317,7 @@ test('Dict.member()', t => {
 });
 
 test('Dict.insert()', t => {
-    const _0 = Dict.empty.insert('A', 0);
+    const _0 = (Dict.empty as Dict<string, number>).insert('A', 0);
     t.deepEqual(toList(_0), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ]]));
 
     const _1 = Dict.singleton('A', 0).insert('A', 1);
@@ -396,88 +396,11 @@ test('Dict.insert() random order insertion', t => {
 });
 
 test('Dict.insert() increasing order insertion', t => {
-    const pairs: Array<[ number, string ]> = range(0, 999).map(i => [ i, `_${i}_`]);
+    const _0: Array<[ number, string ]> = range(0, 999).map((i): [ number, string ] => [ i, `_${i}_`]);
 
-    const _0 = pairs.reduce(
-        (acc, [ key, value ]) => acc.chain(dict => {
-            const next = dict.insert(key, value);
-
-            return validate(next).fold<Either<string, Dict<number, string>>>(
-                () => Either.Right(next),
-                Either.Left
-            );
-        }),
-        Either.Right(Dict.empty as Dict<number, string>)
-    );
-
-    // const _0: Dict<string, number> = Dict.empty.insert('A', 0);
-    // t.deepEqual(
-    //     validate(_0),
-    //     Maybe.Nothing,
-    //     'A-0'
-    // );
-
-    const _1 = _0.insert('C', 1);
     t.deepEqual(
-        validate(_1),
-        Maybe.Nothing,
-        'A-0 C-1'
-    );
-
-    const _2 = _1.insert('E', 2);
-    t.deepEqual(
-        validate(_2),
-        Maybe.Nothing,
-        'A-0 C-1 E-2'
-    );
-
-    const _3 = _2.insert('H', 3);
-    t.deepEqual(
-        validate(_3),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3'
-    );
-
-    const _4 = _3.insert('L', 4);
-    t.deepEqual(
-        validate(_4),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3 L-4'
-    );
-
-    const _5 = _4.insert('M', 5);
-    t.deepEqual(
-        validate(_5),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3 L-4 M-5'
-    );
-
-    const _6 = _5.insert('P', 6);
-    t.deepEqual(
-        validate(_6),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3 L-4 M-5 P-6'
-    );
-
-    const _7 = _6.insert('R', 7);
-    t.deepEqual(
-        validate(_7),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7'
-    );
-
-    const _8 = _7.insert('S', 8);
-    t.deepEqual(
-        validate(_8),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7 S-8'
-    );
-
-    const _9 = _8.insert('X', 9);
-    t.deepEqual(
-        validate(_9),
-        Maybe.Nothing,
-        'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7 S-8 X-9'
+        validateBatch(_0).chain(toList),
+        Either.Right(_0)
     );
 });
 
