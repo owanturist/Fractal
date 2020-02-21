@@ -40,6 +40,10 @@ interface Node<K, T> {
 
     get(key: K): Maybe<T>;
 
+    min(): Maybe<[ K, T ]>;
+
+    max(): Maybe<[ K, T ]>;
+
     insert(key: K, value: T): [ boolean, Node<K, T> ];
 
     remove(key: K): Maybe<Node<K, T>>;
@@ -65,6 +69,14 @@ const Null: Node<unknown, unknown> = new class Null<K, T> implements Node<K, T> 
     public height: number = 0;
 
     public get(): Maybe<T> {
+        return Nothing;
+    }
+
+    public min(): Maybe<[ K, T ]> {
+        return Nothing;
+    }
+
+    public max(): Maybe<[ K, T ]> {
         return Nothing;
     }
 
@@ -142,6 +154,14 @@ class Leaf<K, T> implements Node<K, T> {
             () => Just(this.value),
             () => this.right.get(key)
         );
+    }
+
+    public min(): Maybe<[ K, T ]> {
+        return this.left.min().orElse(() => Just([ this.key, this.value ]));
+    }
+
+    public max(): Maybe<[ K, T ]> {
+        return this.left.max().orElse(() => Just([ this.key, this.value ]));
     }
 
     public insert(key: K, value: T): [ boolean, Node<K, T> ] {
