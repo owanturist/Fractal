@@ -289,6 +289,18 @@ test('Dict.get()', t => {
     t.deepEqual(_0.get('Z'), Maybe.Just(25));
 });
 
+test('Dict.min()', t => {
+    t.deepEqual(Dict.empty.min(), Maybe.Nothing);
+    t.deepEqual(Dict.singleton(0, 'A').min(), Maybe.Just([ 0, 'A' ]));
+    t.deepEqual(alphabet.min(), Maybe.Just([ 0, 'A' ]));
+});
+
+test('Dict.max()', t => {
+    t.deepEqual(Dict.empty.max(), Maybe.Nothing);
+    t.deepEqual(Dict.singleton(0, 'A').max(), Maybe.Just([ 0, 'A' ]));
+    t.deepEqual(alphabet.max(), Maybe.Just([ 25, 'Z' ]));
+});
+
 test('Dict.member()', t => {
     t.false(Dict.empty.member('A'));
 
@@ -327,19 +339,19 @@ test('Dict.member()', t => {
 
 test('Dict.insert()', t => {
     const _0 = (Dict.empty as Dict<string, number>).insert('A', 0);
-    t.deepEqual(toList(_0), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ]]));
+    t.deepEqual(toKeyValueString(String, String, _0), Either.Right('A-0'));
 
-    const _1 = Dict.singleton('A', 0).insert('A', 1);
-    t.deepEqual(toList(_1), Either.Right<Array<[ string, number ]>>([[ 'A', 1 ]]));
+    const _1 = _0.insert('A', 1);
+    t.deepEqual(toKeyValueString(String, String, _1), Either.Right('A-1'));
 
-    const _2 = Dict.singleton('A', 0).insert('B', 1);
-    t.deepEqual(toList(_2), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ], [ 'B', 1 ]]));
+    const _2 = _1.insert('B', 1);
+    t.deepEqual(toKeyValueString(String, String, _2), Either.Right('A-1 B-1'));
 
-    const _3 = Dict.singleton('A', 0).insert('B', 1).insert('A', 2);
-    t.deepEqual(toList(_3), Either.Right<Array<[ string, number ]>>([[ 'A', 2 ], [ 'B', 1 ]]));
+    const _3 = _2.insert('A', 2);
+    t.deepEqual(toKeyValueString(String, String, _3), Either.Right('A-2 B-1'));
 
-    const _4 = Dict.singleton('A', 0).insert('B', 1).insert('B', 2);
-    t.deepEqual(toList(_4), Either.Right<Array<[ string, number ]>>([[ 'A', 0 ], [ 'B', 2 ]]));
+    const _4 = _3.insert('A', 0).insert('B', 2);
+    t.deepEqual(toKeyValueString(String, String, _4), Either.Right('A-0 B-2'));
 });
 
 test('Dict.insert() random order insertion', t => {
@@ -418,40 +430,296 @@ test('Dict.insert() increasing batch', t => {
     );
 });
 
-test.todo('Dict.update()');
+test('Dict.update()', t => {
+    t.is(alphabet.size(), 26);
+    t.deepEqual(alphabet.get(0), Maybe.Just('A'));
 
-test.todo('Dict.remove()');
+    const _0 = alphabet.update(0, () => Maybe.Nothing);
+    t.is(_0.size(), 25);
+    t.deepEqual(_0.get(0), Maybe.Nothing);
 
-test.todo('Dict.size()');
+    const _1 = alphabet.update(0, val => val.map(char => char + char));
+    t.is(_1.size(), 26);
+    t.deepEqual(_1.get(0), Maybe.Just('AA'));
 
-test.todo('Dict.isEmpty()');
+    const _2 = alphabet.update(100, val => val.map(char => char + char));
+    t.is(_2.size(), 26);
+    t.deepEqual(_2.get(100), Maybe.Nothing);
 
-test.todo('Dict.map()');
+    const _3 = alphabet.update(100, val => val.map(char => char + char).orElse(() => Maybe.Just('!')));
+    t.is(_3.size(), 27);
+    t.deepEqual(_3.get(100), Maybe.Just('!'));
+});
 
-test.todo('Dict.filter()');
+test('Dict.remove()', t => {
+    const _0 = (Dict.empty as Dict<string, number>).remove('A');
+    t.deepEqual(toKeyValueString(String, String, _0), Either.Right(''));
 
-test.todo('Dict.partition()');
+    const _1 = Dict.singleton('A', 1).remove('B');
+    t.deepEqual(toKeyValueString(String, String, _1), Either.Right('A-1'));
 
-test.todo('Dict.foldl()');
+    const _2 = Dict.singleton('A', 1).remove('A');
+    t.deepEqual(toKeyValueString(String, String, _2), Either.Right(''));
 
-test.todo('Dict.foldr()');
+    const _3 = alphabet.remove(0).remove(10).remove(20).remove(30);
+    t.deepEqual(validate(_3), Maybe.Nothing);
+    t.false(_3.member(0));
+    t.false(_3.member(10));
+    t.false(_3.member(20));
+    t.false(_3.member(30));
+});
 
-test.todo('Dict.union()');
+test('Dict.size()', t => {
+    t.is(Dict.empty.size(), 0);
+    t.is(Dict.singleton('A', 0).size(), 1);
+    t.is(alphabet.size(), 26);
+    t.is(alphabet.insert(0, 'A').size(), 26);
+    t.is(alphabet.insert(100, 'A').size(), 27);
+    t.is(alphabet.remove(100).size(), 26);
+    t.is(alphabet.remove(0).size(), 25);
+});
 
-test.todo('Dict.intersect()');
+test('Dict.isEmpty()', t => {
+    t.true(Dict.empty.isEmpty());
+    t.true(Dict.singleton('A', 0).remove('A').isEmpty());
+    t.false(Dict.singleton('A', 0).isEmpty());
+    t.false(alphabet.isEmpty());
+});
 
-test.todo('Dict.diff()');
+test('Dict.map()', t => {
+    const _0 = Dict.fromList(i => i, range(0, 9));
 
-test.todo('Dict.merge()');
+    t.deepEqual(
+        toList(_0.map((key, value) => `${key}_${value}`)),
+        Either.Right<Array<[ number, string ]>>([
+            [ 0, '0_0' ],
+            [ 1, '1_1' ],
+            [ 2, '2_2' ],
+            [ 3, '3_3' ],
+            [ 4, '4_4' ],
+            [ 5, '5_5' ],
+            [ 6, '6_6' ],
+            [ 7, '7_7' ],
+            [ 8, '8_8' ],
+            [ 9, '9_9' ]
+        ])
+    );
+});
 
-test.todo('Dict.keys()');
+test('Dict.filter()', t => {
+    t.deepEqual(
+        toList(alphabet.filter((key, value) => key > 0 && key < 8 || value === 'X')),
+        Either.Right<Array<[ number, string ]>>([
+            [ 1, 'B' ],
+            [ 2, 'C' ],
+            [ 3, 'D' ],
+            [ 4, 'E' ],
+            [ 5, 'F' ],
+            [ 6, 'G' ],
+            [ 7, 'H' ],
+            [ 23, 'X' ]
+        ])
+    );
+});
+
+test('Dict.partition()', t => {
+    const [ left, right ] = alphabet.partition((key, value) => key > 0 && key < 8 || value === 'X');
+
+    t.deepEqual(
+        toList(left),
+        Either.Right<Array<[ number, string ]>>([
+            [ 1, 'B' ],
+            [ 2, 'C' ],
+            [ 3, 'D' ],
+            [ 4, 'E' ],
+            [ 5, 'F' ],
+            [ 6, 'G' ],
+            [ 7, 'H' ],
+            [ 23, 'X' ]
+        ])
+    );
+
+    t.deepEqual(
+        toList(right),
+        Either.Right<Array<[ number, string ]>>([
+            [ 0, 'A' ],
+            [ 8, 'I' ],
+            [ 9, 'J' ],
+            [ 10, 'K' ],
+            [ 11, 'L' ],
+            [ 12, 'M' ],
+            [ 13, 'N' ],
+            [ 14, 'O' ],
+            [ 15, 'P' ],
+            [ 16, 'Q' ],
+            [ 17, 'R' ],
+            [ 18, 'S' ],
+            [ 19, 'T' ],
+            [ 20, 'U' ],
+            [ 21, 'V' ],
+            [ 22, 'W' ],
+            [ 24, 'Y' ],
+            [ 25, 'Z' ]
+        ])
+    );
+});
+
+test('Dict.foldl()', t => {
+    const _0 = Dict.fromList(i => i + 1, range(0, 9));
+
+    t.deepEqual(
+        _0.foldl((key, value, acc: Array<string>) => [ ...acc, `${key}_${value}` ], []),
+        [ '1_0', '2_1', '3_2', '4_3', '5_4', '6_5', '7_6', '8_7', '9_8', '10_9' ]
+    );
+});
+
+test('Dict.foldr()', t => {
+    const _0 = Dict.fromList(i => i + 1, range(0, 9));
+
+    t.deepEqual(
+        _0.foldr((key, value, acc: Array<string>) => [ ...acc, `${key}_${value}` ], []),
+        [ '10_9', '9_8', '8_7', '7_6', '6_5', '5_4', '4_3', '3_2', '2_1', '1_0' ]
+    );
+});
+
+test('Dict.union()', t => {
+    const _0 = Dict.fromList([[ 1, 'A' ], [ 2, 'B' ], [ 3, 'C' ], [ 4, 'D' ]]);
+    const _1 = Dict.fromList([[ 3, 'D' ], [ 4, 'E' ], [ 5, 'F' ], [ 6, 'G' ]]);
+
+    t.deepEqual(
+        _0.union(Dict.empty as Dict<number, string>).entries(),
+        _0.entries()
+    );
+
+    t.deepEqual(
+        (Dict.empty as Dict<number, string>).union(_1).entries(),
+        _1.entries()
+    );
+
+    t.deepEqual(
+        _0.union(_1).entries(),
+        [[ 1, 'A' ], [ 2, 'B' ], [ 3, 'C' ], [ 4, 'D' ], [ 5, 'F' ], [ 6, 'G' ]]
+    );
+});
+
+test('Dict.intersect()', t => {
+    const _0 = Dict.fromList([[ 1, 'A' ], [ 2, 'B' ], [ 3, 'C' ], [ 4, 'D' ]]);
+    const _1 = Dict.fromList([[ 3, 'D' ], [ 4, 'E' ], [ 5, 'F' ], [ 6, 'G' ]]);
+
+    t.deepEqual(
+        _0.intersect(Dict.empty as Dict<number, string>).entries(),
+        []
+    );
+
+    t.deepEqual(
+        (Dict.empty as Dict<number, string>).intersect(_1).entries(),
+        []
+    );
+
+    t.deepEqual(
+        _0.intersect(_1).entries(),
+        [[ 3, 'C' ], [ 4, 'D' ]]
+    );
+});
+
+test('Dict.diff()', t => {
+    const _0 = Dict.fromList([[ 1, 'A' ], [ 2, 'B' ], [ 3, 'C' ], [ 4, 'D' ]]);
+    const _1 = Dict.fromList([[ 3, 'D' ], [ 4, 'E' ], [ 5, 'F' ], [ 6, 'G' ]]);
+
+    t.deepEqual(
+        _0.diff(Dict.empty as Dict<number, string>).entries(),
+        _0.entries()
+    );
+
+    t.deepEqual(
+        (Dict.empty as Dict<number, string>).diff(_1).entries(),
+        []
+    );
+
+    t.deepEqual(
+        _0.diff(_1).entries(),
+        [[ 1, 'A' ], [ 2, 'B' ]]
+    );
+});
+
+test('Dict.merge()', t => {
+    const _0 = Dict.fromList([[ 1, 'A' ], [ 2, 'B' ], [ 3, 'C' ], [ 4, 'D' ]]);
+    const _1 = Dict.fromList([[ 3, 4 ], [ 4, 2 ], [ 5, 3 ], [ 6, 1 ]]);
+
+    const merge = (left: Dict<number, string>, right: Dict<number, number>): Array<string> => {
+        return left.merge(
+            (key, l, acc) => [ ...acc, `${key}_${l}` ],
+            (key, l, r, acc) => [ ...acc, `${key}_${l.repeat(r)}` ],
+            (key, r, acc) => [ ...acc, key.toString().repeat(r) ],
+            right,
+            [] as Array<string>
+        );
+    };
+
+    t.deepEqual(
+        merge(_0, Dict.empty as Dict<number, number>),
+        [ '1_A', '2_B', '3_C', '4_D' ]
+    );
+
+    t.deepEqual(
+        merge(Dict.empty as Dict<number, string>, _1),
+        [ '3333', '44', '555', '6' ]
+    );
+
+    t.deepEqual(
+        merge(_0, _1),
+        [ '1_A', '2_B', '3_CCCC', '4_DD', '555', '6' ]
+    );
+});
+
+test('Dict.keys()', t => {
+    t.deepEqual(Dict.empty.keys(), []);
+    t.deepEqual(Dict.singleton(0, 'A').keys(), [ 0 ]);
+    t.deepEqual(alphabet.keys(), [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 ]);
+});
 
 test.todo('Dict.keys.iterator()');
 
-test.todo('Dict.values()');
+test('Dict.values()', t => {
+    t.deepEqual(Dict.empty.values(), []);
+    t.deepEqual(Dict.singleton(0, 'A').values(), [ 'A' ]);
+    t.deepEqual(alphabet.values(), [ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' ]);
+});
 
 test.todo('Dict.values.iterator()');
 
-test.todo('Dict.entries()');
+test('Dict.entries()', t => {
+    t.deepEqual(Dict.empty.entries(), []);
+    t.deepEqual(Dict.singleton(0, 'A').entries(), [[ 0, 'A' ]]);
+
+    t.deepEqual(alphabet.entries(), [
+        [ 0, 'A' ],
+        [ 1, 'B' ],
+        [ 2, 'C' ],
+        [ 3, 'D' ],
+        [ 4, 'E' ],
+        [ 5, 'F' ],
+        [ 6, 'G' ],
+        [ 7, 'H' ],
+        [ 8, 'I' ],
+        [ 9, 'J' ],
+        [ 10, 'K' ],
+        [ 11, 'L' ],
+        [ 12, 'M' ],
+        [ 13, 'N' ],
+        [ 14, 'O' ],
+        [ 15, 'P' ],
+        [ 16, 'Q' ],
+        [ 17, 'R' ],
+        [ 18, 'S' ],
+        [ 19, 'T' ],
+        [ 20, 'U' ],
+        [ 21, 'V' ],
+        [ 22, 'W' ],
+        [ 23, 'X' ],
+        [ 24, 'Y' ],
+        [ 25, 'Z' ]
+    ]);
+});
 
 test.todo('Dict.entries.iterator()');

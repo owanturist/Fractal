@@ -172,7 +172,7 @@ class Leaf<K, T> implements Node<K, T> {
     }
 
     public max(): Maybe<[ K, T ]> {
-        return this.left.max().orElse(() => Just<[ K, T ]>([ this.key, this.value ]));
+        return this.right.max().orElse(() => Just<[ K, T ]>([ this.key, this.value ]));
     }
 
     public insert(key: K, value: T): [ boolean, Node<K, T> ] {
@@ -220,23 +220,23 @@ class Leaf<K, T> implements Node<K, T> {
 
     public removeMin(): Maybe<[ K, T, Node<K, T> ]> {
         return this.left.removeMin().fold(
-            () => Just([ this.key, this.value, this.right ]),
-            ([ minKey, minValue, nextLeft ]) => Just([
+            () => Just([ this.key, this.value, this.right ] as [ K, T, Node<K, T> ]),
+            ([ minKey, minValue, nextLeft ]: [ K, T, Node<K, T> ]) => Just([
                 minKey,
                 minValue,
                 balance(this.key, this.value, nextLeft, this.right)
-            ])
+            ] as [ K, T, Node<K, T> ])
         );
     }
 
     public removeMax(): Maybe<[ K, T, Node<K, T> ]> {
         return this.right.removeMax().fold(
-            () => Just([ this.key, this.value, this.left ]),
-            ([ minKey, minValue, nextRight ]) => Just([
+            () => Just([ this.key, this.value, this.left ] as [ K, T, Node<K, T> ]),
+            ([ minKey, minValue, nextRight ]: [ K, T, Node<K, T> ]) => Just([
                 minKey,
                 minValue,
                 balance(this.key, this.value, this.left, nextRight)
-            ])
+            ] as [ K, T, Node<K, T> ])
         );
     }
 
@@ -261,12 +261,12 @@ class Leaf<K, T> implements Node<K, T> {
     }
 
     public foldr<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R {
-        return this.left.foldl(
+        return this.left.foldr(
             fn,
             fn(
                 this.key,
                 this.value,
-                this.right.foldl(fn, acc)
+                this.right.foldr(fn, acc)
             )
         );
     }
@@ -392,6 +392,14 @@ export class Dict<K, T> {
         return this.root.get(key);
     }
 
+    public min(): Maybe<[ K, T ]> {
+        return this.root.min();
+    }
+
+    public max(): Maybe<[ K, T ]> {
+        return this.root.max();
+    }
+
     public member(key: K): boolean {
         return this.get(key).isJust();
     }
@@ -472,14 +480,18 @@ export class Dict<K, T> {
     }
 
     public foldl<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R {
-        return (this.root).foldl(fn, acc);
+        return this.root.foldl(fn, acc);
     }
 
     public foldr<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R {
-        return (this.root).foldr(fn, acc);
+        return this.root.foldr(fn, acc);
     }
 
     public union(another: Dict<K, T>): Dict<K, T> {
+        if (another.isEmpty()) {
+            return this;
+        }
+
         return this.foldl(
             (key: K, value: T, acc: Dict<K, T>) => acc.insert(key, value),
             another
@@ -487,10 +499,18 @@ export class Dict<K, T> {
     }
 
     public intersect(another: Dict<K, T>): Dict<K, T> {
+        if (another.isEmpty()) {
+            return Dict.empty as Dict<K, T>;
+        }
+
         return this.filter((key: K) => another.member(key));
     }
 
     public diff(another: Dict<K, T>): Dict<K, T> {
+        if (this.isEmpty()) {
+            return Dict.empty as Dict<K, T>;
+        }
+
         return another.foldl(
             (key: K, _value, acc: Dict<K, T>) => acc.remove(key),
             this
@@ -511,8 +531,8 @@ export class Dict<K, T> {
         const rightEntiries = right.entries();
 
         while (i < this.count && j < right.count) {
-            const [ leftKey, leftValue ] = leftEntiries[ i ] as unknown as [ K, T ];
-            const [ rightKey, rightValue ] = rightEntiries[ j ] as unknown as [ K, D ];
+            const [ leftKey, leftValue ] = leftEntiries[ i ];
+            const [ rightKey, rightValue ] = rightEntiries[ j ];
 
             result = compare(
                 leftKey,
@@ -533,14 +553,14 @@ export class Dict<K, T> {
             );
         }
 
-        while (i++ < this.count) {
-            const [ key, value ] = leftEntiries[ i ] as [ K, T ];
+        while (i < this.count) {
+            const [ key, value ] = leftEntiries[ i++ ];
 
             result = onLeft(key, value, result);
         }
 
-        while (j++ < right.count) {
-            const [ key, value ] = rightEntiries[ j ] as unknown as [ K, D ];
+        while (j < right.count) {
+            const [ key, value ] = rightEntiries[ j++ ];
 
             result = onRight(key, value, result);
         }
