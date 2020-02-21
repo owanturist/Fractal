@@ -47,6 +47,10 @@ interface Node<K, T> {
 
     remove(key: K): Maybe<Node<K, T>>;
 
+    removeMin(): Maybe<[ K, T, Node<K, T> ]>;
+
+    removeMax(): Maybe<[ K, T, Node<K, T> ]>;
+
     map<R>(fn: (key: K, value: T) => R): Node<K, R>;
 
     foldl<R>(fn: (key: K, value: T, acc: R) => R, acc: R): R;
@@ -87,6 +91,14 @@ const Null: Node<unknown, unknown> = new class Null<K, T> implements Node<K, T> 
     }
 
     public remove(): Maybe<Node<K, T>> {
+        return Nothing;
+    }
+
+    public removeMin(): Maybe<[ K, T, Node<K, T> ]> {
+        return Nothing;
+    }
+
+    public removeMax(): Maybe<[ K, T, Node<K, T> ]> {
         return Nothing;
     }
 
@@ -186,6 +198,28 @@ class Leaf<K, T> implements Node<K, T> {
 
     public remove(_key: K): Maybe<Node<K, T>> {
         return Nothing;
+    }
+
+    public removeMin(): Maybe<[ K, T, Node<K, T> ]> {
+        return this.left.removeMin().fold(
+            () => Just([ this.key, this.value, this.right ]),
+            ([ minKey, minValue, nextLeft ]) => Just([
+                minKey,
+                minValue,
+                balance(this.key, this.value, nextLeft, this.right)
+            ])
+        );
+    }
+
+    public removeMax(): Maybe<[ K, T, Node<K, T> ]> {
+        return this.right.removeMax().fold(
+            () => Just([ this.key, this.value, this.left ]),
+            ([ minKey, minValue, nextRight ]) => Just([
+                minKey,
+                minValue,
+                balance(this.key, this.value, this.left, nextRight)
+            ])
+        );
     }
 
     public map<R>(fn: (key: K, value: T) => R): Node<K, R> {
