@@ -1,8 +1,12 @@
 import {
-    isComparable,
-    Comparable
-} from './Basics';
-import Maybe, { Nothing, Just } from './Maybe';
+    isComparable
+} from '../Basics';
+import Maybe, { Nothing, Just } from '../Maybe';
+
+import {
+    Dict as IDict,
+    Key
+} from './index';
 
 const compare = <K, R>(left: K, right: K, onLT: () => R, onGT: () => R, onEQ: () => R): R => {
     if (isComparable(left)) {
@@ -318,23 +322,12 @@ class Leaf<K, T> implements Node<K, T> {
 
 // D I C T
 
-type Cast<K>
+export type Cast<K>
     = K extends string ? string
     : K extends number ? number
     : K extends Date ? Date
     : K
     ;
-
-export namespace Dict {
-    export type Key
-        = string
-        | number
-        | Date
-        | Comparable<unknown>
-        ;
-}
-
-export type Key = Dict.Key;
 
 interface Builder<K, T> {
     count: number;
@@ -355,32 +348,25 @@ const build = <K, T>(key: K, value: T, { count, root }: Builder<K, T>): Builder<
     };
 };
 
-export class Dict<K, T> {
+export class Dict<K, T> implements IDict<K, T> {
     public static empty: Dict<unknown, unknown> = new Dict(0, Null);
 
-    public static singleton<K extends Key, T>(key: K, value: T): Dict<Cast<K>, T>;
-    public static singleton<K, T>(key: K, value: T): Dict<K, T> {
-        return new Dict(1, Leaf.singleton(key, value));
+    public static singleton<K extends Key, T>(key: K, value: T): Dict<Cast<K>, T> {
+        return new Dict(1, Leaf.singleton(key as Cast<K>, value));
     }
 
-    public static fromList<K extends Key, T>(pairs: Array<[ K, T ]>): Dict<Cast<K>, T>;
-    public static fromList<K extends Key, T>(toKey: (value: T) => K, values: Array<T>): Dict<Cast<K>, T>;
-    public static fromList<K, T>(
-        ...args: [ Array<[ K, T ]> ] | [ (value: T) => K, Array<T> ]
-    ): Dict<K, T> {
+    public static fromList<K extends Key, T, P>(
+        toKey: (item: P) => K,
+        toValue: (item: P) => T,
+        items: Array<P>
+    ): Dict<Cast<K>, T> {
         let builder: Builder<K, T> = initialBuilder;
 
-        if (args.length === 1) {
-            for (const [ key, value ] of args[ 0 ]) {
-                builder = build(key, value, builder);
-            }
-        } else {
-            for (const value of args[ 1 ]) {
-                builder = build(args[ 0 ](value), value, builder);
-            }
+        for (const item of items) {
+            builder = build(toKey(item), toValue(item), builder);
         }
 
-        return new Dict(builder.count, builder.root);
+        return new Dict(builder.count, builder.root as Node<Cast<K>, T>);
     }
 
     private constructor(
@@ -436,18 +422,14 @@ export class Dict<K, T> {
         return this.count === 0;
     }
 
-    public map<R>(
-        fn: (key: K, value: T) => R
-    ): Dict<K, R> {
+    public map<R>(fn: (key: K, value: T) => R): Dict<K, R> {
         return new Dict(
             this.count,
             this.root.map(fn as (key: K, value: T) => R)
         );
     }
 
-    public filter(
-        fn: (key: K, value: T) => boolean
-    ): Dict<K, T> {
+    public filter(fn: (key: K, value: T) => boolean): Dict<K, T> {
         const builder = this.foldl(
             (key: K, value: T, acc: Builder<K, T>) => {
                 return fn(key, value) ? build(key, value, acc) : acc;
@@ -596,5 +578,3 @@ export class Dict<K, T> {
         return fn(this);
     }
 }
-
-export default Dict;

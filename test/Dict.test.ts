@@ -153,6 +153,7 @@ const range = (start: number, end: number): Array<number> => {
 
 const alphabet = Dict.fromList(
     char => char.charCodeAt(0) - 'A'.charCodeAt(0),
+    char => char,
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 );
 
@@ -487,7 +488,7 @@ test('Dict.isEmpty()', t => {
 });
 
 test('Dict.map()', t => {
-    const _0 = Dict.fromList(i => i, range(0, 9));
+    const _0 = Dict.fromList(i => i, i => i, range(0, 9));
 
     t.deepEqual(
         toList(_0.map((key, value) => `${key}_${value}`)),
@@ -565,7 +566,7 @@ test('Dict.partition()', t => {
 });
 
 test('Dict.foldl()', t => {
-    const _0 = Dict.fromList(i => i + 1, range(0, 9));
+    const _0 = Dict.fromList(i => i + 1, i => i, range(0, 9));
 
     t.deepEqual(
         _0.foldl((key, value, acc: Array<string>) => [ ...acc, `${key}_${value}` ], []),
@@ -574,7 +575,7 @@ test('Dict.foldl()', t => {
 });
 
 test('Dict.foldr()', t => {
-    const _0 = Dict.fromList(i => i + 1, range(0, 9));
+    const _0 = Dict.fromList(i => i + 1, i => i, range(0, 9));
 
     t.deepEqual(
         _0.foldr((key, value, acc: Array<string>) => [ ...acc, `${key}_${value}` ], []),
