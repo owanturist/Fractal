@@ -1,24 +1,33 @@
 import test from 'ava';
 
+import * as Basics from '../src/Basics';
 import Dict from '../src/Dict';
 import Maybe from '../src/Maybe';
 import Either from '../src/Either';
 
-export type Serialization<K, T> = null | {
+export class ID implements Basics.Comparable<ID> {
+    constructor(private readonly id: string) {}
+
+    public compareTo(another: ID): Basics.Order {
+        if (this.id < another.id) {
+            return Basics.Order.LT;
+        }
+
+        if (this.id > another.id) {
+            return Basics.Order.GT;
+        }
+
+        return Basics.Order.EQ;
+    }
+}
+
+type Serialization<K, T> = null | {
     height: number;
     key: K;
     value: T;
     left: Serialization<K, T>;
     right: Serialization<K, T>;
 };
-
-const node = <K, T>(
-    height: number,
-    key: K,
-    value: T,
-    left: Serialization<K, T>,
-    right: Serialization<K, T>
-): Serialization<K, T> => ({ height, key, value, left, right });
 
 interface Validation {
     count: number;
@@ -38,25 +47,25 @@ const validateNode = <K, T>(x: Serialization<K, T>): Either<string, Validation> 
         const rh = x.right === null ? 0 : x.right.height;
 
         if (lh !== left.height) {
-            return Either.Left(`Left height of '${x.key}' is ${lh} but expects ${left.height}`);
+            return Either.Left(`Left height of "${x.key}" is ${lh} but expects ${left.height}`);
         }
 
         if (rh !== right.height) {
-            return Either.Left(`Right height of '${x.key}' is ${rh} but expects ${right.height}`);
+            return Either.Left(`Right height of "${x.key}" is ${rh} but expects ${right.height}`);
         }
 
         const diff = lh - rh;
 
         if (diff < - 1 || diff > 1) {
-            return Either.Left(`Unbalanced node '${x.key}': ${diff}`);
+            return Either.Left(`Unbalanced node "${x.key}": ${diff}`);
         }
 
         if (x.left !== null && x.left.key >= x.key) {
-            return Either.Left(`Left sub-tree of violates order '${x.left.key}' < '${x.key}'`);
+            return Either.Left(`Left sub-tree violates order "${x.left.key}" < "${x.key}"`);
         }
 
         if (x.right !== null && x.right.key <= x.key) {
-            return Either.Left(`Right sub-tree of violates order '${x.right.key}' > '${x.key}'`);
+            return Either.Left(`Right sub-tree violates order "${x.right.key}" > "${x.key}"`);
         }
 
         return Either.Right({
@@ -66,7 +75,7 @@ const validateNode = <K, T>(x: Serialization<K, T>): Either<string, Validation> 
     });
 };
 
-const validate = <K extends Dict.Key, T>(dict: Dict<K, T>): Maybe<string> => {
+export const validate = <K extends Dict.Key<K>, T>(dict: Dict<K, T>): Maybe<string> => {
     return validateNode(serializeNode((dict as any).root)).fold(
         Maybe.Just,
         ({ count }) => dict.size() === count
@@ -85,7 +94,7 @@ const serializeNode = (node: any): Serialization<any, any> => {
     } : null;
 };
 
-const serialize = <K extends Dict.Key, T>(dict: Dict<K, T>): Serialization<K, T> => {
+export const serialize = <K extends Dict.Key<K>, T>(dict: Dict<K, T>): Serialization<K, T> => {
     return serializeNode((dict as any).root);
 };
 
@@ -93,14 +102,6 @@ const alphabet = Dict.fromList(
     char => char.charCodeAt(0) - 'A'.charCodeAt(0),
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 );
-
-// class ID implements Comparable<ID> {
-//     constructor(private readonly id: string) {}
-
-//     public compareTo(): Order {
-//         return Order.EQ;
-//     }
-// }
 
 test('Dict.get()', t => {
     t.deepEqual(
@@ -269,204 +270,90 @@ test('Dict.member()', t => {
 });
 
 test('Dict.insert()', t => {
-    const _0: Dict<string, number> = Dict.empty.insert('A', 0);
-    t.deepEqual(
-        serialize(_0),
-        node('black', 'A', 0, null, null)
-    );
+    const _0 = Dict.empty.insert('A', 0);
+    t.deepEqual(validate(_0), Maybe.Nothing);
 
     const _1 = Dict.singleton('A', 0).insert('A', 1);
-    t.deepEqual(
-        serialize(_1),
-        node('black', 'A', 1, null, null)
-    );
+    t.deepEqual(validate(_1), Maybe.Nothing);
 
     const _2 = Dict.singleton('A', 0).insert('B', 1);
-    t.deepEqual(
-        serialize(_2),
-        node('black', 'B', 1,
-            node('red', 'A', 0, null, null),
-            null
-        )
-    );
+    t.deepEqual(validate(_2), Maybe.Nothing);
 
     const _3 = Dict.singleton('A', 0).insert('B', 1).insert('A', 2);
-    t.deepEqual(
-        serialize(_3),
-        node('black', 'B', 1,
-            node('red', 'A', 2, null, null),
-            null
-        )
-    );
+    t.deepEqual(validate(_3), Maybe.Nothing);
 
     const _4 = Dict.singleton('A', 0).insert('B', 1).insert('B', 2);
-    t.deepEqual(
-        serialize(_4),
-        node('black', 'B', 2,
-            node('red', 'A', 0, null, null),
-            null
-        )
-    );
+    t.deepEqual(validate(_4), Maybe.Nothing);
 });
 
 test('Dict.insert() random order insertion', t => {
     const _0 = Dict.singleton('S', 0);
     t.deepEqual(
-        serialize(_0),
-        node('black', 'S', 0, null, null),
+        validate(_0),
+        Maybe.Nothing,
         'S-0'
     );
 
     const _1 = _0.insert('E', 1);
     t.deepEqual(
-        serialize(_1),
-        node('black', 'S', 0,
-            node('red', 'E', 1, null, null),
-            null
-        ),
+        validate(_1),
+        Maybe.Nothing,
         'S-0 E-1'
     );
 
     const _2 = _1.insert('A', 2);
     t.deepEqual(
-        serialize(_2),
-        node('black', 'E', 1,
-            node('black', 'A', 2, null, null),
-            node('black', 'S', 0, null, null)
-        ),
+        validate(_2),
+        Maybe.Nothing,
         'S-0 E-1 A-2'
     );
 
     const _3 = _2.insert('R', 3);
     t.deepEqual(
-        serialize(_3),
-        node('black', 'E', 1,
-            node('black', 'A', 2, null, null),
-            node('black', 'S', 0,
-                node('red', 'R', 3, null, null),
-                null
-            )
-        ),
+        validate(_3),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3'
     );
 
     const _4 = _3.insert('C', 4);
     t.deepEqual(
-        serialize(_4),
-        node('black', 'E', 1,
-            node('black', 'C', 4,
-                node('red', 'A', 2, null, null),
-                null
-            ),
-            node('black', 'S', 0,
-                node('red', 'R', 3, null, null),
-                null
-            )
-        ),
+        validate(_4),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3 C-4'
     );
 
     const _5 = _4.insert('H', 5);
     t.deepEqual(
-        serialize(_5),
-        node('black', 'R', 3,
-            node('red', 'E', 1,
-                node('black', 'C', 4,
-                    node('red', 'A', 2, null, null),
-                    null
-                ),
-                node('black', 'H', 5, null, null)
-            ),
-            node('black', 'S', 0, null, null)
-        ),
+        validate(_5),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3 C-4 H-5'
     );
 
     const _6 = _5.insert('X', 6);
     t.deepEqual(
-        serialize(_6),
-        node('black', 'R', 3,
-            node('red', 'E', 1,
-                node('black', 'C', 4,
-                    node('red', 'A', 2, null, null),
-                    null
-                ),
-                node('black', 'H', 5, null, null)
-            ),
-            node('black', 'X', 6,
-                node('red', 'S', 0, null, null),
-                null
-            )
-        ),
+        validate(_6),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6'
     );
 
     const _7 = _6.insert('M', 7);
     t.deepEqual(
-        serialize(_7),
-        node('black', 'R', 3,
-            node('red', 'E', 1,
-                node('black', 'C', 4,
-                    node('red', 'A', 2, null, null),
-                    null
-                ),
-                node('black', 'M', 7,
-                    node('red', 'H', 5, null, null),
-                    null
-                )
-            ),
-            node('black', 'X', 6,
-                node('red', 'S', 0, null, null),
-                null
-            )
-        ),
+        validate(_7),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7'
     );
 
     const _8 = _7.insert('P', 8);
     t.deepEqual(
-        serialize(_8),
-        node('black', 'M', 7,
-            node('black', 'E', 1,
-                node('black', 'C', 4,
-                    node('red', 'A', 2, null, null),
-                    null
-                ),
-                node('black', 'H', 5, null, null)
-            ),
-            node('black', 'R', 3,
-                node('black', 'P', 8, null, null),
-                node('black', 'X', 6,
-                    node('red', 'S', 0, null, null),
-                    null
-                )
-            )
-        ),
+        validate(_8),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8'
     );
 
     const _9 = _8.insert('L', 9);
     t.deepEqual(
-        serialize(_9),
-        node('black', 'M', 7,
-            node('black', 'E', 1,
-                node('black', 'C', 4,
-                    node('red', 'A', 2, null, null),
-                    null
-                ),
-                node('black', 'L', 9,
-                    node('red', 'H', 5, null, null),
-                    null
-                )
-            ),
-            node('black', 'R', 3,
-                node('black', 'P', 8, null, null),
-                node('black', 'X', 6,
-                    node('red', 'S', 0, null, null),
-                    null
-                )
-            )
-        ),
+        validate(_9),
+        Maybe.Nothing,
         'S-0 E-1 A-2 R-3 C-4 H-5 X-6 M-7 P-8 L-9'
     );
 });
@@ -474,146 +361,71 @@ test('Dict.insert() random order insertion', t => {
 test('Dict.insert() increasing order insertion', t => {
     const _0: Dict<string, number> = Dict.empty.insert('A', 0);
     t.deepEqual(
-        serialize(_0),
-        node('black', 'A', 0, null, null),
+        validate(_0),
+        Maybe.Nothing,
         'A-0'
     );
 
     const _1 = _0.insert('C', 1);
     t.deepEqual(
-        serialize(_1),
-        node('black', 'C', 1,
-            node('red', 'A', 0, null, null),
-            null
-        ),
+        validate(_1),
+        Maybe.Nothing,
         'A-0 C-1'
     );
 
     const _2 = _1.insert('E', 2);
     t.deepEqual(
-        serialize(_2),
-        node('black', 'C', 1,
-            node('black', 'A', 0, null, null),
-            node('black', 'E', 2, null, null)
-        ),
+        validate(_2),
+        Maybe.Nothing,
         'A-0 C-1 E-2'
     );
 
     const _3 = _2.insert('H', 3);
     t.deepEqual(
-        serialize(_3),
-        node('black', 'C', 1,
-            node('black', 'A', 0, null, null),
-            node('black', 'H', 3,
-                node('red', 'E', 2, null, null),
-                null
-            )
-        ),
+        validate(_3),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3'
     );
 
     const _4 = _3.insert('L', 4);
     t.deepEqual(
-        serialize(_4),
-        node('black', 'H', 3,
-            node('red', 'C', 1,
-                node('black', 'A', 0, null, null),
-                node('black', 'E', 2, null, null)
-            ),
-            node('black', 'L', 4, null, null)
-        ),
+        validate(_4),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3 L-4'
     );
 
     const _5 = _4.insert('M', 5);
     t.deepEqual(
-        serialize(_5),
-        node('black', 'H', 3,
-            node('red', 'C', 1,
-                node('black', 'A', 0, null, null),
-                node('black', 'E', 2, null, null)
-            ),
-            node('black', 'M', 5,
-                node('red', 'L', 4, null, null),
-                null
-            )
-        ),
+        validate(_5),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3 L-4 M-5'
     );
 
     const _6 = _5.insert('P', 6);
     t.deepEqual(
-        serialize(_6),
-        node('black', 'H', 3,
-            node('black', 'C', 1,
-                node('black', 'A', 0, null, null),
-                node('black', 'E', 2, null, null)
-            ),
-            node('black', 'M', 5,
-                node('black', 'L', 4, null, null),
-                node('black', 'P', 6, null, null)
-            )
-        ),
+        validate(_6),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6'
     );
 
     const _7 = _6.insert('R', 7);
     t.deepEqual(
-        serialize(_7),
-        node('black', 'H', 3,
-            node('black', 'C', 1,
-                node('black', 'A', 0, null, null),
-                node('black', 'E', 2, null, null)
-            ),
-            node('black', 'M', 5,
-                node('black', 'L', 4, null, null),
-                node('black', 'R', 7,
-                    node('red', 'P', 6, null, null),
-                    null
-                )
-            )
-        ),
+        validate(_7),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7'
     );
 
     const _8 = _7.insert('S', 8);
     t.deepEqual(
-        serialize(_8),
-        node('black', 'H', 3,
-            node('black', 'C', 1,
-                node('black', 'A', 0, null, null),
-                node('black', 'E', 2, null, null)
-            ),
-            node('black', 'R', 7,
-                node('red', 'M', 5,
-                    node('black', 'L', 4, null, null),
-                    node('black', 'P', 6, null, null)
-                ),
-                node('black', 'S', 8, null, null)
-            )
-        ),
+        validate(_8),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7 S-8'
     );
 
     const _9 = _8.insert('X', 9);
     t.deepEqual(
-        serialize(_9),
-        node('black', 'H', 3,
-            node('black', 'C', 1,
-                node('black', 'A', 0, null, null),
-                node('black', 'E', 2, null, null)
-            ),
-            node('black', 'R', 7,
-                node('red', 'M', 5,
-                    node('black', 'L', 4, null, null),
-                    node('black', 'P', 6, null, null)
-                ),
-                node('black', 'X', 9,
-                    node('red', 'S', 8, null, null),
-                    null
-                )
-            )
-        ),
+        validate(_9),
+        Maybe.Nothing,
         'A-0 C-1 E-2 H-3 L-4 M-5 P-6 R-7 S-8 X-9'
     );
 });

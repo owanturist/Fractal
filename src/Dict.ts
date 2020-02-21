@@ -5,7 +5,7 @@ import {
 } from './Basics';
 import Maybe, { Nothing, Just } from './Maybe';
 
-const compare = <K, R>(left: K, right: K, onLT: () => R, onEQ: () => R, onGT: () => R): R => {
+const compare = <K, R>(left: K, right: K, onLT: () => R, onGT: () => R, onEQ: () => R): R => {
     if (isComparable(left)) {
         return left.compareTo(right).fold(onLT, onEQ, onGT);
     }
@@ -111,7 +111,7 @@ const Null: Node<unknown, unknown> = new class Null<K, T> implements Node<K, T> 
         return new Leaf(
             rk,
             rv,
-            new Leaf(pk, pv, pl, Null as unknown as Node<K, T>),
+            new Leaf(pk, pv, pl, this as Node<K, T>),
             rr
         );
     }
@@ -125,7 +125,7 @@ const Null: Node<unknown, unknown> = new class Null<K, T> implements Node<K, T> 
             lk,
             lv,
             ll,
-            new Leaf(pk, pv, Null as unknown as Node<K, T>, pr)
+            new Leaf(pk, pv, this as Node<K, T>, pr)
         );
     }
 }();
@@ -151,34 +151,34 @@ class Leaf<K, T> implements Node<K, T> {
             key,
             this.key,
             () => this.left.get(key),
-            () => Just(this.value),
-            () => this.right.get(key)
+            () => this.right.get(key),
+            () => Just(this.value)
         );
     }
 
     public min(): Maybe<[ K, T ]> {
-        return this.left.min().orElse(() => Just([ this.key, this.value ]));
+        return this.left.min().orElse(() => Just<[ K, T ]>([ this.key, this.value ]));
     }
 
     public max(): Maybe<[ K, T ]> {
-        return this.left.max().orElse(() => Just([ this.key, this.value ]));
+        return this.left.max().orElse(() => Just<[ K, T ]>([ this.key, this.value ]));
     }
 
     public insert(key: K, value: T): [ boolean, Node<K, T> ] {
         return compare(
             key,
             this.key,
-            () => {
+            (): [ boolean, Node<K, T> ] => {
                 const [ added, nextLeft ] = this.left.insert(key, value);
 
                 return [ added, balance(this.key, this.value, nextLeft, this.right) ];
             },
-            () => {
+            (): [ boolean, Node<K, T> ] => {
                 const [ added, nextRight ] = this.right.insert(key, value);
 
                 return [ added, balance(this.key, this.value, this.left, nextRight) ];
             },
-            () => [
+            (): [ boolean, Node<K, T> ] => [
                 false,
                 new Leaf(key, value, this.left, this.right)
             ]
@@ -509,13 +509,13 @@ export class Dict<K, T> {
                     return onLeft(leftKey, leftValue, result);
                 },
                 () => {
+                    j++;
+                    return onRight(rightKey, rightValue, result);
+                },
+                () => {
                     i++;
                     j++;
                     return onBoth(leftKey, leftValue, rightValue, result);
-                },
-                () => {
-                    j++;
-                    return onRight(rightKey, rightValue, result);
                 }
             );
         }
