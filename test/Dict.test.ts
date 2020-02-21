@@ -132,11 +132,20 @@ export const toKeyValueString = <K extends Dict.Key, T>(
 };
 
 const range = (start: number, end: number): Array<number> => {
-    const [ lo, hi ] = start < end ? [ start, end ] : [ end, start ];
-    const sequence: Array<number> = new Array(hi - lo + 1);
+    if (start < end) {
+        const sequence: Array<number> = new Array(end - start + 1);
+
+        for (let i = 0; i < sequence.length; i++) {
+            sequence[ i ] = start + i;
+        }
+
+        return sequence;
+    }
+
+    const sequence: Array<number> = new Array(start - end + 1);
 
     for (let i = 0; i < sequence.length; i++) {
-        sequence[ i ] = lo + i;
+        sequence[ i ] = start - i;
     }
 
     return sequence;
@@ -395,12 +404,17 @@ test('Dict.insert() random order insertion', t => {
     );
 });
 
-test('Dict.insert() increasing order insertion', t => {
+test('Dict.insert() increasing batch', t => {
     const _0: Array<[ number, string ]> = range(0, 999).map((i): [ number, string ] => [ i, `_${i}_`]);
-
     t.deepEqual(
         validateBatch(_0).chain(toList),
         Either.Right(_0)
+    );
+
+    const _1: Array<[ number, string ]> = range(999, 0).map((i): [ number, string ] => [ i, `_${i}_`]);
+    t.deepEqual(
+        validateBatch(_1).chain(toList),
+        Either.Right(_1.reverse())
     );
 });
 
