@@ -196,8 +196,26 @@ class Leaf<K, T> implements Node<K, T> {
         );
     }
 
-    public remove(_key: K): Maybe<Node<K, T>> {
-        return Nothing;
+    public remove(key: K): Maybe<Node<K, T>> {
+        return compare(
+            key,
+            this.key,
+            () => this.left.remove(key).map(nextLeft => balance(this.key, this.value, nextLeft, this.right)),
+            () => this.right.remove(key).map(nextRight => balance(this.key, this.value, this.left, nextRight)),
+            () => {
+                if (this.left.height < this.right.height) {
+                    return this.right.removeMin().fold(
+                        () => Just(this.left),
+                        ([ minKey, minValue, nextRight ]) => Just(new Leaf(minKey, minValue, this.left, nextRight))
+                    );
+                }
+
+                return this.left.removeMax().fold(
+                    () => Just(this.right),
+                    ([ minKey, minValue, nextLeft ]) => Just(new Leaf(minKey, minValue, nextLeft, this.right))
+                );
+            }
+        );
     }
 
     public removeMin(): Maybe<[ K, T, Node<K, T> ]> {
