@@ -34,14 +34,22 @@ interface Validation {
     height: number;
 }
 
-const validateNode = <K, T>(x: Serialization<K, T>): Either<string, Validation> => {
+const validateNode = <K, T>(minKey: Maybe<K>, maxKey: Maybe<K>, x: Serialization<K, T>): Either<string, Validation> => {
     if (x === null) {
         return Either.Right({ count: 0, height: 0 });
     }
 
+    if (minKey.map(min => x.key <= min).getOrElse(false)) {
+        return Either.Left(`Right key "${x.key}" less than parent key "${minKey.getOrElse(x.key)}"`);
+    }
+
+    if (maxKey.map(max => x.key >= max).getOrElse(false)) {
+        return Either.Left(`Left key "${x.key}" more than parent key "${maxKey.getOrElse(x.key)}"`);
+    }
+
     return Either.shape<string, { left: Validation; right: Validation }>({
-        left: validateNode(x.left),
-        right: validateNode(x.right)
+        left: validateNode(minKey, Maybe.Just(x.key), x.left),
+        right: validateNode(Maybe.Just(x.key), maxKey, x.right)
     }).chain(({ left, right }) => {
         const lh = x.left === null ? 0 : x.left.height;
         const rh = x.right === null ? 0 : x.right.height;
@@ -60,14 +68,6 @@ const validateNode = <K, T>(x: Serialization<K, T>): Either<string, Validation> 
             return Either.Left(`Unbalanced node "${x.key}": ${diff}`);
         }
 
-        if (x.left !== null && x.left.key >= x.key) {
-            return Either.Left(`Left sub-tree violates order "${x.left.key}" < "${x.key}"`);
-        }
-
-        if (x.right !== null && x.right.key <= x.key) {
-            return Either.Left(`Right sub-tree violates order "${x.right.key}" > "${x.key}"`);
-        }
-
         return Either.Right({
             count: left.count + right.count + 1,
             height: Math.max(left.height, right.height) + 1
@@ -76,7 +76,7 @@ const validateNode = <K, T>(x: Serialization<K, T>): Either<string, Validation> 
 };
 
 export const validate = <K extends Dict.Key<K>, T>(dict: Dict<K, T>): Maybe<string> => {
-    return validateNode(serializeNode((dict as any).root)).fold(
+    return validateNode(Maybe.Nothing, Maybe.Nothing, serializeNode((dict as any).root)).fold(
         Maybe.Just,
         ({ count }) => dict.size() === count
             ? Maybe.Nothing
