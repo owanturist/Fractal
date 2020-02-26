@@ -1,15 +1,10 @@
 import {
     Cata
 } from './Basics';
+import { Task, Cmd } from './index';
 import Maybe, { Nothing, Just } from './Maybe';
 import Either, { Right } from './Either';
-import {
-    Task
-} from './Core';
-import {
-    Cmd
-} from './Platform/Cmd';
-import * as Decode from './Json/Decode';
+import Decode from './Json/Decode';
 import Encode from './Json/Encode';
 
 /* H E L P E R S */

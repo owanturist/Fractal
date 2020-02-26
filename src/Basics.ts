@@ -14,6 +14,8 @@ export type IsNever<A, T, F> = [ A ] extends [ never ] ? T : F;
 
 export type WhenNever<A, T> = [ A, T ] extends [ T, A ] ? A : IsNever<A, T, A>;
 
+export type WhenUnknown<A, T> = [ A, T ] extends [ T, A ] ? A : (unknown extends A ? T : A);
+
 export type Cata<O extends {[ K in keyof O ]: (...args: Array<unknown>) => unknown } & { _?: never }>
     = O extends {[ K in keyof O ]: (...args: Array<unknown>) => infer R }
     ? Compute<O & { _?(): never }> | Compute<Optional<O> & { _(): R }>
@@ -65,3 +67,114 @@ export function toInt(input: string): Maybe<number> {
 
     return Nothing;
 }
+
+
+export interface Order {
+    isLT(): boolean;
+
+    isEQ(): boolean;
+
+    isGT(): boolean;
+
+    fold<R>(onLT: () => R, onEQ: () => R, onGT: () => R): R;
+
+    cata<R>(pattern: Order.Pattern<R>): R;
+}
+
+export namespace Order {
+    export type Pattern<R> = Cata<{
+        LT(): R;
+        EQ(): R;
+        GT(): R;
+    }>;
+
+    export const LT: Order = inst(class LT implements Order {
+        public isLT(): boolean {
+            return true;
+        }
+
+        public isEQ(): boolean {
+            return false;
+        }
+
+        public isGT(): boolean {
+            return false;
+        }
+
+        public fold<R>(onLT: () => R): R {
+            return onLT();
+        }
+
+        public cata<R>(pattern: Pattern<R>): R {
+            if (typeof pattern.LT === 'function') {
+                return pattern.LT();
+            }
+
+            return (pattern._ as () => R)();
+        }
+    });
+
+    export const EQ: Order = inst(class EQ implements Order {
+        public isLT(): boolean {
+            return false;
+        }
+
+        public isEQ(): boolean {
+            return true;
+        }
+
+        public isGT(): boolean {
+            return false;
+        }
+
+        public fold<R>(_onLT: () => R, onEQ: () => R): R {
+            return onEQ();
+        }
+
+        public cata<R>(pattern: Pattern<R>): R {
+            if (typeof pattern.EQ === 'function') {
+                return pattern.EQ();
+            }
+
+            return (pattern._ as () => R)();
+        }
+    });
+
+    export const GT: Order = inst(class GT implements Order {
+        public isLT(): boolean {
+            return false;
+        }
+
+        public isEQ(): boolean {
+            return false;
+        }
+
+        public isGT(): boolean {
+            return true;
+        }
+
+        public fold<R>(_onLT: () => R, _onEQ: () => R, onGT: () => R): R {
+            return onGT();
+        }
+
+        public cata<R>(pattern: Pattern<R>): R {
+            if (typeof pattern.GT === 'function') {
+                return pattern.GT();
+            }
+
+            return (pattern._ as () => R)();
+        }
+    });
+}
+
+export interface Comparable<T> {
+    compareTo(another: T): Order;
+}
+
+export const isComparable = <T>(something: unknown): something is Comparable<T> => {
+    if (!something) {
+        return false;
+    }
+
+    return typeof (something as { compareTo?(): boolean }).compareTo === 'function';
+};
