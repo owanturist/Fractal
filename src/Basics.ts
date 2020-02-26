@@ -171,6 +171,10 @@ export interface Comparable<T> {
     compareTo(another: T): Order;
 }
 
-export const isComparable = <T>(something: any): something is Comparable<T> => {
-    return something && typeof something.compareTo === 'function';
+export const isComparable = <T>(something: unknown): something is Comparable<T> => {
+    if (!something) {
+        return false;
+    }
+
+    return typeof (something as { compareTo?(): boolean }).compareTo === 'function';
 };

@@ -78,7 +78,7 @@ const validateNode = <K, T>(minKey: Maybe<K>, maxKey: Maybe<K>, x: Serialization
 };
 
 export const validate = <K extends Dict.Key, T>(dict: Dict<K, T>): Maybe<string> => {
-    return validateNode(Maybe.Nothing, Maybe.Nothing, serializeNode((dict as any).root)).fold(
+    return validateNode(Maybe.Nothing, Maybe.Nothing, serializeNode((dict as unknown as { root: Node<K, T>}).root)).fold(
         Maybe.Just,
         ({ count }) => dict.size() === count
             ? Maybe.Nothing
@@ -100,7 +100,15 @@ export const validateBatch = <K extends Dict.Key, T>(pairs: Array<[ K, T ]>): Ei
     );
 };
 
-const serializeNode = (node: any): Serialization<any, any> => {
+type Node<K, T> = {} | {
+    height: number;
+    key: K;
+    value: T;
+    left: Node<K, T>;
+    right: Node<K, T>;
+};
+
+const serializeNode = <K, T>(node: Node<K, T>): Serialization<K, T> => {
     return 'key' in node ? {
         height: node.height,
         key: node.key,
@@ -111,7 +119,7 @@ const serializeNode = (node: any): Serialization<any, any> => {
 };
 
 export const serialize = <K extends Dict.Key, T>(dict: Dict<K, T>): Serialization<K, T> => {
-    return serializeNode((dict as any).root);
+    return serializeNode((dict as unknown as { root: Node<K, T>}).root);
 };
 
 export const toList = <K extends Dict.Key, T>(dict: Dict<K, T>): Either<string, Array<[ K, T ]>> => {

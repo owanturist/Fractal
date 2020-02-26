@@ -229,7 +229,7 @@ class Runtime<AppMsg> {
                 continue;
             }
 
-            Scheduler.rawSend(process, new AM({
+            Scheduler.rawSend(process, new AM<unknown, unknown>({
                 commands: [],
                 subscriptions: []
             }));
