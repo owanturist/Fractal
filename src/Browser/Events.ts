@@ -1,7 +1,7 @@
 import { Router, Manager, Process, Task, Sub } from '../index';
 import * as Scheduler from '../Scheduler';
 
-import Decode from 'Json/Decode';
+import Decode from '../Json/Decode';
 
 
 type EventName = string;
