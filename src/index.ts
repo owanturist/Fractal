@@ -32,7 +32,7 @@ class RouterImpl<AppMsg, SelfMsg, State> implements Router<AppMsg, SelfMsg> {
     }
 }
 
-export interface Manager<AppMsg, SelfMsg = unknown, State = unknown> {
+export interface Manager<AppMsg, SelfMsg, State> {
     init: Task<never, State>;
 
     onEffects(
@@ -54,31 +54,34 @@ interface Effects<AppMsg> {
     readonly subscriptions: Array<Sub<AppMsg>>;
 }
 
-abstract class Bag<T> {
+abstract class Bag<AppMsg> {
     protected static gather<T>(
         bag: Bag<T>,
-        managers: Array<Manager<T>>,
-        effectsOfManagers: WeakMap<Manager<T>, Effects<T>>
+        managers: Array<Manager<T, unknown, unknown>>,
+        effectsOfManagers: WeakMap<Manager<T, unknown, unknown>, Effects<T>>
     ): void {
         bag.gather(managers, effectsOfManagers);
     }
 
-    public abstract map<R>(fn: (effect: T) => R): Bag<R>;
+    public abstract map<R>(fn: (effect: AppMsg) => R): Bag<R>;
 
-    protected abstract gather(managers: Array<Manager<T>>, effectsOfManagers: WeakMap<Manager<T>, Effects<T>>): void;
+    protected abstract gather(
+        managers: Array<Manager<AppMsg, unknown, unknown>>,
+        effectsOfManagers: WeakMap<Manager<AppMsg, unknown, unknown>, Effects<AppMsg>>
+    ): void;
 }
 
-abstract class Gatherer<T> extends Bag<T> {
-    public static gather<T>(
-        bag: Bag<T>,
-        managers: Array<Manager<T>>,
-        effectsOfManagers: WeakMap<Manager<T>, Effects<T>>
+abstract class Gatherer<AppMsg> extends Bag<AppMsg> {
+    public static gather<AppMsg>(
+        bag: Bag<AppMsg>,
+        managers: Array<Manager<AppMsg, unknown, unknown>>,
+        effectsOfManagers: WeakMap<Manager<AppMsg, unknown, unknown>, Effects<AppMsg>>
     ): void {
         super.gather(bag, managers, effectsOfManagers);
     }
 }
 
-const none = new class None<T> extends Bag<T> {
+const none = new class None<AppMsg> extends Bag<AppMsg> {
     public map<R>(): Bag<R> {
         return this;
     }
@@ -88,12 +91,12 @@ const none = new class None<T> extends Bag<T> {
     }
 }<never>();
 
-class Batch<T> extends Bag<T> {
-    public constructor(private readonly bags: Array<Bag<T>>) {
+class Batch<AppMsg> extends Bag<AppMsg> {
+    public constructor(private readonly bags: Array<Bag<AppMsg>>) {
         super();
     }
 
-    public map<R>(fn: (effect: T) => R): Bag<R> {
+    public map<R>(fn: (effect: AppMsg) => R): Bag<R> {
         const result: Array<Bag<R>> = [];
 
         for (const bag of this.bags) {
@@ -103,14 +106,17 @@ class Batch<T> extends Bag<T> {
         return new Batch(result);
     }
 
-    protected gather(managers: Array<Manager<T>>, effectsOfManagers: Map<Manager<T>, Effects<T>>): void {
+    protected gather(
+        managers: Array<Manager<AppMsg, unknown, unknown>>,
+        effectsOfManagers: Map<Manager<AppMsg, unknown, unknown>, Effects<AppMsg>>
+    ): void {
         for (const bag of this.bags) {
             Bag.gather(bag, managers, effectsOfManagers);
         }
     }
 }
 
-const batch = <T>(bags: Array<Bag<T>>): Bag<T> => {
+const batch = <AppMsg>(bags: Array<Bag<AppMsg>>): Bag<AppMsg> => {
     switch (bags.length) {
         case 0: {
             return none;
@@ -126,16 +132,19 @@ const batch = <T>(bags: Array<Bag<T>>): Bag<T> => {
     }
 };
 
-export abstract class Cmd<T> extends Bag<T> {
+export abstract class Cmd<AppMsg> extends Bag<AppMsg> {
     public static none = none as unknown as Cmd<never>;
 
     public static batch = batch as <T>(cmds: Array<Cmd<T>>) => Cmd<T>;
 
-    protected abstract readonly manager: Manager<T>;
+    protected abstract readonly manager: Manager<AppMsg, unknown, unknown>;
 
-    public abstract map<R>(fn: (effect: T) => R): Cmd<R>;
+    public abstract map<R>(fn: (effect: AppMsg) => R): Cmd<R>;
 
-    protected gather(managers: Array<Manager<T>>, effectsOfManagers: WeakMap<Manager<T>, Effects<T>>): void {
+    protected gather(
+        managers: Array<Manager<AppMsg, unknown, unknown>>,
+        effectsOfManagers: WeakMap<Manager<AppMsg, unknown, unknown>, Effects<AppMsg>>
+    ): void {
         const effects = effectsOfManagers.get(this.manager);
 
         if (typeof effects === 'undefined') {
@@ -150,16 +159,19 @@ export abstract class Cmd<T> extends Bag<T> {
     }
 }
 
-export abstract class Sub<T> extends Bag<T> {
+export abstract class Sub<AppMsg> extends Bag<AppMsg> {
     public static none = none as unknown as Sub<never>;
 
     public static batch = batch as <T>(subs: Array<Sub<T>>) => Sub<T>;
 
-    protected abstract readonly manager: Manager<T>;
+    protected abstract readonly manager: Manager<AppMsg, unknown, unknown>;
 
-    public abstract map<R>(fn: (effect: T) => R): Sub<R>;
+    public abstract map<R>(fn: (effect: AppMsg) => R): Sub<R>;
 
-    protected gather(sequence: Array<Manager<T>>, effectDict: WeakMap<Manager<T>, Effects<T>>): void {
+    protected gather(
+        sequence: Array<Manager<AppMsg, unknown, unknown>>,
+        effectDict: WeakMap<Manager<AppMsg, unknown, unknown>, Effects<AppMsg>>
+    ): void {
         const effects = effectDict.get(this.manager);
 
         if (typeof effects === 'undefined') {
@@ -243,7 +255,7 @@ class Runtime<AppMsg, SelfMsg, State> {
                 continue;
             }
 
-            Scheduler.rawSend(process, new EffectsDealer({
+            Scheduler.rawSend(process, new EffectsDealer<AppMsg, SelfMsg, State>({
                 commands: [],
                 subscriptions: []
             }));
@@ -429,9 +441,7 @@ export class Task<E, T> {
     public spawn(): Task<never, Process> {
         return new Task(
             Scheduler.chain(
-                (process: Scheduler.Process): Scheduler.Task<never, Process> => {
-                    return Scheduler.succeed(new Process(process));
-                },
+                process => Scheduler.succeed(new Process(process)),
                 Scheduler.spawn(this.internal)
             )
         );
@@ -442,22 +452,24 @@ export class Task<E, T> {
     }
 }
 
-const manager: Manager<unknown> = {
-    init: Task.succeed(undefined),
+class CoreManager<AppMsg> implements Manager<AppMsg, never, void> {
+    public readonly init = Task.succeed(undefined);
 
-    onEffects<AppMsg>(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, void> {
+    public onEffects(router: Router<AppMsg, never>, commands: Array<Perform<AppMsg>>): Task<never, void> {
         return Task.sequence(
-            commands.map((command: Perform<AppMsg>): Task<never, Process> => command.onEffects(router))
+            commands.map(command => command.onEffects(router))
         ).map(() => undefined);
-    },
+    }
 
-    onSelfMsg(): Task<never, void> {
+    public onSelfMsg(): Task<never, void> {
         return Task.succeed(undefined);
     }
-};
+}
 
 class Perform<AppMsg> extends Cmd<AppMsg> {
-    protected readonly manager = manager;
+    private static readonly manager: Manager<unknown, never, void> = new CoreManager();
+
+    protected readonly manager = Perform.manager;
 
     public constructor(protected readonly task: Task<never, AppMsg>) {
         super();

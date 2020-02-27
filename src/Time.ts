@@ -10,13 +10,13 @@ interface State<AppMsg> {
     processes: Processes;
 }
 
-const manager: Manager = {
-    init: Task.succeed({
+class TimeManager<AppMsg> implements Manager<AppMsg, number, State<AppMsg>> {
+    public readonly init = Task.succeed({
         taggers: new Map(),
         processes: new Map()
-    }),
+    });
 
-    onEffects<AppMsg>(
+    public onEffects(
         router: Router<AppMsg, number>,
         _commands: Array<never>,
         subscriptions: Array<TimeSub<AppMsg>>,
@@ -58,16 +58,16 @@ const manager: Manager = {
                 taggers: newTaggers,
                 processes: newProcesses
             }));
-    },
+    }
 
-    onSelfMsg<AppMsg>(
+    public onSelfMsg(
         router: Router<AppMsg, number>,
         interval: number,
         state: State<AppMsg>
     ): Task<never, State<AppMsg>> {
         const taggers = state.taggers.get(interval);
 
-        if (taggers == null) {
+        if (typeof taggers === 'undefined') {
             return Task.succeed(state);
         }
 
@@ -77,7 +77,9 @@ const manager: Manager = {
             taggers.map((tagger: (posix: number) => AppMsg) => router.sendToApp(tagger(now)))
         ).map(() => state);
     }
-};
+}
+
+const manager: Manager<unknown, number, State<unknown>> = new TimeManager();
 
 abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
     protected readonly manager = manager;

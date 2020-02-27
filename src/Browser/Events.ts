@@ -15,13 +15,13 @@ interface State<AppMsg> {
     processes: Processes;
 }
 
-const manager: Manager = {
-    init: Task.succeed({
+class BrowserEventsManager<AppMsg> implements Manager<AppMsg, Event, State<AppMsg>> {
+    public readonly init = Task.succeed({
         taggers: new Map(),
         processes: new Map()
-    }),
+    });
 
-    onEffects<AppMsg>(
+    public onEffects(
         router: Router<AppMsg, Event>,
         _commands: Array<never>,
         subscriptions: Array<BrowserEventsSub<AppMsg>>,
@@ -63,9 +63,9 @@ const manager: Manager = {
                 taggers: newTaggers,
                 processes: newProcesses
             }));
-    },
+    }
 
-    onSelfMsg<AppMsg>(
+    public onSelfMsg(
         router: Router<AppMsg, Event>,
         event: Event,
         state: State<AppMsg>
@@ -85,7 +85,9 @@ const manager: Manager = {
 
         return Task.sequence(tasks).map(() => state);
     }
-};
+}
+
+const manager: Manager<unknown, Event, State<unknown>> = new BrowserEventsManager();
 
 const setEvent = (eventName: EventName, callTask: (event: Event) => Task<never, void>): Task<never, void> => {
     return Task.binding(() => {
