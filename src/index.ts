@@ -6,7 +6,7 @@ import Either, { Left, Right } from './Either';
 import * as Scheduler from './Scheduler';
 
 export interface Router<AppMsg, SelfMsg> {
-    sendToApp(msg: AppMsg): Task<never, void>;
+    sendToApp(msgs: Array<AppMsg>): Task<never, void>;
 
     sendToSelf(msg: SelfMsg): Task<never, void>;
 }
@@ -14,13 +14,13 @@ export interface Router<AppMsg, SelfMsg> {
 class RouterImpl<AppMsg, SelfMsg, State> implements Router<AppMsg, SelfMsg> {
     public constructor(
         private readonly process: Scheduler.Process<never, State, Dealer<AppMsg, SelfMsg, State>>,
-        private readonly dispatch: (msg: AppMsg) => void
+        private readonly dispatch: (msgs: Array<AppMsg>) => void
     ) {}
 
-    public sendToApp(msg: AppMsg): Task<never, void> {
+    public sendToApp(msgs: Array<AppMsg>): Task<never, void> {
         return new Task(
             Scheduler.binding((done: (task: Scheduler.Task<never, void>) => void): void => {
-                done(Scheduler.succeed(this.dispatch(msg)));
+                done(Scheduler.succeed(this.dispatch(msgs)));
             })
         );
     }
@@ -223,7 +223,7 @@ class Runtime<AppMsg, SelfMsg, State> {
     private readonly processes: WeakMap<Manager<AppMsg, SelfMsg, State>, Scheduler.Process> = new WeakMap();
 
     public constructor(
-        private readonly dispatch: (msg: AppMsg) => void
+        private readonly dispatch: (msgs: Array<AppMsg>) => void
     ) {}
 
     public dispatchEffects(cmd: Cmd<AppMsg>, sub: Sub<AppMsg>) {
@@ -294,7 +294,7 @@ export class Worker<Model, Msg> {
         private readonly subscriptions: (model: Model) => Sub<Msg>
     ) {
         this.model = initialModel;
-        this.runtime = new Runtime((msg: Msg): void => this.dispatch(msg));
+        this.runtime = new Runtime((msgs: Array<Msg>): void => this.dispatchMany(msgs));
 
         this.runtime.dispatchEffects(
             initialCmd,
@@ -307,15 +307,7 @@ export class Worker<Model, Msg> {
     }
 
     public dispatch(msg: Msg): void {
-        const [ nextModel, nextCmd ] = this.update(msg, this.model);
-
-        this.model = nextModel;
-
-        this.runtime.dispatchEffects(nextCmd, this.subscriptions(nextModel));
-
-        for (const subscriber of this.subscribers) {
-            subscriber();
-        }
+        this.dispatchMany([ msg ]);
     }
 
     public subscribe(subscriber: () => void): () => void {
@@ -329,6 +321,24 @@ export class Worker<Model, Msg> {
                 subscribed = false;
             }
         };
+    }
+
+    private dispatchMany(msgs: Array<Msg>): void {
+        if (msgs.length === 0) {
+            return;
+        }
+
+        for (const msg of msgs) {
+            const [ nextModel, nextCmd ] = this.update(msg, this.model);
+
+            this.model = nextModel;
+
+            this.runtime.dispatchEffects(nextCmd, this.subscriptions(nextModel));
+        }
+
+        for (const subscriber of this.subscribers) {
+            subscriber();
+        }
     }
 }
 
@@ -481,7 +491,7 @@ class Perform<AppMsg> extends Cmd<AppMsg> {
 
     public onEffects(router: Router<AppMsg, never>): Task<never, Process> {
         return this.task
-            .chain((msg: AppMsg): Task<never, void> => router.sendToApp(msg))
+            .chain((msg: AppMsg): Task<never, void> => router.sendToApp([ msg ]))
             .spawn();
     }
 }

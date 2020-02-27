@@ -8,16 +8,16 @@ type EventName = string;
 
 type Processes = Map<EventName, Process>;
 
-type Taggers<AppMsg> = Map<EventName, Array<Decode.Decoder<AppMsg>>>;
+type Decoders<AppMsg> = Map<EventName, Array<Decode.Decoder<AppMsg>>>;
 
 interface State<AppMsg> {
-    taggers: Taggers<AppMsg>;
+    decoders: Decoders<AppMsg>;
     processes: Processes;
 }
 
 class BrowserEventsManager<AppMsg> implements Manager<AppMsg, Event, State<AppMsg>> {
     public readonly init = Task.succeed({
-        taggers: new Map(),
+        decoders: new Map(),
         processes: new Map()
     });
 
@@ -30,8 +30,8 @@ class BrowserEventsManager<AppMsg> implements Manager<AppMsg, Event, State<AppMs
         const expiredProcesses: Array<Process> = [];
         const newListeners: Array<EventName> = [];
         const existingProcesses: Processes = new Map();
-        const newTaggers: Taggers<AppMsg> = subscriptions.reduce(
-            (acc: Taggers<AppMsg>, sub: BrowserEventsSub<AppMsg>): Taggers<AppMsg> => sub.register(acc),
+        const newTaggers: Decoders<AppMsg> = subscriptions.reduce(
+            (acc: Decoders<AppMsg>, sub: BrowserEventsSub<AppMsg>): Decoders<AppMsg> => sub.register(acc),
             new Map()
         );
 
@@ -60,7 +60,7 @@ class BrowserEventsManager<AppMsg> implements Manager<AppMsg, Event, State<AppMs
                 },
                 Task.succeed(existingProcesses)
             )).map((newProcesses: Processes): State<AppMsg> => ({
-                taggers: newTaggers,
+                decoders: newTaggers,
                 processes: newProcesses
             }));
     }
@@ -70,20 +70,22 @@ class BrowserEventsManager<AppMsg> implements Manager<AppMsg, Event, State<AppMs
         event: Event,
         state: State<AppMsg>
     ): Task<never, State<AppMsg>> {
-        const taggers = state.taggers.get(event.type);
+        const decoders = state.decoders.get(event.type);
 
-        if (taggers == null) {
+        if (decoders == null) {
             return Task.succeed(state);
         }
 
-        const tasks: Array<Task<never, void>> = taggers.map((decoder: Decode.Decoder<AppMsg>) => {
-            return decoder.decode(event).fold(
-                () => Task.succeed(undefined),
-                msg => router.sendToApp(msg)
-            );
-        });
+        const msgs: Array<AppMsg> = [];
 
-        return Task.sequence(tasks).map(() => state);
+        for (const decoder of decoders) {
+            decoder.decode(event).fold(
+                () => { /* do nothing */ },
+                msg => msgs.push(msg)
+            );
+        }
+
+        return router.sendToApp(msgs).map(() => state);
     }
 }
 
@@ -115,16 +117,16 @@ class BrowserEventsSub<AppMsg> extends Sub<AppMsg> {
         return new BrowserEventsSub(this.eventName, this.decoder.map(fn));
     }
 
-    public register(taggers: Taggers<AppMsg>): Taggers<AppMsg> {
-        const bag = taggers.get(this.eventName);
+    public register(decoders: Decoders<AppMsg>): Decoders<AppMsg> {
+        const bag = decoders.get(this.eventName);
 
         if (bag == null) {
-            taggers.set(this.eventName, [ this.decoder ]);
+            decoders.set(this.eventName, [ this.decoder ]);
         } else {
             bag.push(this.decoder);
         }
 
-        return taggers;
+        return decoders;
     }
 }
 

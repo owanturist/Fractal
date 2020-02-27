@@ -73,8 +73,8 @@ class TimeManager<AppMsg> implements Manager<AppMsg, number, State<AppMsg>> {
 
         const now = Date.now();
 
-        return Task.sequence(
-            taggers.map((tagger: (posix: number) => AppMsg) => router.sendToApp(tagger(now)))
+        return router.sendToApp(
+            taggers.map(tagger => tagger(now))
         ).map(() => state);
     }
 }
