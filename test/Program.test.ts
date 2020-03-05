@@ -1,16 +1,25 @@
 import test from 'ava';
-import { spy } from 'sinon';
+import { spy, useFakeTimers } from 'sinon';
 
 import { Program, Effect } from '../src/remade';
 import { inst } from '../src/Basics';
 
-const wait = (milliseconds: number): Promise<void> => new Promise(resolve => {
-    setTimeout(resolve, milliseconds);
-});
 
 const sleep = <Msg>(time: number, msg: Msg): Effect<Msg> => dispatch => setTimeout(() => dispatch(msg), time);
 
-test('Program: initial model and command works correctly', async t => {
+const clock = useFakeTimers({
+    toFake: [ 'setTimeout' ]
+});
+
+test.beforeEach(() => {
+    clock.reset();
+});
+
+test.after(() => {
+    clock.restore();
+});
+
+test('Program: initial model and command works correctly', t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -45,7 +54,7 @@ test('Program: initial model and command works correctly', async t => {
     t.is(program.getModel(), initial[ 0 ], 'Initial model does not mutate');
     t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
 
-    await wait(0);
+    clock.tick(0);
 
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied after timeout');
 });
@@ -192,27 +201,29 @@ test('Program: Effects call Msg', async t => {
         update: (msg, model) => msg.update(model)
     });
 
+    t.plan(8);
+
     t.deepEqual(program.getModel(), { count: 5 }, 'Initial Model');
 
     program.dispatch(Increment);
 
     t.deepEqual(program.getModel(), { count: 6 }, 'First Increment by dispatch');
 
-    await wait(20); // 20
+    clock.tick(20);
     t.deepEqual(program.getModel(), { count: 6 }, 'Nothing changed');
 
-    await wait(20); // 40
+    clock.tick(10); // 30
     t.deepEqual(program.getModel(), { count: 7 }, 'First Increment by sleep from update');
 
-    await wait(30); // 70
+    clock.tick(30); // 60
     t.deepEqual(program.getModel(), { count: 8 }, 'Second Increment by sleep from update');
 
-    await wait(20); // 90
+    clock.tick(30); // 90
     t.deepEqual(program.getModel(), { count: 9 }, 'Third Increment by sleep from update');
 
-    await wait(20); // 110
+    clock.tick(10); // 100
     t.deepEqual(program.getModel(), { count: 8 }, 'Decrement by sleep from init');
 
-    await wait(20); // 140
+    clock.tick(20); // 120
     t.deepEqual(program.getModel(), { count: 9 }, 'Fourth Increment by sleep from update');
 });
