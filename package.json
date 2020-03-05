@@ -20,7 +20,9 @@
     "postversion": "git push && git push --tags && npm run build"
   },
   "devDependencies": {
+    "@types/sinon": "^7.5.2",
     "ava": "^1.4.1",
+    "sinon": "^9.0.0",
     "tslint": "^5.20.1",
     "typescript": "^3.8.3"
   },
