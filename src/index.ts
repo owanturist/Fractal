@@ -267,7 +267,7 @@ class Runtime<AppMsg, SelfMsg, State> {
     ): Scheduler.Process<never, State, Dealer<AppMsg, SelfMsg, State>> {
         const loop = (state: State): Scheduler.Task<never, State> => Scheduler.chain(
             loop,
-            Scheduler.receive((msg: Dealer<AppMsg, SelfMsg, State>) => msg.deal(manager, router, state).execute())
+            Scheduler.receive((dealer: Dealer<AppMsg, SelfMsg, State>) => dealer.deal(manager, router, state).execute())
         );
 
         const process = Scheduler.rawSpawn<never, State, Dealer<AppMsg, SelfMsg, State>>(
