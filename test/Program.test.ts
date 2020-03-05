@@ -4,9 +4,6 @@ import { spy, useFakeTimers } from 'sinon';
 import { Program, Effect } from '../src/remade';
 import { inst } from '../src/Basics';
 
-
-const sleep = <Msg>(time: number, msg: Msg): Effect<Msg> => dispatch => setTimeout(() => dispatch(msg), time);
-
 const clock = useFakeTimers({
     toFake: [ 'setTimeout' ]
 });
@@ -16,10 +13,14 @@ test.beforeEach(() => {
 });
 
 test.after(() => {
-    clock.restore();
+    clock.uninstall();
 });
 
-test('Program: initial model and command works correctly', t => {
+const sleep = <Msg>(time: number, msg: Msg): Effect<Msg> => () => new Promise(resolve => {
+    setTimeout(() => resolve(msg), time);
+});
+
+test('Program: initial model and command works correctly', async t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -54,7 +55,7 @@ test('Program: initial model and command works correctly', t => {
     t.is(program.getModel(), initial[ 0 ], 'Initial model does not mutate');
     t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
 
-    clock.tick(0);
+    await (clock as any).tickAsync(0);
 
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied after timeout');
 });
@@ -209,21 +210,21 @@ test('Program: Effects call Msg', async t => {
 
     t.deepEqual(program.getModel(), { count: 6 }, 'First Increment by dispatch');
 
-    clock.tick(20);
+    await (clock as any).tickAsync(20);
     t.deepEqual(program.getModel(), { count: 6 }, 'Nothing changed');
 
-    clock.tick(10); // 30
+    await (clock as any).tickAsync(10); // 30
     t.deepEqual(program.getModel(), { count: 7 }, 'First Increment by sleep from update');
 
-    clock.tick(30); // 60
+    await (clock as any).tickAsync(30); // 60
     t.deepEqual(program.getModel(), { count: 8 }, 'Second Increment by sleep from update');
 
-    clock.tick(30); // 90
+    await (clock as any).tickAsync(30); // 90
     t.deepEqual(program.getModel(), { count: 9 }, 'Third Increment by sleep from update');
 
-    clock.tick(10); // 100
+    await (clock as any).tickAsync(10); // 100
     t.deepEqual(program.getModel(), { count: 8 }, 'Decrement by sleep from init');
 
-    clock.tick(20); // 120
+    await (clock as any).tickAsync(20); // 120
     t.deepEqual(program.getModel(), { count: 9 }, 'Fourth Increment by sleep from update');
 });
