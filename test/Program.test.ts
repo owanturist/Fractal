@@ -1,12 +1,16 @@
 import test from 'ava';
-import { spy, useFakeTimers } from 'sinon';
+import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
 import { Program, Effect } from '../src/remade';
 import { inst } from '../src/Basics';
 
 const clock = useFakeTimers({
     toFake: [ 'setTimeout' ]
-});
+}) as SinonFakeTimers & {
+    tickAsync(time: number): Promise<void>;
+    nextAsync(): Promise<void>;
+    runAllAsync(): Promise<void>;
+};
 
 test.beforeEach(() => {
     clock.reset();
@@ -55,7 +59,7 @@ test('Program: initial model and command works correctly', async t => {
     t.is(program.getModel(), initial[ 0 ], 'Initial model does not mutate');
     t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
 
-    await (clock as any).tickAsync(0);
+    await clock.tickAsync(0);
 
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied after timeout');
 });
@@ -210,21 +214,21 @@ test('Program: Effects call Msg', async t => {
 
     t.deepEqual(program.getModel(), { count: 6 }, 'First Increment by dispatch');
 
-    await (clock as any).tickAsync(20);
+    await clock.tickAsync(20);
     t.deepEqual(program.getModel(), { count: 6 }, 'Nothing changed');
 
-    await (clock as any).tickAsync(10); // 30
+    await clock.tickAsync(10); // 30
     t.deepEqual(program.getModel(), { count: 7 }, 'First Increment by sleep from update');
 
-    await (clock as any).tickAsync(30); // 60
+    await clock.tickAsync(30); // 60
     t.deepEqual(program.getModel(), { count: 8 }, 'Second Increment by sleep from update');
 
-    await (clock as any).tickAsync(30); // 90
+    await clock.tickAsync(30); // 90
     t.deepEqual(program.getModel(), { count: 9 }, 'Third Increment by sleep from update');
 
-    await (clock as any).tickAsync(10); // 100
+    await clock.tickAsync(10); // 100
     t.deepEqual(program.getModel(), { count: 8 }, 'Decrement by sleep from init');
 
-    await (clock as any).tickAsync(20); // 120
+    await clock.tickAsync(20); // 120
     t.deepEqual(program.getModel(), { count: 9 }, 'Fourth Increment by sleep from update');
 });
