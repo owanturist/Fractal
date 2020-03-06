@@ -72,10 +72,6 @@ class Batch<Msg> extends Effect<Msg> {
 }
 
 export abstract class Cmd<Msg> extends Effect<Msg> {
-    public static none = None as unknown as Cmd<never>;
-
-    public static batch = Batch.of as <Msg>(cmds: Array<Cmd<Msg>>) => Cmd<Msg>;
-
     public abstract effect(done: (msg: Msg) => void): void;
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
@@ -83,6 +79,12 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
     protected toPromise(dispatch: (msg: Msg) => void): Promise<void> {
         return new Promise(resolve => this.effect(resolve)).then(dispatch);
     }
+}
+
+export namespace Cmd {
+    export const none = None as unknown as Cmd<never>;
+
+    export const batch = Batch.of as <Msg>(cmds: Array<Cmd<Msg>>) => Cmd<Msg>;
 }
 
 /**
