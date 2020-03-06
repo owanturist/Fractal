@@ -68,6 +68,15 @@ export function toInt(input: string): Maybe<number> {
     return Nothing;
 }
 
+export interface Unit {
+    replace<T>(value: T): T;
+}
+
+export const Unit = new class Unit$ implements Unit {
+    public replace<T>(value: T): T {
+        return value;
+    }
+}();
 
 export interface Order {
     isLT(): boolean;

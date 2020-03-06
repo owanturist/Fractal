@@ -1,7 +1,7 @@
 import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
-import { Program, Cmd } from '../src/remade';
+import { Program, Task, Process, Cmd } from '../src/remade';
 import { inst, cons } from '../src/Basics';
 
 const clock = useFakeTimers({
@@ -18,23 +18,6 @@ test.beforeEach(() => {
 
 test.after(() => {
     clock.uninstall();
-});
-
-const sleep: <Msg>(timeout: number, msg: Msg) => Cmd<Msg> = cons(class Sleep<Msg> extends Cmd<Msg> {
-    public constructor(
-        private readonly timeout: number,
-        private readonly msg: Msg
-    ) {
-        super();
-    }
-
-    public map<R>(fn: (msg: Msg) => R): Cmd<R> {
-        return new Sleep(this.timeout, fn(this.msg));
-    }
-
-    public effect(done: (msg: Msg) => void): void {
-        setTimeout(() => done(this.msg), this.timeout);
-    }
 });
 
 test.serial('Program.client() initial model and command works correctly', async t => {
@@ -57,7 +40,7 @@ test.serial('Program.client() initial model and command works correctly', async 
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        sleep(0, Increment)
+        Task.perform(() => Increment, Process.sleep(0))
     ];
 
     const program = Program.client<null, Msg, Model>({
@@ -189,7 +172,7 @@ test.serial('Program.client() effects call Msg', async t => {
                     ...model,
                     count: model.count + 1
                 },
-                sleep(30, Increment)
+                Task.perform(() => Increment, Process.sleep(30))
             ];
         }
     });
@@ -204,7 +187,7 @@ test.serial('Program.client() effects call Msg', async t => {
 
     const init = (flags: Flags): [ Model, Cmd<Msg> ] => [
         { count: flags.initial },
-        sleep(100, Decrement)
+        Task.perform(() => Decrement, Process.sleep(100))
     ];
 
     const program = Program.client<Flags, Msg, Model>({
@@ -273,7 +256,7 @@ test.serial('Program.client() TEA in action', async t => {
         public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 model,
-                sleep(30, Increment)
+                Task.perform(() => Increment, Process.sleep(30))
             ];
         }
     });
@@ -284,7 +267,7 @@ test.serial('Program.client() TEA in action', async t => {
 
     const initCounter = (delay: number): [ CounterModel, Cmd<CounterMsg> ] => [
         { count: 0 },
-        sleep(delay, Decrement)
+        Task.perform(() => Decrement, Process.sleep(delay))
     ];
 
     // A P P
@@ -422,7 +405,7 @@ test.serial('Program.server() waits till initial effect done', async t => {
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        sleep(100, Increment)
+        Task.perform(() => Increment, Process.sleep(100))
     ];
 
     t.plan(3);
@@ -467,8 +450,8 @@ test.serial('Program.server() waits till all initial effects done', async t => {
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
         Cmd.batch([
-            sleep(100, Increment),
-            sleep(1000, Increment)
+            Task.perform(() => Increment, Process.sleep(100)),
+            Task.perform(() => Increment, Process.sleep(1000))
         ])
     ];
 
@@ -517,7 +500,7 @@ test.serial('Program.server() waits till chain of effects done', async t => {
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                sleep(1000, Increment)
+                Task.perform(() => Increment, Process.sleep(100))
             ];
         }
     });
@@ -528,7 +511,7 @@ test.serial('Program.server() waits till chain of effects done', async t => {
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        sleep(100, DelayedIncrement)
+        Task.perform(() => DelayedIncrement, Process.sleep(100))
     ];
 
     t.plan(5);
@@ -581,7 +564,7 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
         public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 model,
-                sleep(1000, Increment)
+                Task.perform(() => Increment, Process.sleep(1000))
             ];
         }
     });
@@ -592,7 +575,7 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
 
     const initCounter = (delay: number): [ CounterModel, Cmd<CounterMsg> ] => [
         { count: 0 },
-        sleep(delay, DelayedIncrement)
+        Task.perform(() => DelayedIncrement, Process.sleep(delay))
     ];
 
     // A P P
@@ -693,7 +676,7 @@ test.serial('Program.server() never completing init', async t => {
                     ...model,
                     count: model.count + 1
                 },
-                sleep(1000, Increment)
+                Task.perform(() => Increment, Process.sleep(1000))
             ];
         }
     });
@@ -704,7 +687,7 @@ test.serial('Program.server() never completing init', async t => {
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        sleep(100, Increment)
+        Task.perform(() => Increment, Process.sleep(100))
     ];
 
     t.plan(4);

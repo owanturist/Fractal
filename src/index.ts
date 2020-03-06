@@ -516,8 +516,4 @@ export class Process {
             Scheduler.kill(this.internal)
         );
     }
-
-    public execute(): Scheduler.Process {
-        return this.internal;
-    }
 }
