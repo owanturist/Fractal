@@ -4,23 +4,23 @@ export type Effect<Msg> = () => Promise<Msg>;
  * P R O G R A M
  */
 
-export interface Program<Model, Msg> {
+export interface Program<Msg, Model> {
     getModel(): Model;
     dispatch(msg: Msg): void;
     subscribe(subscriber: () => void): () => void;
 }
 
 export namespace Program {
-    export const run = <Flags, Model, Msg>({ flags, init, update }: {
+    export const run = <Flags, Msg, Model>({ flags, init, update }: {
         flags: Flags;
         init(flags: Flags): [ Model, Array<Effect<Msg>> ];
         update(msg: Msg, model: Model): [ Model, Array<Effect<Msg>> ];
-    }): Program<Model, Msg> => {
+    }): Program<Msg, Model> => {
         return new ClientProgram(init(flags), update);
     };
 }
 
-class ClientProgram<Model, Msg> implements Program<Model, Msg> {
+class ClientProgram<Msg, Model> implements Program<Msg, Model> {
     private model: Model;
     private readonly subscribers: Array<() => void> = [];
 

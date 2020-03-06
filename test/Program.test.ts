@@ -2,7 +2,7 @@ import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
 import { Program, Effect } from '../src/remade';
-import { inst } from '../src/Basics';
+import { inst, cons } from '../src/Basics';
 
 const clock = useFakeTimers({
     toFake: [ 'setTimeout' ]
@@ -24,7 +24,7 @@ const sleep = <Msg>(time: number, msg: Msg): Effect<Msg> => () => new Promise(re
     setTimeout(() => resolve(msg), time);
 });
 
-test('Program: initial model and command works correctly', async t => {
+test.serial('Program: initial model and command works correctly', async t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -48,15 +48,12 @@ test('Program: initial model and command works correctly', async t => {
         ]
     ];
 
-    const program = Program.run<null, Model, Msg>({
+    const program = Program.run<null, Msg, Model>({
         flags: null,
         init: () => initial,
         update: (msg, model) => [ msg.update(model), [] ]
     });
 
-    t.plan(3);
-
-    t.is(program.getModel(), initial[ 0 ], 'Initial model does not mutate');
     t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
 
     await clock.tickAsync(0);
@@ -75,7 +72,7 @@ test('Program: flags are passed correctly', t => {
 
     const init = (count: number): Model => ({ count });
 
-    const program = Program.run<{ initial: number }, Model, Msg>({
+    const program = Program.run<{ initial: number }, Msg, Model>({
         flags: { initial: 10 },
         init: flags => [ init(flags.initial), [] ],
         update: (msg, model) => [ msg.update(model), [] ]
@@ -104,7 +101,7 @@ test('Program: subscribers works correctly', t => {
 
     const initial: Model = { count: 0 };
 
-    const program = Program.run<null, Model, Msg>({
+    const program = Program.run<null, Msg, Model>({
         flags: null,
         init: () => [ initial, [] ],
         update: (msg, model) => [ msg.update(model), [] ]
@@ -156,7 +153,7 @@ test('Program: subscribers works correctly', t => {
     t.is(subscriber2.callCount, 2, 'Unsubscribed again 2');
 });
 
-test('Program: Effects call Msg', async t => {
+test.serial('Program: Effects call Msg', async t => {
     interface Msg {
         update(model: Model): [ Model, Array<Effect<Msg>> ];
     }
@@ -200,13 +197,11 @@ test('Program: Effects call Msg', async t => {
         ]
     ];
 
-    const program = Program.run<Flags, Model, Msg>({
+    const program = Program.run<Flags, Msg, Model>({
         flags: { initial: 5 },
         init,
         update: (msg, model) => msg.update(model)
     });
-
-    t.plan(8);
 
     t.deepEqual(program.getModel(), { count: 5 }, 'Initial Model');
 
@@ -231,4 +226,165 @@ test('Program: Effects call Msg', async t => {
 
     await clock.tickAsync(20); // 120
     t.deepEqual(program.getModel(), { count: 9 }, 'Fourth Increment by sleep from update');
+});
+
+test.serial('Program: TEA in action', async t => {
+    // C O U N T E R
+
+    interface CounterMsg {
+        update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ];
+    }
+
+    const Decrement = inst(class Decrement implements CounterMsg {
+        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count - 1
+                },
+                []
+            ];
+        }
+    });
+
+    const Increment = inst(class Increment implements CounterMsg {
+        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                []
+            ];
+        }
+    });
+
+    const DelayedIncrement = inst(class DelayedIncrement implements CounterMsg {
+        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+            return [
+                model,
+                [ sleep(30, Increment)
+                ]
+            ];
+        }
+    });
+
+    interface CounterModel {
+        count: number;
+    }
+
+    const initCounter = (delay: number): [ CounterModel, Array<Effect<CounterMsg>> ] => [
+        { count: 0 },
+        [ sleep(delay, Decrement)
+        ]
+    ];
+
+    // A P P
+
+    interface AppMsg {
+        update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ];
+    }
+
+    const LeftCounterMsg = cons(class LeftCounterMsg$ implements AppMsg {
+        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
+            return () => effect().then(LeftCounterMsg);
+        }
+
+        public constructor(private readonly msg: CounterMsg) {}
+
+        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
+            const [ nextLeftCounter, effectsOfLeftCounter ] = this.msg.update(model.leftCounter);
+
+            return [
+                {
+                    ...model,
+                    leftCounter: nextLeftCounter
+                },
+                effectsOfLeftCounter.map(LeftCounterMsg$.map)
+            ];
+        }
+    });
+
+    const RightCounterMsg = cons(class RightCounterMsg$ implements AppMsg {
+        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
+            return () => effect().then(RightCounterMsg);
+        }
+
+        public constructor(private readonly msg: CounterMsg) {}
+
+        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
+            const [ nextRightCounter, effectsOfRightCounter ] = this.msg.update(model.rightCounter);
+
+            return [
+                {
+                    ...model,
+                    rightCounter: nextRightCounter
+                },
+                effectsOfRightCounter.map(RightCounterMsg$.map)
+            ];
+        }
+    });
+
+    const initApp = (): [ AppModel, Array<Effect<AppMsg>> ] => {
+        const [ leftCounter, effectsOfLeftCounter ] = initCounter(100);
+        const [ rightCounter, effectsOfRightCounter ] = initCounter(150);
+
+        return [
+            { leftCounter, rightCounter },
+            [ ...effectsOfLeftCounter.map(effect => () => effect().then(LeftCounterMsg))
+            , ...effectsOfRightCounter.map(effect => () => effect().then(RightCounterMsg))
+            ]
+        ];
+    };
+
+    interface AppModel {
+        leftCounter: CounterModel;
+        rightCounter: CounterModel;
+    }
+
+    const program = Program.run<null, AppMsg, AppModel>({
+        flags: null,
+        init: initApp,
+        update: (msg, model) => msg.update(model)
+    });
+
+    t.deepEqual(program.getModel(), {
+        leftCounter: { count: 0 },
+        rightCounter: { count: 0 }
+    }, 'Initials are correct');
+
+    program.dispatch(LeftCounterMsg(DelayedIncrement));
+
+    t.deepEqual(program.getModel(), {
+        leftCounter: { count: 0 },
+        rightCounter: { count: 0 }
+    }, 'Delayed Increment does not affect immediately');
+
+    program.dispatch(RightCounterMsg(Increment));
+
+    t.deepEqual(program.getModel(), {
+        leftCounter: { count: 0 },
+        rightCounter: { count: 1 }
+    }, 'Increment affects immediately');
+
+    await clock.tickAsync(30);
+
+    t.deepEqual(program.getModel(), {
+        leftCounter: { count: 1 },
+        rightCounter: { count: 1 }
+    }, 'Delayed Increment affects after delay');
+
+    await clock.tickAsync(70); // 100
+
+    t.deepEqual(program.getModel(), {
+        leftCounter: { count: 0 },
+        rightCounter: { count: 1 }
+    }, 'Sleep 100 Decrement affects left counter');
+
+    await clock.tickAsync(50); // 150
+
+    t.deepEqual(program.getModel(), {
+        leftCounter: { count: 0 },
+        rightCounter: { count: 0 }
+    }, 'Sleep 100 Decrement affects right counter');
 });
