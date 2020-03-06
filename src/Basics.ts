@@ -26,7 +26,7 @@ export function identity<T>(value: T): T {
     return value;
 }
 
-export function inst<T>(Constructor: new () => T): T {
+export function inst<T>(Constructor: new () => T) {
     return new Constructor();
 }
 

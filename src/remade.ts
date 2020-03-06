@@ -1,34 +1,20 @@
-import { Either, Left, Right } from './Either';
-
 /**
  * E F F E C T S
  */
 
-interface Bag<Msg> {
-    commands: Array<Cmd<Msg>>;
-}
-
 abstract class Effect<Msg> {
-    protected static collect<Msg>(
-        effect: Effect<Msg>,
-        managers: Array<Manager<Msg>>,
-        bags: {[ key: number ]: Bag<Msg> }
-    ): void {
-        effect.collect(managers, bags);
+    protected static toPromise<Msg>(effect: Effect<Msg>, dispatch: (msg: Msg) => void): Promise<void> {
+        return effect.toPromise(dispatch);
     }
 
     public abstract map<R>(fn: (msg: Msg) => R): Effect<R>;
 
-    protected abstract collect(managers: Array<Manager<Msg>>, bags: {[ key: number ]: Bag<Msg> }): void;
+    protected abstract toPromise(dispatch: (msg: Msg) => void): Promise<void>;
 }
 
-abstract class Collector<Msg> extends Effect<Msg> {
-    public static collect<Msg>(
-        effect: Effect<Msg>,
-        managers: Array<Manager<Msg>>,
-        bags: {[ key: number ]: Bag<Msg> }
-    ): void {
-        super.collect(effect, managers, bags);
+abstract class Runner<Msg> extends Effect<Msg> {
+    public static toPromise<Msg>(effect: Effect<Msg>, dispatch: (msg: Msg) => void): Promise<void> {
+        return super.toPromise(effect, dispatch);
     }
 }
 
@@ -37,8 +23,8 @@ const None = new class None<Msg> extends Effect<Msg> {
         return this;
     }
 
-    protected collect(): void {
-        // do nothing
+    protected toPromise(): Promise<void> {
+        return Promise.resolve();
     }
 }<never>();
 
@@ -74,29 +60,24 @@ class Batch<Msg> extends Effect<Msg> {
         return new Batch(nextEffects);
     }
 
-    protected collect(managers: Array<Manager<Msg>>, bags: {[ key: number ]: Bag<Msg> }): void {
-        for (const effect of this.effects) {
-            Effect.collect(effect, managers, bags);
+    protected toPromise(dispatch: (msg: Msg) => void): Promise<void> {
+        const promises: Array<Promise<void>> = new Array(this.effects.length);
+
+        for (let i = 0; i < promises.length; i++) {
+            promises[ i ] = Effect.toPromise(this.effects[ i ], dispatch);
         }
+
+        return Promise.all(promises).then(() => undefined);
     }
 }
 
 export abstract class Cmd<Msg> extends Effect<Msg> {
-    protected abstract manager: Manager<Msg>;
+    public abstract effect(done: (msg: Msg) => void): void;
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
-    protected collect(managers: Array<Manager<Msg>>, bags: {[ key: number ]: Bag<Msg> }): void {
-        const bag = bags[ this.manager.id ];
-
-        if (typeof bag === 'undefined') {
-            managers.push(this.manager);
-            bags[ this.manager.id ] = {
-                commands: [ this ]
-            };
-        } else {
-            bag.commands.push(this);
-        }
+    protected toPromise(dispatch: (msg: Msg) => void): Promise<void> {
+        return new Promise(resolve => this.effect(resolve)).then(dispatch);
     }
 }
 
@@ -107,152 +88,8 @@ export namespace Cmd {
 }
 
 /**
- * M A N A G E R
- */
-
-interface Router<AppMsg, SelfMsg> {
-    sendToApp(messages: Array<AppMsg>): Task<never, null>;
-
-    sendToSelf(selfMsg: SelfMsg): Task<never, null>;
-}
-
-export abstract class Manager<AppMsg, SelfMsg = unknown, State = unknown> {
-    public static register<AppMsg, SelfMsg, State>(
-        Constructor: new () => Manager<AppMsg, SelfMsg, State>
-    ): Manager<AppMsg, SelfMsg, State> {
-        return new Constructor();
-    }
-
-    private static count = 0;
-
-    public readonly id: number;
-
-    public abstract readonly init: Task<never, State>;
-
-    public constructor() {
-        this.id = Manager.count++;
-    }
-
-    public abstract onEffects(
-        router: Router<AppMsg, SelfMsg>,
-        commands: Array<Cmd<AppMsg>>,
-        state: State
-    ): Task<never, State>;
-
-    public abstract onSelfMsg(
-        sendToApp: Router<AppMsg, SelfMsg>,
-        selfMsg: SelfMsg,
-        state: State
-    ): Task<never, State>;
-}
-
-/**
- * T A S K
- */
-
-export abstract class Task<E, T> {
-    public abstract map<R>(fn: (value: T) => R): Task<E, R>;
-    public abstract chain<R>(fn: (value: T) => Task<E, R>): Task<E, R>;
-    public abstract mapError<G>(fn: (error: E) => G): Task<G, T>;
-    public abstract chainError<G>(fn: (error: E) => Task<G, T>): Task<G, T>;
-    public abstract attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg>;
-    public abstract spawn(): Task<never, Process>;
-
-    public tap<R>(fn: (task: Task<E, T>) => R): R {
-        return fn(this);
-    }
-}
-
-export namespace Task {
-    export const combine = <E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> => {
-        throw new Error(tasks + '');
-    };
-
-    export const sequence = <E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> => {
-        throw new Error(tasks + '');
-    };
-
-    export const succeed = <T>(value: T): Task<never, T> => {
-        throw new Error(value + '');
-    };
-
-    const manager = Manager.register(class TaskManager<AppMsg> extends Manager<AppMsg, never, null> {
-        public init = Task.succeed(null);
-
-        public onEffects(router: Router<AppMsg, never>, commands: Array<Attempt<AppMsg>>): Task<never, null> {
-            const tasks: Array<Task<never, null>> = new Array(commands.length);
-
-            for (let i = 0; i < tasks.length; i++) {
-                tasks[ i ] = commands[ i ].run(router);
-            }
-
-            return Task.sequence(tasks).map(() => null);
-        }
-
-        public onSelfMsg(): Task<never, null> {
-            return Task.succeed(null);
-        }
-    });
-
-    class Attempt<Msg> extends Cmd<Msg> {
-        protected manager: Manager<Msg, never, null> = manager;
-
-        public constructor(
-            private readonly task: Task<never, Msg>
-        ) {
-            super();
-        }
-
-        public map<R>(fn: (msg: Msg) => R): Cmd<R> {
-            return new Attempt(this.task.map(fn));
-        }
-
-        public run(router: Router<Msg, never>): Task<never, null> {
-            return this.task.chain(msg => router.sendToApp([ msg ]));
-        }
-    }
-}
-
-/**
- * P R O C E S S
- */
-
-export class Process {
-    public kill(): Task<never, null> {
-        throw new Error();
-    }
-}
-
-/**
  * P R O G R A M
  */
-
-class Runtime<AppMsg, SelfMsg, State> {
-    private readonly office: Array<Manager<AppMsg, SelfMsg, State>> = [];
-    private readonly states: {[ key: number ]: Task<never, State> } = {};
-
-    public constructor(
-        private readonly dispatch: (messages: Array<AppMsg>) => void
-    ) {}
-
-    public runEffects(cmd: Cmd<AppMsg>): Promise<null> {
-        const managers: Array<Manager<AppMsg, SelfMsg, State>> = [];
-        const bags: {[ key: number ]: Bag<AppMsg> } = {};
-
-        Collector.collect(cmd, managers, bags);
-
-        for (const manager of managers) {
-            const stateTask = this.states[ manager.id ] || this.hireManager(manager);
-            const bag = bags[ manager.id ] || { commands: [] };
-
-
-        }
-    }
-
-    private hireManager(manager: Manager<AppMsg, SelfMsg, State>): Task<never, State> {
-        throw new Error(manager + '');
-    }
-}
 
 export interface Program<Msg, Model> {
     getModel(): Model;
@@ -319,7 +156,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
     }
 
     private executeCmd(cmd: Cmd<Msg>): void {
-        Collector.toPromise(cmd, this.dispatch);
+        Runner.toPromise(cmd, this.dispatch);
     }
 }
 
@@ -347,6 +184,6 @@ class ServerProgram<Msg, Model> {
     }
 
     private executeCmd(cmd: Cmd<Msg>): Promise<Model> {
-        return Collector.toPromise(cmd, this.dispatch).then(() => this.model);
+        return Runner.toPromise(cmd, this.dispatch).then(() => this.model);
     }
 }
