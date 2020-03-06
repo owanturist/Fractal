@@ -24,7 +24,7 @@ const sleep = <Msg>(time: number, msg: Msg): Effect<Msg> => () => new Promise(re
     setTimeout(() => resolve(msg), time);
 });
 
-test.serial('Program: initial model and command works correctly', async t => {
+test.serial('Program.client() initial model and command works correctly', async t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -48,7 +48,7 @@ test.serial('Program: initial model and command works correctly', async t => {
         ]
     ];
 
-    const program = Program.run<null, Msg, Model>({
+    const program = Program.client<null, Msg, Model>({
         flags: null,
         init: () => initial,
         update: (msg, model) => [ msg.update(model), [] ]
@@ -61,7 +61,7 @@ test.serial('Program: initial model and command works correctly', async t => {
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied after timeout');
 });
 
-test('Program: flags are passed correctly', t => {
+test('Program.client() flags are passed correctly', t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -72,7 +72,7 @@ test('Program: flags are passed correctly', t => {
 
     const init = (count: number): Model => ({ count });
 
-    const program = Program.run<{ initial: number }, Msg, Model>({
+    const program = Program.client<{ initial: number }, Msg, Model>({
         flags: { initial: 10 },
         init: flags => [ init(flags.initial), [] ],
         update: (msg, model) => [ msg.update(model), [] ]
@@ -81,7 +81,7 @@ test('Program: flags are passed correctly', t => {
     t.deepEqual(program.getModel(), { count: 10 });
 });
 
-test('Program: subscribers works correctly', t => {
+test('Program.client() subscribers works correctly', t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -101,7 +101,7 @@ test('Program: subscribers works correctly', t => {
 
     const initial: Model = { count: 0 };
 
-    const program = Program.run<null, Msg, Model>({
+    const program = Program.client<null, Msg, Model>({
         flags: null,
         init: () => [ initial, [] ],
         update: (msg, model) => [ msg.update(model), [] ]
@@ -153,7 +153,7 @@ test('Program: subscribers works correctly', t => {
     t.is(subscriber2.callCount, 2, 'Unsubscribed again 2');
 });
 
-test.serial('Program: Effects call Msg', async t => {
+test.serial('Program.client() effects call Msg', async t => {
     interface Msg {
         update(model: Model): [ Model, Array<Effect<Msg>> ];
     }
@@ -197,7 +197,7 @@ test.serial('Program: Effects call Msg', async t => {
         ]
     ];
 
-    const program = Program.run<Flags, Msg, Model>({
+    const program = Program.client<Flags, Msg, Model>({
         flags: { initial: 5 },
         init,
         update: (msg, model) => msg.update(model)
@@ -228,7 +228,7 @@ test.serial('Program: Effects call Msg', async t => {
     t.deepEqual(program.getModel(), { count: 9 }, 'Fourth Increment by sleep from update');
 });
 
-test.serial('Program: TEA in action', async t => {
+test.serial('Program.client() TEA in action', async t => {
     // C O U N T E R
 
     interface CounterMsg {
@@ -325,6 +325,11 @@ test.serial('Program: TEA in action', async t => {
         }
     });
 
+    interface AppModel {
+        leftCounter: CounterModel;
+        rightCounter: CounterModel;
+    }
+
     const initApp = (): [ AppModel, Array<Effect<AppMsg>> ] => {
         const [ leftCounter, effectsOfLeftCounter ] = initCounter(100);
         const [ rightCounter, effectsOfRightCounter ] = initCounter(150);
@@ -337,12 +342,7 @@ test.serial('Program: TEA in action', async t => {
         ];
     };
 
-    interface AppModel {
-        leftCounter: CounterModel;
-        rightCounter: CounterModel;
-    }
-
-    const program = Program.run<null, AppMsg, AppModel>({
+    const program = Program.client<null, AppMsg, AppModel>({
         flags: null,
         init: initApp,
         update: (msg, model) => msg.update(model)
@@ -387,4 +387,358 @@ test.serial('Program: TEA in action', async t => {
         leftCounter: { count: 0 },
         rightCounter: { count: 0 }
     }, 'Sleep 100 Decrement affects right counter');
+});
+
+test('Program.server() done immidiatelly when non of async', async t => {
+    t.plan(1);
+
+    const model = await Program.server<number, never, number>({
+        flags: 10,
+        init: flags => [ flags, [] ],
+        update: (_msg, model) => [ model, [] ]
+    });
+
+    t.is(model, 10);
+});
+
+test.serial('Program.server() waits till initial effect done', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): Model {
+            return {
+                ...model,
+                count: model.count + 1
+            };
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Array<Effect<Msg>> ] = [
+        { count: 0 },
+        [ sleep(100, Increment)
+        ]
+    ];
+
+    t.plan(3);
+
+    let done = false;
+    const promise = Program.server<null, Msg, Model>({
+        flags: null,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), [] ]
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(10); // 100
+    t.true(done, 'Initial effect is done');
+    t.deepEqual(await promise, { count: 1 });
+});
+
+test.serial('Program.server() waits till all initial effects done', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): Model {
+            return {
+                ...model,
+                count: model.count + 1
+            };
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Array<Effect<Msg>> ] = [
+        { count: 0 },
+        [ sleep(100, Increment)
+        , sleep(1000, Increment)
+        ]
+    ];
+
+    t.plan(4);
+
+    let done = false;
+    const promise = Program.server<null, Msg, Model>({
+        flags: null,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), [] ]
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effects are not done');
+
+    await clock.tickAsync(10); // 100
+    t.false(done, 'Not all initial effects are not done');
+
+    await clock.tickAsync(900); // 1000
+    t.true(done, 'Initial effects are done');
+    t.deepEqual(await promise, { count: 2 });
+});
+
+test.serial('Program.server() waits till chain of effects done', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Array<Effect<Msg>> ];
+    }
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                []
+            ];
+        }
+    });
+
+    const DelayedIncrement = inst(class DelayedIncrement implements Msg {
+        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+            return [
+                model,
+                [ sleep(1000, Increment)
+                ]
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Array<Effect<Msg>> ] = [
+        { count: 0 },
+        [ sleep(100, DelayedIncrement)
+        ]
+    ];
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<null, Msg, Model>({
+        flags: null,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(10); // 100
+    t.false(done, 'Effects chain is not done');
+
+    await clock.tickAsync(900); // 1000
+    t.false(done, 'Chained effect is not done');
+
+    await clock.tickAsync(100); // 1100
+    t.true(done, 'Chained effect is done');
+    t.deepEqual(await promise, { count: 1 });
+});
+
+test.serial('Program.server() waits till TEA effects are done', async t => {
+    // C O U N T E R
+
+    interface CounterMsg {
+        update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ];
+    }
+
+    const Increment = inst(class Increment implements CounterMsg {
+        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                []
+            ];
+        }
+    });
+
+    const DelayedIncrement = inst(class DelayedIncrement implements CounterMsg {
+        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+            return [
+                model,
+                [ sleep(1000, Increment)
+                ]
+            ];
+        }
+    });
+
+    interface CounterModel {
+        count: number;
+    }
+
+    const initCounter = (delay: number): [ CounterModel, Array<Effect<CounterMsg>> ] => [
+        { count: 0 },
+        [ sleep(delay, DelayedIncrement)
+        ]
+    ];
+
+    // A P P
+
+    interface AppMsg {
+        update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ];
+    }
+
+    const LeftCounterMsg = cons(class LeftCounterMsg$ implements AppMsg {
+        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
+            return () => effect().then(LeftCounterMsg);
+        }
+
+        public constructor(private readonly msg: CounterMsg) {}
+
+        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
+            const [ nextLeftCounter, effectsOfLeftCounter ] = this.msg.update(model.leftCounter);
+
+            return [
+                {
+                    ...model,
+                    leftCounter: nextLeftCounter
+                },
+                effectsOfLeftCounter.map(LeftCounterMsg$.map)
+            ];
+        }
+    });
+
+    const RightCounterMsg = cons(class RightCounterMsg$ implements AppMsg {
+        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
+            return () => effect().then(RightCounterMsg);
+        }
+
+        public constructor(private readonly msg: CounterMsg) {}
+
+        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
+            const [ nextRightCounter, effectsOfRightCounter ] = this.msg.update(model.rightCounter);
+
+            return [
+                {
+                    ...model,
+                    rightCounter: nextRightCounter
+                },
+                effectsOfRightCounter.map(RightCounterMsg$.map)
+            ];
+        }
+    });
+
+    interface AppModel {
+        leftCounter: CounterModel;
+        rightCounter: CounterModel;
+    }
+
+    const initApp = (): [ AppModel, Array<Effect<AppMsg>> ] => {
+        const [ leftCounter, effectsOfLeftCounter ] = initCounter(100);
+        const [ rightCounter, effectsOfRightCounter ] = initCounter(150);
+
+        return [
+            { leftCounter, rightCounter },
+            [ ...effectsOfLeftCounter.map(effect => () => effect().then(LeftCounterMsg))
+            , ...effectsOfRightCounter.map(effect => () => effect().then(RightCounterMsg))
+            ]
+        ];
+    };
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<null, AppMsg, AppModel>({
+        flags: null,
+        init: initApp,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    await clock.tickAsync(50);
+    t.false(done, 'Components do not complete initial effects');
+
+    await clock.tickAsync(50); // 100
+    t.false(done, 'Not all components complete initial effects');
+
+    await clock.tickAsync(1000); // 1100
+    t.false(done, 'Not all components complete chained effects');
+
+    await clock.tickAsync(50); // 1150
+    t.true(done, 'All components complete effects');
+    t.deepEqual(await promise, {
+        leftCounter: { count: 1 },
+        rightCounter: { count: 1 }
+    });
+});
+
+test.serial('Program.server() never completing init', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Array<Effect<Msg>> ];
+    }
+
+    const Increment = inst(class Increment$ implements Msg {
+        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                [ sleep(1000, Increment)
+                ]
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Array<Effect<Msg>> ] = [
+        { count: 0 },
+        [ sleep(100, Increment)
+        ]
+    ];
+
+    t.plan(4);
+
+    let done = false;
+    Program.server<null, Msg, Model>({
+        flags: null,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(() => {
+        done = true;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(10); // 100
+    t.false(done, 'Effects chain is not done');
+
+    await clock.tickAsync(1000); // 1100
+    t.false(done, 'Sleep end produces new sleep');
+
+    await clock.tickAsync(10000);
+    t.false(done, 'Never reaches the end of sleep chain');
 });

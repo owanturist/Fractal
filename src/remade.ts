@@ -11,12 +11,20 @@ export interface Program<Msg, Model> {
 }
 
 export namespace Program {
-    export const run = <Flags, Msg, Model>({ flags, init, update }: {
+    export const client = <Flags, Msg, Model>({ flags, init, update }: {
         flags: Flags;
         init(flags: Flags): [ Model, Array<Effect<Msg>> ];
         update(msg: Msg, model: Model): [ Model, Array<Effect<Msg>> ];
     }): Program<Msg, Model> => {
         return new ClientProgram(init(flags), update);
+    };
+
+    export const server = <Flags, Msg, Model>({ flags, init, update }: {
+        flags: Flags;
+        init(flags: Flags): [ Model, Array<Effect<Msg>> ];
+        update(msg: Msg, model: Model): [ Model, Array<Effect<Msg>> ];
+    }): Promise<Model> => {
+        return new ServerProgram(init(flags), update).toPromise();
     };
 }
 
@@ -64,5 +72,39 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         for (const effect of effects) {
             effect().then(this.dispatch);
         }
+    }
+}
+
+class ServerProgram<Msg, Model> {
+    private model: Model;
+    private effects: Array<Effect<Msg>>;
+
+    public constructor(
+        [ initialModel, initialEffects ]: [ Model, Array<Effect<Msg>> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Array<Effect<Msg>> ]
+    ) {
+        this.model = initialModel;
+        this.effects = initialEffects;
+    }
+
+    public toPromise(): Promise<Model> {
+        return this.executeEffects(this.effects);
+    }
+
+    private dispatch = (msg: Msg): Promise<Model> => {
+        const [ nextModel, effects ] = this.update(msg, this.model);
+
+        this.model = nextModel;
+        return this.executeEffects(effects);
+    }
+
+    private executeEffects(effects: Array<Effect<Msg>>): Promise<Model> {
+        const promises: Array<Promise<Model>> = [];
+
+        for (const effect of effects) {
+            promises.push(effect().then(this.dispatch));
+        }
+
+        return Promise.all(promises).then(() => this.model);
     }
 }
