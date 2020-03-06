@@ -8,7 +8,6 @@ export interface Program<Model, Msg> {
     getModel(): Model;
     dispatch(msg: Msg): void;
     subscribe(subscriber: () => void): () => void;
-    onInit(done: () => void): () => void;
 }
 
 export namespace Program {
@@ -17,25 +16,20 @@ export namespace Program {
         init(flags: Flags): [ Model, Array<Effect<Msg>> ];
         update(msg: Msg, model: Model): [ Model, Array<Effect<Msg>> ];
     }): Program<Model, Msg> => {
-        return new ProgramImpl(init(flags), update);
+        return new ClientProgram(init(flags), update);
     };
 }
 
-class ProgramImpl<Model, Msg> implements Program<Model, Msg> {
+class ClientProgram<Model, Msg> implements Program<Model, Msg> {
     private model: Model;
     private readonly subscribers: Array<() => void> = [];
-    private readonly dones: Array<() => void> = [];
 
     public constructor(
         [ initialModel, initialEffects ]: [ Model, Array<Effect<Msg>> ],
         private readonly update: (msg: Msg, model: Model) => [ Model, Array<Effect<Msg>> ]
     ) {
         this.model = initialModel;
-        this.executeEffects(initialEffects).then(() => {
-            for (const done of this.dones) {
-                done();
-            }
-        });
+        this.executeEffects(initialEffects);
     }
 
     public dispatch = (msg: Msg): void => {
@@ -66,26 +60,9 @@ class ProgramImpl<Model, Msg> implements Program<Model, Msg> {
         };
     }
 
-    public onInit(done: () => void): () => void {
-        let subscribed = true;
-
-        this.dones.push(done);
-
-        return (): void => {
-            if (subscribed) {
-                subscribed = false;
-                this.dones.splice(this.dones.indexOf(done), 1);
-            }
-        };
-    }
-
-    private executeEffects(effects: Array<Effect<Msg>>): Promise<Array<void>> {
-        const promises: Array<Promise<void>> = [];
-
+    private executeEffects(effects: Array<Effect<Msg>>): void {
         for (const effect of effects) {
-            promises.push(effect().then(this.dispatch));
+            effect().then(this.dispatch);
         }
-
-        return Promise.all(promises);
     }
 }
