@@ -1,7 +1,7 @@
 import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
-import { Program, Effect } from '../src/remade';
+import { Program, Cmd } from '../src/remade';
 import { inst, cons } from '../src/Basics';
 
 const clock = useFakeTimers({
@@ -20,8 +20,21 @@ test.after(() => {
     clock.uninstall();
 });
 
-const sleep = <Msg>(time: number, msg: Msg): Effect<Msg> => () => new Promise(resolve => {
-    setTimeout(() => resolve(msg), time);
+const sleep: <Msg>(timeout: number, msg: Msg) => Cmd<Msg> = cons(class Sleep<Msg> extends Cmd<Msg> {
+    public constructor(
+        private readonly timeout: number,
+        private readonly msg: Msg
+    ) {
+        super();
+    }
+
+    public map<R>(fn: (msg: Msg) => R): Cmd<R> {
+        return new Sleep(this.timeout, fn(this.msg));
+    }
+
+    public effect(done: (msg: Msg) => void): void {
+        setTimeout(() => done(this.msg), this.timeout);
+    }
 });
 
 test.serial('Program.client() initial model and command works correctly', async t => {
@@ -42,16 +55,15 @@ test.serial('Program.client() initial model and command works correctly', async 
         count: number;
     }
 
-    const initial: [ Model, Array<Effect<Msg>> ] = [
+    const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        [ sleep(0, Increment)
-        ]
+        sleep(0, Increment)
     ];
 
     const program = Program.client<null, Msg, Model>({
         flags: null,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), [] ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     });
 
     t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
@@ -74,8 +86,8 @@ test('Program.client() flags are passed correctly', t => {
 
     const program = Program.client<{ initial: number }, Msg, Model>({
         flags: { initial: 10 },
-        init: flags => [ init(flags.initial), [] ],
-        update: (msg, model) => [ msg.update(model), [] ]
+        init: flags => [ init(flags.initial), Cmd.none ],
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     });
 
     t.deepEqual(program.getModel(), { count: 10 });
@@ -103,8 +115,8 @@ test('Program.client() subscribers works correctly', t => {
 
     const program = Program.client<null, Msg, Model>({
         flags: null,
-        init: () => [ initial, [] ],
-        update: (msg, model) => [ msg.update(model), [] ]
+        init: () => [ initial, Cmd.none ],
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     });
 
     const subscriber1 = spy();
@@ -155,30 +167,29 @@ test('Program.client() subscribers works correctly', t => {
 
 test.serial('Program.client() effects call Msg', async t => {
     interface Msg {
-        update(model: Model): [ Model, Array<Effect<Msg>> ];
+        update(model: Model): [ Model, Cmd<Msg> ];
     }
 
     const Decrement = inst(class Decrement$ implements Msg {
-        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 {
                     ...model,
                     count: model.count - 1
                 },
-                []
+                Cmd.none
             ];
         }
     });
 
     const Increment = inst(class Increment$ implements Msg {
-        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 {
                     ...model,
                     count: model.count + 1
                 },
-                [ sleep(30, Increment)
-                ]
+                sleep(30, Increment)
             ];
         }
     });
@@ -191,10 +202,9 @@ test.serial('Program.client() effects call Msg', async t => {
         count: number;
     }
 
-    const init = (flags: Flags): [ Model, Array<Effect<Msg>> ] => [
+    const init = (flags: Flags): [ Model, Cmd<Msg> ] => [
         { count: flags.initial },
-        [ sleep(100, Decrement)
-        ]
+        sleep(100, Decrement)
     ];
 
     const program = Program.client<Flags, Msg, Model>({
@@ -232,39 +242,38 @@ test.serial('Program.client() TEA in action', async t => {
     // C O U N T E R
 
     interface CounterMsg {
-        update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ];
+        update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ];
     }
 
     const Decrement = inst(class Decrement implements CounterMsg {
-        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+        public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 {
                     ...model,
                     count: model.count - 1
                 },
-                []
+                Cmd.none
             ];
         }
     });
 
     const Increment = inst(class Increment implements CounterMsg {
-        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+        public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 {
                     ...model,
                     count: model.count + 1
                 },
-                []
+                Cmd.none
             ];
         }
     });
 
     const DelayedIncrement = inst(class DelayedIncrement implements CounterMsg {
-        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+        public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 model,
-                [ sleep(30, Increment)
-                ]
+                sleep(30, Increment)
             ];
         }
     });
@@ -273,54 +282,45 @@ test.serial('Program.client() TEA in action', async t => {
         count: number;
     }
 
-    const initCounter = (delay: number): [ CounterModel, Array<Effect<CounterMsg>> ] => [
+    const initCounter = (delay: number): [ CounterModel, Cmd<CounterMsg> ] => [
         { count: 0 },
-        [ sleep(delay, Decrement)
-        ]
+        sleep(delay, Decrement)
     ];
 
     // A P P
 
     interface AppMsg {
-        update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ];
+        update(model: AppModel): [ AppModel, Cmd<AppMsg> ];
     }
 
-    const LeftCounterMsg = cons(class LeftCounterMsg$ implements AppMsg {
-        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
-            return () => effect().then(LeftCounterMsg);
-        }
-
+    const LeftCounterMsg = cons<[ CounterMsg ], AppMsg>(class LeftCounterMsg$ implements AppMsg {
         public constructor(private readonly msg: CounterMsg) {}
 
-        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
-            const [ nextLeftCounter, effectsOfLeftCounter ] = this.msg.update(model.leftCounter);
+        public update(model: AppModel): [ AppModel, Cmd<AppMsg> ] {
+            const [ nextLeftCounter, cmdOfLeftCounter ] = this.msg.update(model.leftCounter);
 
             return [
                 {
                     ...model,
                     leftCounter: nextLeftCounter
                 },
-                effectsOfLeftCounter.map(LeftCounterMsg$.map)
+                cmdOfLeftCounter.map(LeftCounterMsg)
             ];
         }
     });
 
-    const RightCounterMsg = cons(class RightCounterMsg$ implements AppMsg {
-        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
-            return () => effect().then(RightCounterMsg);
-        }
-
+    const RightCounterMsg = cons<[ CounterMsg ], AppMsg>(class RightCounterMsg$ implements AppMsg {
         public constructor(private readonly msg: CounterMsg) {}
 
-        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
-            const [ nextRightCounter, effectsOfRightCounter ] = this.msg.update(model.rightCounter);
+        public update(model: AppModel): [ AppModel, Cmd<AppMsg> ] {
+            const [ nextRightCounter, cmdOfRightCounter ] = this.msg.update(model.rightCounter);
 
             return [
                 {
                     ...model,
                     rightCounter: nextRightCounter
                 },
-                effectsOfRightCounter.map(RightCounterMsg$.map)
+                cmdOfRightCounter.map(RightCounterMsg)
             ];
         }
     });
@@ -330,15 +330,16 @@ test.serial('Program.client() TEA in action', async t => {
         rightCounter: CounterModel;
     }
 
-    const initApp = (): [ AppModel, Array<Effect<AppMsg>> ] => {
-        const [ leftCounter, effectsOfLeftCounter ] = initCounter(100);
-        const [ rightCounter, effectsOfRightCounter ] = initCounter(150);
+    const initApp = (): [ AppModel, Cmd<AppMsg> ] => {
+        const [ leftCounter, cmdOfLeftCounter ] = initCounter(100);
+        const [ rightCounter, cmdOfRightCounter ] = initCounter(150);
 
         return [
             { leftCounter, rightCounter },
-            [ ...effectsOfLeftCounter.map(effect => () => effect().then(LeftCounterMsg))
-            , ...effectsOfRightCounter.map(effect => () => effect().then(RightCounterMsg))
-            ]
+            Cmd.batch([
+                cmdOfLeftCounter.map(LeftCounterMsg),
+                cmdOfRightCounter.map(RightCounterMsg)
+            ])
         ];
     };
 
@@ -394,8 +395,8 @@ test('Program.server() done immidiatelly when non of async', async t => {
 
     const model = await Program.server<number, never, number>({
         flags: 10,
-        init: flags => [ flags, [] ],
-        update: (_msg, model) => [ model, [] ]
+        init: flags => [ flags, Cmd.none ],
+        update: (_msg, model) => [ model, Cmd.none ]
     });
 
     t.is(model, 10);
@@ -419,10 +420,9 @@ test.serial('Program.server() waits till initial effect done', async t => {
         count: number;
     }
 
-    const initial: [ Model, Array<Effect<Msg>> ] = [
+    const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        [ sleep(100, Increment)
-        ]
+        sleep(100, Increment)
     ];
 
     t.plan(3);
@@ -431,7 +431,7 @@ test.serial('Program.server() waits till initial effect done', async t => {
     const promise = Program.server<null, Msg, Model>({
         flags: null,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), [] ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     }).then(result => {
         done = true;
 
@@ -464,11 +464,12 @@ test.serial('Program.server() waits till all initial effects done', async t => {
         count: number;
     }
 
-    const initial: [ Model, Array<Effect<Msg>> ] = [
+    const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        [ sleep(100, Increment)
-        , sleep(1000, Increment)
-        ]
+        Cmd.batch([
+            sleep(100, Increment),
+            sleep(1000, Increment)
+        ])
     ];
 
     t.plan(4);
@@ -477,7 +478,7 @@ test.serial('Program.server() waits till all initial effects done', async t => {
     const promise = Program.server<null, Msg, Model>({
         flags: null,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), [] ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     }).then(result => {
         done = true;
 
@@ -497,27 +498,26 @@ test.serial('Program.server() waits till all initial effects done', async t => {
 
 test.serial('Program.server() waits till chain of effects done', async t => {
     interface Msg {
-        update(model: Model): [ Model, Array<Effect<Msg>> ];
+        update(model: Model): [ Model, Cmd<Msg> ];
     }
 
     const Increment = inst(class Increment implements Msg {
-        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 {
                     ...model,
                     count: model.count + 1
                 },
-                []
+                Cmd.none
             ];
         }
     });
 
     const DelayedIncrement = inst(class DelayedIncrement implements Msg {
-        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                [ sleep(1000, Increment)
-                ]
+                sleep(1000, Increment)
             ];
         }
     });
@@ -526,10 +526,9 @@ test.serial('Program.server() waits till chain of effects done', async t => {
         count: number;
     }
 
-    const initial: [ Model, Array<Effect<Msg>> ] = [
+    const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        [ sleep(100, DelayedIncrement)
-        ]
+        sleep(100, DelayedIncrement)
     ];
 
     t.plan(5);
@@ -563,27 +562,26 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
     // C O U N T E R
 
     interface CounterMsg {
-        update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ];
+        update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ];
     }
 
     const Increment = inst(class Increment implements CounterMsg {
-        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+        public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 {
                     ...model,
                     count: model.count + 1
                 },
-                []
+                Cmd.none
             ];
         }
     });
 
     const DelayedIncrement = inst(class DelayedIncrement implements CounterMsg {
-        public update(model: CounterModel): [ CounterModel, Array<Effect<CounterMsg>> ] {
+        public update(model: CounterModel): [ CounterModel, Cmd<CounterMsg> ] {
             return [
                 model,
-                [ sleep(1000, Increment)
-                ]
+                sleep(1000, Increment)
             ];
         }
     });
@@ -592,54 +590,45 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
         count: number;
     }
 
-    const initCounter = (delay: number): [ CounterModel, Array<Effect<CounterMsg>> ] => [
+    const initCounter = (delay: number): [ CounterModel, Cmd<CounterMsg> ] => [
         { count: 0 },
-        [ sleep(delay, DelayedIncrement)
-        ]
+        sleep(delay, DelayedIncrement)
     ];
 
     // A P P
 
     interface AppMsg {
-        update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ];
+        update(model: AppModel): [ AppModel, Cmd<AppMsg> ];
     }
 
-    const LeftCounterMsg = cons(class LeftCounterMsg$ implements AppMsg {
-        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
-            return () => effect().then(LeftCounterMsg);
-        }
-
+    const LeftCounterMsg = cons<[ CounterMsg ], AppMsg>(class LeftCounterMsg$ implements AppMsg {
         public constructor(private readonly msg: CounterMsg) {}
 
-        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
-            const [ nextLeftCounter, effectsOfLeftCounter ] = this.msg.update(model.leftCounter);
+        public update(model: AppModel): [ AppModel, Cmd<AppMsg> ] {
+            const [ nextLeftCounter, cmdOfLeftCounter ] = this.msg.update(model.leftCounter);
 
             return [
                 {
                     ...model,
                     leftCounter: nextLeftCounter
                 },
-                effectsOfLeftCounter.map(LeftCounterMsg$.map)
+                cmdOfLeftCounter.map(LeftCounterMsg)
             ];
         }
     });
 
-    const RightCounterMsg = cons(class RightCounterMsg$ implements AppMsg {
-        private static map(effect: Effect<CounterMsg>): Effect<AppMsg> {
-            return () => effect().then(RightCounterMsg);
-        }
-
+    const RightCounterMsg = cons<[ CounterMsg ], AppMsg>(class RightCounterMsg$ implements AppMsg {
         public constructor(private readonly msg: CounterMsg) {}
 
-        public update(model: AppModel): [ AppModel, Array<Effect<AppMsg>> ] {
-            const [ nextRightCounter, effectsOfRightCounter ] = this.msg.update(model.rightCounter);
+        public update(model: AppModel): [ AppModel, Cmd<AppMsg> ] {
+            const [ nextRightCounter, cmdOfRightCounter ] = this.msg.update(model.rightCounter);
 
             return [
                 {
                     ...model,
                     rightCounter: nextRightCounter
                 },
-                effectsOfRightCounter.map(RightCounterMsg$.map)
+                cmdOfRightCounter.map(RightCounterMsg)
             ];
         }
     });
@@ -649,15 +638,16 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
         rightCounter: CounterModel;
     }
 
-    const initApp = (): [ AppModel, Array<Effect<AppMsg>> ] => {
-        const [ leftCounter, effectsOfLeftCounter ] = initCounter(100);
-        const [ rightCounter, effectsOfRightCounter ] = initCounter(150);
+    const initApp = (): [ AppModel, Cmd<AppMsg> ] => {
+        const [ leftCounter, cmdOfLeftCounter ] = initCounter(100);
+        const [ rightCounter, cmdOfRightCounter ] = initCounter(150);
 
         return [
             { leftCounter, rightCounter },
-            [ ...effectsOfLeftCounter.map(effect => () => effect().then(LeftCounterMsg))
-            , ...effectsOfRightCounter.map(effect => () => effect().then(RightCounterMsg))
-            ]
+            Cmd.batch([
+                cmdOfLeftCounter.map(LeftCounterMsg),
+                cmdOfRightCounter.map(RightCounterMsg)
+            ])
         ];
     };
 
@@ -693,18 +683,17 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
 
 test.serial('Program.server() never completing init', async t => {
     interface Msg {
-        update(model: Model): [ Model, Array<Effect<Msg>> ];
+        update(model: Model): [ Model, Cmd<Msg> ];
     }
 
     const Increment = inst(class Increment$ implements Msg {
-        public update(model: Model): [ Model, Array<Effect<Msg>> ] {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 {
                     ...model,
                     count: model.count + 1
                 },
-                [ sleep(1000, Increment)
-                ]
+                sleep(1000, Increment)
             ];
         }
     });
@@ -713,10 +702,9 @@ test.serial('Program.server() never completing init', async t => {
         count: number;
     }
 
-    const initial: [ Model, Array<Effect<Msg>> ] = [
+    const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        [ sleep(100, Increment)
-        ]
+        sleep(100, Increment)
     ];
 
     t.plan(4);

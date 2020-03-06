@@ -1,4 +1,89 @@
-export type Effect<Msg> = () => Promise<Msg>;
+/**
+ * E F F E C T S
+ */
+
+abstract class Effect<Msg> {
+    protected static toPromise<Msg>(effect: Effect<Msg>, dispatch: (msg: Msg) => void): Promise<void> {
+        return effect.toPromise(dispatch);
+    }
+
+    public abstract map<R>(fn: (msg: Msg) => R): Effect<R>;
+
+    protected abstract toPromise(dispatch: (msg: Msg) => void): Promise<void>;
+}
+
+abstract class Runner<Msg> extends Effect<Msg> {
+    public static toPromise<Msg>(effect: Effect<Msg>, dispatch: (msg: Msg) => void): Promise<void> {
+        return super.toPromise(effect, dispatch);
+    }
+}
+
+const None = new class None<Msg> extends Effect<Msg> {
+    public map<R>(): Effect<R> {
+        return this;
+    }
+
+    protected toPromise(): Promise<void> {
+        return Promise.resolve();
+    }
+}<never>();
+
+class Batch<Msg> extends Effect<Msg> {
+    public static of<Msg>(effects: Array<Effect<Msg>>): Effect<Msg> {
+        const notNone: Array<Effect<Msg>> = [];
+
+        for (const effect of effects) {
+            // None is a singleton
+            if (effect !== None) {
+                notNone.push(effect);
+            }
+        }
+
+        switch (notNone.length) {
+            case 0: return None;
+            case 1: return notNone[ 0 ];
+            default: return new Batch(notNone);
+        }
+    }
+
+    private constructor(private readonly effects: Array<Effect<Msg>>) {
+        super();
+    }
+
+    public map<R>(fn: (msg: Msg) => R): Effect<R> {
+        const nextEffects: Array<Effect<R>> = new Array(this.effects.length);
+
+        for (let i = 0; i < nextEffects.length; i++) {
+            nextEffects[ i ] = this.effects[ i ].map(fn);
+        }
+
+        return new Batch(nextEffects);
+    }
+
+    protected toPromise(dispatch: (msg: Msg) => void): Promise<void> {
+        const promises: Array<Promise<void>> = new Array(this.effects.length);
+
+        for (let i = 0; i < promises.length; i++) {
+            promises[ i ] = Effect.toPromise(this.effects[ i ], dispatch);
+        }
+
+        return Promise.all(promises).then(() => undefined);
+    }
+}
+
+export abstract class Cmd<Msg> extends Effect<Msg> {
+    public static none = None as unknown as Cmd<never>;
+
+    public static batch = Batch.of as <Msg>(cmds: Array<Cmd<Msg>>) => Cmd<Msg>;
+
+    public abstract effect(done: (msg: Msg) => void): void;
+
+    public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
+
+    protected toPromise(dispatch: (msg: Msg) => void): Promise<void> {
+        return new Promise(resolve => this.effect(resolve)).then(dispatch);
+    }
+}
 
 /**
  * P R O G R A M
@@ -13,16 +98,16 @@ export interface Program<Msg, Model> {
 export namespace Program {
     export const client = <Flags, Msg, Model>({ flags, init, update }: {
         flags: Flags;
-        init(flags: Flags): [ Model, Array<Effect<Msg>> ];
-        update(msg: Msg, model: Model): [ Model, Array<Effect<Msg>> ];
+        init(flags: Flags): [ Model, Cmd<Msg> ];
+        update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
     }): Program<Msg, Model> => {
         return new ClientProgram(init(flags), update);
     };
 
     export const server = <Flags, Msg, Model>({ flags, init, update }: {
         flags: Flags;
-        init(flags: Flags): [ Model, Array<Effect<Msg>> ];
-        update(msg: Msg, model: Model): [ Model, Array<Effect<Msg>> ];
+        init(flags: Flags): [ Model, Cmd<Msg> ];
+        update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
     }): Promise<Model> => {
         return new ServerProgram(init(flags), update).toPromise();
     };
@@ -33,18 +118,18 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
     private readonly subscribers: Array<() => void> = [];
 
     public constructor(
-        [ initialModel, initialEffects ]: [ Model, Array<Effect<Msg>> ],
-        private readonly update: (msg: Msg, model: Model) => [ Model, Array<Effect<Msg>> ]
+        [ initialModel, initialEffects ]: [ Model, Cmd<Msg> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ]
     ) {
         this.model = initialModel;
-        this.executeEffects(initialEffects);
+        this.executeCmd(initialEffects);
     }
 
     public dispatch = (msg: Msg): void => {
         const [ nextModel, effects ] = this.update(msg, this.model);
 
         this.model = nextModel;
-        this.executeEffects(effects);
+        this.executeCmd(effects);
 
         for (const subscriber of this.subscribers) {
             subscriber();
@@ -68,43 +153,35 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         };
     }
 
-    private executeEffects(effects: Array<Effect<Msg>>): void {
-        for (const effect of effects) {
-            effect().then(this.dispatch);
-        }
+    private executeCmd(cmd: Cmd<Msg>): void {
+        Runner.toPromise(cmd, this.dispatch);
     }
 }
 
 class ServerProgram<Msg, Model> {
     private model: Model;
-    private effects: Array<Effect<Msg>>;
+    private effects: Cmd<Msg>;
 
     public constructor(
-        [ initialModel, initialEffects ]: [ Model, Array<Effect<Msg>> ],
-        private readonly update: (msg: Msg, model: Model) => [ Model, Array<Effect<Msg>> ]
+        [ initialModel, initialEffects ]: [ Model, Cmd<Msg> ],
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ]
     ) {
         this.model = initialModel;
         this.effects = initialEffects;
     }
 
     public toPromise(): Promise<Model> {
-        return this.executeEffects(this.effects);
+        return this.executeCmd(this.effects);
     }
 
     private dispatch = (msg: Msg): Promise<Model> => {
         const [ nextModel, effects ] = this.update(msg, this.model);
 
         this.model = nextModel;
-        return this.executeEffects(effects);
+        return this.executeCmd(effects);
     }
 
-    private executeEffects(effects: Array<Effect<Msg>>): Promise<Model> {
-        const promises: Array<Promise<Model>> = [];
-
-        for (const effect of effects) {
-            promises.push(effect().then(this.dispatch));
-        }
-
-        return Promise.all(promises).then(() => this.model);
+    private executeCmd(cmd: Cmd<Msg>): Promise<Model> {
+        return Runner.toPromise(cmd, this.dispatch).then(() => this.model);
     }
 }
