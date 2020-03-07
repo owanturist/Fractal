@@ -102,34 +102,49 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
  * M A N A G E R
  */
 
-abstract class Manager<Msg> {
+export interface Manager<Msg> {
+    readonly id: number;
+    onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>): Task<never, Unit>;
+}
+
+namespace Manager {
+    export const register = <Msg>(create: () => {
+        onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>): Task<never, Unit>;
+    }): Manager<Msg> => {
+        const { onEffects } = create();
+
+        return new ManagerImpl(onEffects);
+    };
+}
+
+class ManagerImpl<Msg> {
     private static count = 0;
 
     public readonly id: number;
 
-    public constructor() {
-        this.id = Manager.count++;
+    public constructor(
+        public readonly onEffects: (router: Router<Msg>, commands: Array<Cmd<Msg>>) => Task<never, Unit>
+    ) {
+        this.id = ManagerImpl.count++;
     }
-
-    public abstract onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>): Task<never, Unit>;
 }
 
 /**
  * T A S K
  */
 
-interface Router<Msg> {
+export interface Router<Msg> {
     sendToApp(msg: Msg): Task<never, Unit>;
 }
 
-const taskManager = new class TaskManager<Msg> extends Manager<Msg> {
-    public onEffects(router: Router<Msg>, commands: Array<Perform<Msg>>): Task<never, Unit> {
+const taskManager: Manager<unknown> = Manager.register(<Msg>() => ({
+    onEffects(router: Router<Msg>, commands: Array<Perform<Msg>>): Task<never, Unit> {
         return Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit);
     }
-}();
+}));
 
 class Perform<Msg> extends Cmd<Msg> {
-    protected readonly manager: any = taskManager;
+    protected readonly manager = taskManager;
 
     public constructor(
         private readonly task: Task<never, Msg>
