@@ -2,7 +2,7 @@ import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
 import { Program, Process, Task, Cmd } from '../src/remade';
-import { inst, cons } from '../src/Basics';
+import { Unit, inst, cons } from '../src/Basics';
 
 const clock = useFakeTimers({
     toFake: [ 'setTimeout' ]
@@ -43,8 +43,8 @@ test.serial('Program.client() initial model and command works correctly', async 
         Task.perform(() => Increment, Process.sleep(0))
     ];
 
-    const program = Program.client<null, Msg, Model>({
-        flags: null,
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
         init: () => initial,
         update: (msg, model) => [ msg.update(model), Cmd.none ]
     });
@@ -96,8 +96,8 @@ test('Program.client() subscribers works correctly', t => {
 
     const initial: Model = { count: 0 };
 
-    const program = Program.client<null, Msg, Model>({
-        flags: null,
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
         init: () => [ initial, Cmd.none ],
         update: (msg, model) => [ msg.update(model), Cmd.none ]
     });
@@ -326,8 +326,8 @@ test.serial('Program.client() TEA in action', async t => {
         ];
     };
 
-    const program = Program.client<null, AppMsg, AppModel>({
-        flags: null,
+    const program = Program.client<Unit, AppMsg, AppModel>({
+        flags: Unit,
         init: initApp,
         update: (msg, model) => msg.update(model)
     });
@@ -411,8 +411,8 @@ test.serial('Program.server() waits till initial effect done', async t => {
     t.plan(3);
 
     let done = false;
-    const promise = Program.server<null, Msg, Model>({
-        flags: null,
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
         init: () => initial,
         update: (msg, model) => [ msg.update(model), Cmd.none ]
     }).then(result => {
@@ -458,8 +458,8 @@ test.serial('Program.server() waits till all initial effects done', async t => {
     t.plan(4);
 
     let done = false;
-    const promise = Program.server<null, Msg, Model>({
-        flags: null,
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
         init: () => initial,
         update: (msg, model) => [ msg.update(model), Cmd.none ]
     }).then(result => {
@@ -520,8 +520,8 @@ test.serial('Program.server() waits till chain of effects done', async t => {
     t.plan(6);
 
     let done = false;
-    const promise = Program.server<null, Msg, Model>({
-        flags: null,
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
         init: () => initial,
         update: (msg, model) => msg.update(model)
     }).then(result => {
@@ -643,8 +643,8 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
     t.plan(5);
 
     let done = false;
-    const promise = Program.server<null, AppMsg, AppModel>({
-        flags: null,
+    const promise = Program.server<Unit, AppMsg, AppModel>({
+        flags: Unit,
         init: initApp,
         update: (msg, model) => msg.update(model)
     }).then(result => {
@@ -699,8 +699,8 @@ test.serial('Program.server() never completing init', async t => {
     t.plan(4);
 
     let done = false;
-    Program.server<null, Msg, Model>({
-        flags: null,
+    Program.server<Unit, Msg, Model>({
+        flags: Unit,
         init: () => initial,
         update: (msg, model) => msg.update(model)
     }).then(() => {
