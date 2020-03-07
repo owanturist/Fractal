@@ -12,7 +12,7 @@ type PRIVATE = typeof PRIVATE;
  */
 
 interface Bag<Msg, State> {
-    readonly manager: Manager<Msg, State>;
+    readonly manager: Manager<State>;
     readonly commands: Array<Cmd<Msg>>;
 }
 
@@ -88,7 +88,7 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
-    protected abstract getManager(): Manager<Msg, unknown>;
+    protected abstract getManager(): Manager<unknown>;
 
     protected collect(bags: Map<number, Bag<Msg, unknown>>): void {
         const manager = this.getManager();
@@ -110,46 +110,22 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
  * M A N A G E R
  */
 
-export interface Manager<Msg, State> {
-    readonly id: number;
-    readonly init: Task<never, State>;
-    onEffects(
-        router: Router<Msg>,
-        commands: Array<Cmd<Msg>>,
-        state: State
-    ): [ State, Task<never, Unit> ];
-}
-
-namespace Manager {
-    export const register = <Msg, State>(create: () => {
-        init: Task<never, State>;
-        onEffects(
-            router: Router<Msg>,
-            commands: Array<Cmd<Msg>>,
-            state: State
-        ): [ State, Task<never, Unit> ];
-    }): Manager<Msg, State> => {
-        const { init, onEffects } = create();
-
-        return new ManagerImpl(init, onEffects);
-    };
-}
-
-class ManagerImpl<Msg, State> {
+export abstract class Manager<State> {
     private static count = 0;
 
     public readonly id: number;
 
-    public constructor(
-        public readonly init: Task<never, State>,
-        public readonly onEffects: (
-            router: Router<Msg>,
-            commands: Array<Cmd<Msg>>,
-            state: State
-        ) => [ State, Task<never, Unit> ]
-    ) {
-        this.id = ManagerImpl.count++;
+    public abstract init: Task<never, State>;
+
+    public constructor() {
+        this.id = Manager.count++;
     }
+
+    public abstract onEffects<AppMsg>(
+        router: Router<AppMsg>,
+        commands: Array<Cmd<AppMsg>>,
+        state: State
+    ): [ State, Task<never, Unit> ];
 }
 
 /**
@@ -413,19 +389,19 @@ export interface Router<Msg> {
     sendToApp(msg: Msg): Task<never, Unit>;
 }
 
-const taskManager = Manager.register(<Msg>() => ({
-    init: Task.succeed(Unit),
+const taskManager = new class TaskManager extends Manager<Unit> {
+    public init = Task.succeed(Unit);
 
-    onEffects(
-        router: Router<Msg>,
-        commands: Array<Perform<Msg>>
+    public onEffects<AppMsg>(
+        router: Router<AppMsg>,
+        commands: Array<Perform<AppMsg>>
     ): [ Unit, Task<never, Unit> ] {
         return [
             Unit,
             Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit)
         ];
     }
-}));
+}();
 
 class Perform<Msg> extends Cmd<Msg> {
     public constructor(
@@ -441,7 +417,7 @@ class Perform<Msg> extends Cmd<Msg> {
     public onEffects(router: Router<Msg>): Task<never, Unit> {
         return this.task.chain(router.sendToApp);
     }
-    protected getManager<AppMsg>(): Manager<AppMsg, Unit> {
+    protected getManager(): Manager<Unit> {
         return taskManager;
     }
 }
