@@ -1,7 +1,7 @@
 import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
-import { Program, Task, Process, Cmd } from '../src/remade';
+import { Program, Process, Task, Cmd } from '../src/remade';
 import { inst, cons } from '../src/Basics';
 
 const clock = useFakeTimers({
@@ -18,6 +18,42 @@ test.beforeEach(() => {
 
 test.after(() => {
     clock.uninstall();
+});
+
+test.serial('Program.client() initial model and command works correctly', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): Model {
+            return {
+                ...model,
+                count: model.count + 1
+            };
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Task.perform(() => Increment, Process.sleep(0))
+    ];
+
+    const program = Program.client<null, Msg, Model>({
+        flags: null,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
+
+    await clock.tickAsync(0);
+
+    t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied after timeout');
 });
 
 test('Program.client() flags are passed correctly', t => {
@@ -110,42 +146,6 @@ test('Program.client() subscribers works correctly', t => {
     t.deepEqual(program.getModel(), { count: 6 }, '6th Increment');
     t.is(subscriber1.callCount, 2, 'Unsubscribed again 1');
     t.is(subscriber2.callCount, 2, 'Unsubscribed again 2');
-});
-
-test.serial('Program.client() initial model and command works correctly', async t => {
-    interface Msg {
-        update(model: Model): Model;
-    }
-
-    const Increment = inst(class Increment implements Msg {
-        public update(model: Model): Model {
-            return {
-                ...model,
-                count: model.count + 1
-            };
-        }
-    });
-
-    interface Model {
-        count: number;
-    }
-
-    const initial: [ Model, Cmd<Msg> ] = [
-        { count: 0 },
-        Task.perform(() => Increment, Process.sleep(0))
-    ];
-
-    const program = Program.client<null, Msg, Model>({
-        flags: null,
-        init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
-    });
-
-    t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
-
-    await clock.tickAsync(0);
-
-    t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied after timeout');
 });
 
 test.serial('Program.client() effects call Msg', async t => {
@@ -500,7 +500,7 @@ test.serial('Program.server() waits till chain of effects done', async t => {
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                Task.perform(() => Increment, Process.sleep(100))
+                Task.perform(() => Increment, Process.sleep(1000))
             ];
         }
     });

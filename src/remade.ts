@@ -126,7 +126,7 @@ const taskManager = new class TaskManager<Msg> extends Manager<Msg> {
         sendToApp: (msg: Msg) => Task<never, Unit>,
         commands: Array<Perform<Msg>>
     ): Task<never, Unit> {
-        return Task.sequence(commands.map(cmd => cmd.onEffects(sendToApp))).map(() => Unit);
+        return Task.all(commands.map(cmd => cmd.onEffects(sendToApp))).map(() => Unit);
     }
 }();
 
@@ -221,6 +221,22 @@ class Succeed<T> extends Task<never, T> {
         super();
     }
 
+    public map<R>(fn: (value: T) => R): Task<never, R> {
+        return new Succeed(fn(this.value));
+    }
+
+    public chain<E, R>(fn: (value: T) => Task<E, R>): Task<E, R> {
+        return fn(this.value);
+    }
+
+    public mapError(): Task<never, T> {
+        return this;
+    }
+
+    public chainError(): Task<never, T> {
+        return this;
+    }
+
     protected toPromise(): Promise<T> {
         return Promise.resolve(this.value);
     }
@@ -229,6 +245,22 @@ class Succeed<T> extends Task<never, T> {
 class Fail<E> extends Task<E, never> {
     public constructor(private readonly error: E) {
         super();
+    }
+
+    public map(): Task<E, never> {
+        return this;
+    }
+
+    public chain(): Task<E, never> {
+        return this;
+    }
+
+    public mapError<T, Y>(fn: (error: E) => Y): Task<Y, T> {
+        return new Fail(fn(this.error));
+    }
+
+    public chainError<T, Y>(fn: (error: E) => Task<Y, T>): Task<Y, T> {
+        return fn(this.error);
     }
 
     protected toPromise(): Promise<never> {
@@ -337,18 +369,18 @@ export class Process {
         return process.toPromise();
     }
 
-    private root: Promise<Unit> = Promise.resolve(Unit);
-
     protected constructor(private readonly task: Task<unknown, unknown>) {}
 
     public kill(): Task<never, Unit> {
         return new Kill(() => Unit);
     }
 
-    private toPromise(): Promise<Process> {
-        this.root = this.root.then(() => this.task.tap(TaskRunner.toPromise)).then(() => Unit);
+    public tap<R>(fn: (process: Process) => R): R {
+        return fn(this);
+    }
 
-        return Promise.resolve(this);
+    private toPromise(): Promise<Process> {
+        return TaskRunner.toPromise(this.task).then(() => this);
     }
 }
 
