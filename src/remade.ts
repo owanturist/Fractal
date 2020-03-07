@@ -6,26 +6,23 @@ import { Unit } from './Basics';
  */
 
 interface Bag<Msg> {
+    readonly manager: Manager<Msg>;
     readonly commands: Array<Cmd<Msg>>;
 }
 
 abstract class Effect<Msg> {
-    protected static collect<Msg>(
-        effect: Effect<Msg>,
-        managers: Array<Manager<Msg>>,
-        bags: Map<number, Bag<Msg>>
-    ): void {
-        effect.collect(managers, bags);
+    protected static collect<Msg>(effect: Effect<Msg>, bags: Map<number, Bag<Msg>>): void {
+        effect.collect(bags);
     }
 
     public abstract map<R>(fn: (msg: Msg) => R): Effect<R>;
 
-    protected abstract collect(managers: Array<Manager<Msg>>, bags: Map<number, Bag<Msg>>): void;
+    protected abstract collect(bags: Map<number, Bag<Msg>>): void;
 }
 
 abstract class Collector<Msg> extends Effect<Msg> {
-    public static collect<Msg>(effect: Effect<Msg>, managers: Array<Manager<Msg>>, bags: Map<number, Bag<Msg>>): void {
-        super.collect(effect, managers, bags);
+    public static collect<Msg>(effect: Effect<Msg>, bags: Map<number, Bag<Msg>>): void {
+        super.collect(effect, bags);
     }
 }
 
@@ -71,9 +68,9 @@ class Batch<Msg> extends Effect<Msg> {
         return new Batch(nextEffects);
     }
 
-    protected collect(managers: Array<Manager<Msg>>, bags: Map<number, Bag<Msg>>): void {
+    protected collect(bags: Map<number, Bag<Msg>>): void {
         for (const effect of this.effects) {
-            Effect.collect(effect, managers, bags);
+            Effect.collect(effect, bags);
         }
     }
 }
@@ -87,12 +84,14 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
-    protected collect(managers: Array<Manager<Msg>>, bags: Map<number, Bag<Msg>>): void {
+    protected collect(bags: Map<number, Bag<Msg>>): void {
         const bag = bags.get(this.manager.id);
 
         if (typeof bag === 'undefined') {
-            managers.push(this.manager);
-            bags.set(this.manager.id, { commands: [ this ]});
+            bags.set(this.manager.id, {
+                commands: [ this ],
+                manager: this.manager
+            });
         } else {
             bag.commands.push(this);
         }
@@ -150,32 +149,6 @@ class Perform<Msg> extends Cmd<Msg> {
 }
 
 export abstract class Task<E, T> {
-    public static succeed<T>(value: T): Task<never, T> {
-        return new Succeed(value);
-    }
-
-    public static fail<E>(error: E): Task<E, never> {
-        return new Fail(error);
-    }
-
-    public static sequence<E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> {
-        let acc: Task<E, Array<T>> = Task.succeed([]);
-
-        for (const task of tasks) {
-            acc = acc.chain(arr => task.map(value => {
-                arr.push(value);
-
-                return arr;
-            }));
-        }
-
-        return acc;
-    }
-
-    public static perform<T, Msg>(tagger: (value: T) => Msg, task: Task<never, T>): Cmd<Msg> {
-        return new Perform(task.map(tagger));
-    }
-
     protected static toPromise<E, T>(task: Task<E, T>): Promise<T> {
         return task.toPromise();
     }
@@ -215,19 +188,31 @@ export abstract class Task<E, T> {
     protected abstract toPromise(): Promise<T>;
 }
 
+export namespace Task {
+    export const succeed = <T>(value: T): Task<never, T> => {
+        return new Succeed(value);
+    };
+
+    export const fail = <E>(error: E): Task<E, never> => {
+        return new Fail(error);
+    };
+
+    export const sequence = <E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> => {
+        return new Sequence(tasks);
+    };
+
+    export const all = <E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> => {
+        return new All(tasks);
+    };
+
+    export const perform = <T, Msg>(tagger: (value: T) => Msg, task: Task<never, T>): Cmd<Msg> => {
+        return new Perform(task.map(tagger));
+    };
+}
+
 abstract class TaskRunner<E, T> extends Task<E, T> {
     public static toPromise<E, T>(task: Task<E, T>): Promise<T> {
         return super.toPromise(task);
-    }
-}
-
-class Identity<T> extends Task<never, T> {
-    public constructor(private readonly promise: Promise<T>) {
-        super();
-    }
-
-    protected toPromise(): Promise<T> {
-        return this.promise;
     }
 }
 
@@ -248,6 +233,36 @@ class Fail<E> extends Task<E, never> {
 
     protected toPromise(): Promise<never> {
         return Promise.reject(this.error);
+    }
+}
+
+class Sequence<E, T> extends Task<E, Array<T>> {
+    public constructor(private readonly tasks: Array<Task<E, T>>) {
+        super();
+    }
+
+    public toPromise(): Promise<Array<T>> {
+        let root: Promise<Array<T>> = Promise.resolve([]);
+
+        for (const task of this.tasks) {
+            root = root.then(acc => TaskRunner.toPromise(task).then(value => {
+                acc.push(value);
+
+                return acc;
+            }));
+        }
+
+        return root;
+    }
+}
+
+class All<E, T> extends Task<E, Array<T>> {
+    public constructor(private readonly tasks: Array<Task<E, T>>) {
+        super();
+    }
+
+    public toPromise(): Promise<Array<T>> {
+        return Promise.all(this.tasks.map(TaskRunner.toPromise));
     }
 }
 
@@ -283,7 +298,7 @@ class Spawn extends Task<never, Process> {
     }
 
     protected toPromise(): Promise<Process> {
-        return Promise.resolve(this.process);
+        return ProcessRunner.toPromise(this.process);
     }
 }
 
@@ -318,18 +333,28 @@ export class Process {
         return new Sleep(milliseconds);
     }
 
-    protected static toPromise(process: Process): Promise<Unit> {
+    protected static toPromise(process: Process): Promise<Process> {
         return process.toPromise();
     }
 
-    private constructor(private readonly task: Task<unknown, unknown>) {}
+    private root: Promise<Unit> = Promise.resolve(Unit);
+
+    protected constructor(private readonly task: Task<unknown, unknown>) {}
 
     public kill(): Task<never, Unit> {
         return new Kill(() => Unit);
     }
 
-    private toPromise(): Promise<Unit> {
-        return this.task.tap(TaskRunner.toPromise).then(() => Unit);
+    private toPromise(): Promise<Process> {
+        this.root = this.root.then(() => this.task.tap(TaskRunner.toPromise)).then(() => Unit);
+
+        return Promise.resolve(this);
+    }
+}
+
+abstract class ProcessRunner extends Process {
+    public static toPromise(process: Process): Promise<Process> {
+        return super.toPromise(process);
     }
 }
 
@@ -339,27 +364,22 @@ export class Process {
 
 class Runtime<Msg> {
     public constructor(
-        private readonly dispatch: (msg: Msg) => Promise<Unit>
+        private readonly dispatch: (msg: Msg) => Task<never, Unit>
     ) {}
 
-    public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
-        const managers: Array<Manager<Msg>> = [];
+    public runEffects(cmd: Cmd<Msg>): Task<never, Unit> {
         const bags: Map<number, Bag<Msg>> = new Map();
-        const promises: Array<Promise<Unit>> = [];
+        const tasks: Array<Task<never, Unit>> = [];
 
-        Collector.collect(cmd, managers, bags);
+        Collector.collect(cmd, bags);
 
-        for (const manager of managers) {
-            const bag = bags.get(manager.id) || { commands: [] };
-            const promise = manager.onEffects(
-                messages => new Identity(this.dispatch(messages)),
-                bag.commands
-            ).tap(TaskRunner.toPromise);
+        for (const bag of bags.values()) {
+            const task = bag.manager.onEffects(this.dispatch, bag.commands);
 
-            promises.push(promise);
+            tasks.push(task);
         }
 
-        return Promise.all(promises).then(() => Unit);
+        return Task.all(tasks).map(() => Unit);
     }
 }
 
@@ -404,16 +424,16 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         this.runtime = new Runtime(msg => {
             this.dispatch(msg);
 
-            return Promise.resolve(Unit);
+            return Task.succeed(Unit);
         });
-        this.runtime.runEffects(initialCmd);
+        TaskRunner.toPromise(this.runtime.runEffects(initialCmd));
     }
 
     public dispatch = (msg: Msg): void => {
         const [ nextModel, cmd ] = this.update(msg, this.model);
 
         this.model = nextModel;
-        this.runtime.runEffects(cmd);
+        TaskRunner.toPromise(this.runtime.runEffects(cmd));
 
         for (const subscriber of this.subscribers) {
             subscriber();
@@ -453,10 +473,10 @@ class ServerProgram<Msg, Model> {
     }
 
     public collect(): Promise<Model> {
-        return this.runtime.runEffects(this.cmd).then(() => this.model);
+        return TaskRunner.toPromise(this.runtime.runEffects(this.cmd)).then(() => this.model);
     }
 
-    private dispatch = (msg: Msg): Promise<Unit> => {
+    private dispatch = (msg: Msg): Task<never, Unit> => {
         const [ nextModel, cmd ] = this.update(msg, this.model);
 
         this.model = nextModel;
