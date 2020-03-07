@@ -1,5 +1,8 @@
 import { Either, Left, Right } from './Either';
-import { Unit } from './Basics';
+import {
+    WhenUnknown,
+    Unit
+} from './Basics';
 
 const PRIVATE = Symbol();
 type PRIVATE = typeof PRIVATE;
@@ -83,17 +86,19 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 
     public static batch = Batch.of as <Msg>(cmds: Array<Cmd<Msg>>) => Cmd<Msg>;
 
-    protected abstract manager: Manager<Msg, unknown>;
-
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
+    protected abstract getManager(): Manager<Msg, unknown>;
+
     protected collect(bags: Map<number, Bag<Msg, unknown>>): void {
-        const bag = bags.get(this.manager.id);
+        const manager = this.getManager();
+
+        const bag = bags.get(manager.id);
 
         if (typeof bag === 'undefined') {
-            bags.set(this.manager.id, {
+            bags.set(manager.id, {
                 commands: [ this ],
-                manager: this.manager
+                manager
             });
         } else {
             bag.commands.push(this);
@@ -108,13 +113,21 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 export interface Manager<Msg, State> {
     readonly id: number;
     readonly init: Task<never, State>;
-    onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>, state: State): Task<never, State>;
+    onEffects(
+        router: Router<Msg>,
+        commands: Array<Cmd<Msg>>,
+        state: State
+    ): [ State, Task<never, Unit> ];
 }
 
 namespace Manager {
     export const register = <Msg, State>(create: () => {
         init: Task<never, State>;
-        onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>, state: State): Task<never, State>;
+        onEffects(
+            router: Router<Msg>,
+            commands: Array<Cmd<Msg>>,
+            state: State
+        ): [ State, Task<never, Unit> ];
     }): Manager<Msg, State> => {
         const { init, onEffects } = create();
 
@@ -129,7 +142,11 @@ class ManagerImpl<Msg, State> {
 
     public constructor(
         public readonly init: Task<never, State>,
-        public readonly onEffects: (router: Router<Msg>, commands: Array<Cmd<Msg>>, state: State) => Task<never, State>
+        public readonly onEffects: (
+            router: Router<Msg>,
+            commands: Array<Cmd<Msg>>,
+            state: State
+        ) => [ State, Task<never, Unit> ]
     ) {
         this.id = ManagerImpl.count++;
     }
@@ -188,12 +205,12 @@ export namespace Task {
         return new Fail(error);
     };
 
-    export const sequence = <E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> => {
-        return new Sequence(tasks);
+    export const sequence = <E, T>(tasks: Array<Task<E, T>>): Task<WhenUnknown<E, never>, Array<T>> => {
+        return new Sequence(tasks) as unknown as Task<WhenUnknown<E, never>, Array<T>>;
     };
 
-    export const all = <E, T>(tasks: Array<Task<E, T>>): Task<E, Array<T>> => {
-        return new All(tasks);
+    export const all = <E, T>(tasks: Array<Task<E, T>>): Task<WhenUnknown<E, never> , Array<T>> => {
+        return new All(tasks) as unknown as Task<WhenUnknown<E, never>, Array<T>>;
     };
 
     export const perform = <T, Msg>(tagger: (value: T) => Msg, task: Task<never, T>): Cmd<Msg> => {
@@ -396,17 +413,21 @@ export interface Router<Msg> {
     sendToApp(msg: Msg): Task<never, Unit>;
 }
 
-const taskManager: Manager<unknown, Unit> = Manager.register(<Msg>() => ({
+const taskManager = Manager.register(<Msg>() => ({
     init: Task.succeed(Unit),
 
-    onEffects(router: Router<Msg>, commands: Array<Perform<Msg>>): Task<never, Unit> {
-        return Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit);
+    onEffects(
+        router: Router<Msg>,
+        commands: Array<Perform<Msg>>
+    ): [ Unit, Task<never, Unit> ] {
+        return [
+            Unit,
+            Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit)
+        ];
     }
 }));
 
 class Perform<Msg> extends Cmd<Msg> {
-    protected readonly manager = taskManager;
-
     public constructor(
         private readonly task: Task<never, Msg>
     ) {
@@ -419,6 +440,9 @@ class Perform<Msg> extends Cmd<Msg> {
 
     public onEffects(router: Router<Msg>): Task<never, Unit> {
         return this.task.chain(router.sendToApp);
+    }
+    protected getManager<AppMsg>(): Manager<AppMsg, Unit> {
+        return taskManager;
     }
 }
 
@@ -440,18 +464,18 @@ class Runtime<Msg, State> {
 
     public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
         const bags: Map<number, Bag<Msg, State>> = new Map();
-        const promises: Array<Promise<State>> = [];
+        const promises: Array<Promise<Unit>> = [];
 
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
             const statePromise = this.states.get(bag.manager.id) || TaskRunner.toPromise(PRIVATE, bag.manager.init);
-            const promise = statePromise.then(state => {
-                return TaskRunner.toPromise(PRIVATE, bag.manager.onEffects(this.router, bag.commands, state));
+            const tuplePromise = statePromise.then(state => {
+                return bag.manager.onEffects(this.router, bag.commands, state);
             });
 
-            promises.push(promise);
-            this.states.set(bag.manager.id, promise);
+            promises.push(tuplePromise.then(([ , task ]) => TaskRunner.toPromise(PRIVATE, task)));
+            this.states.set(bag.manager.id, tuplePromise.then(([ state ]) => state));
         }
 
         return Promise.all(promises).then(() => Unit);

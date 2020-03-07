@@ -20,7 +20,7 @@ test.after(() => {
     clock.uninstall();
 });
 
-test.serial('Task.perform()', async t => {
+test.serial('Task.perform() Task.succeed applyes almost immediately', async t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -53,6 +53,13 @@ test.serial('Task.perform()', async t => {
 
     program.subscribe(subscriber);
 
+    t.plan(4);
+
     t.is(subscriber.callCount, 0, 'Subscriber not called');
-    t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied immediately');
+    t.deepEqual(program.getModel(), { count: 0 }, 'Initial model does not change');
+
+    await clock.tickAsync(0);
+
+    t.is(subscriber.callCount, 1, 'Subscriber called ones');
+    t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
 });
