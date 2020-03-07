@@ -111,22 +111,20 @@ abstract class Manager<Msg> {
         this.id = Manager.count++;
     }
 
-    public abstract onEffects(
-        sendToApp: (msg: Msg) => Task<never, Unit>,
-        commands: Array<Cmd<Msg>>
-    ): Task<never, Unit>;
+    public abstract onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>): Task<never, Unit>;
 }
 
 /**
  * T A S K
  */
 
+interface Router<Msg> {
+    sendToApp(msg: Msg): Task<never, Unit>;
+}
+
 const taskManager = new class TaskManager<Msg> extends Manager<Msg> {
-    public onEffects(
-        sendToApp: (msg: Msg) => Task<never, Unit>,
-        commands: Array<Perform<Msg>>
-    ): Task<never, Unit> {
-        return Task.all(commands.map(cmd => cmd.onEffects(sendToApp))).map(() => Unit);
+    public onEffects(router: Router<Msg>, commands: Array<Perform<Msg>>): Task<never, Unit> {
+        return Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit);
     }
 }();
 
@@ -143,8 +141,8 @@ class Perform<Msg> extends Cmd<Msg> {
         return new Perform(this.task.map(fn));
     }
 
-    public onEffects(sendToApp: (msg: Msg) => Task<never, Unit>): Task<never, Process> {
-        return this.task.chain(sendToApp).spawn();
+    public onEffects(router: Router<Msg>): Task<never, Process> {
+        return this.task.chain(router.sendToApp).spawn();
     }
 }
 
@@ -395,9 +393,15 @@ abstract class ProcessRunner extends Process {
  */
 
 class Runtime<Msg> {
+    private readonly router: Router<Msg>;
+
     public constructor(
-        private readonly dispatch: (msg: Msg) => Task<never, Unit>
-    ) {}
+        dispatch: (msg: Msg) => Task<never, Unit>
+    ) {
+        this.router = {
+            sendToApp: dispatch
+        };
+    }
 
     public runEffects(cmd: Cmd<Msg>): Task<never, Unit> {
         const bags: Map<number, Bag<Msg>> = new Map();
@@ -406,7 +410,7 @@ class Runtime<Msg> {
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
-            const task = bag.manager.onEffects(this.dispatch, bag.commands);
+            const task = bag.manager.onEffects(this.router, bag.commands);
 
             tasks.push(task);
         }

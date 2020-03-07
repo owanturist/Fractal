@@ -511,10 +511,13 @@ test.serial('Program.server() waits till chain of effects done', async t => {
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        Task.perform(() => DelayedIncrement, Process.sleep(100))
+        Cmd.batch([
+            Task.perform(() => Increment, Process.sleep(500)),
+            Task.perform(() => DelayedIncrement, Process.sleep(100))
+        ])
     ];
 
-    t.plan(5);
+    t.plan(6);
 
     let done = false;
     const promise = Program.server<null, Msg, Model>({
@@ -533,12 +536,15 @@ test.serial('Program.server() waits till chain of effects done', async t => {
     await clock.tickAsync(10); // 100
     t.false(done, 'Effects chain is not done');
 
-    await clock.tickAsync(900); // 1000
+    await clock.tickAsync(400); // 500
+    t.false(done, 'Effects chain is not done');
+
+    await clock.tickAsync(500); // 1000
     t.false(done, 'Chained effect is not done');
 
     await clock.tickAsync(100); // 1100
     t.true(done, 'Chained effect is done');
-    t.deepEqual(await promise, { count: 1 });
+    t.deepEqual(await promise, { count: 2 });
 });
 
 test.serial('Program.server() waits till TEA effects are done', async t => {
