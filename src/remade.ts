@@ -7,6 +7,8 @@ import {
 const PRIVATE = Symbol();
 type PRIVATE = typeof PRIVATE;
 
+const unit = () => Unit;
+
 /**
  * E F F E C T S
  */
@@ -125,7 +127,7 @@ export abstract class Manager<State> {
         router: Router<AppMsg>,
         commands: Array<Cmd<AppMsg>>,
         state: State
-    ): [ State, Task<never, Unit> ];
+    ): Task<never, State>;
 }
 
 /**
@@ -133,8 +135,8 @@ export abstract class Manager<State> {
  */
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(key: PRIVATE, task: Task<E, T>): Promise<T> {
-        return task.toPromise(key);
+    protected static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<T> {
+        return task.toPromise(promises, PRIVATE);
     }
 
     public attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg> {
@@ -169,7 +171,7 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected abstract toPromise(key: PRIVATE): Promise<T>;
+    protected abstract toPromise(promises: Array<Promise<Unit>>, key: PRIVATE): Promise<T>;
 }
 
 export namespace Task {
@@ -195,8 +197,8 @@ export namespace Task {
 }
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T>(key: PRIVATE, task: Task<E, T>): Promise<T> {
-        return super.toPromise(key, task);
+    public static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<T> {
+        return super.toPromise(task, promises);
     }
 }
 
@@ -267,11 +269,11 @@ class Sequence<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise(key: PRIVATE): Promise<Array<T>> {
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Array<T>> {
         let root: Promise<Array<T>> = Promise.resolve([]);
 
         for (const task of this.tasks) {
-            root = root.then(acc => TaskRunner.toPromise(key, task).then(value => {
+            root = root.then(acc => TaskRunner.toPromise(task, promises).then(value => {
                 acc.push(value);
 
                 return acc;
@@ -287,8 +289,8 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise(): Promise<Array<T>> {
-        return Promise.all(this.tasks.map(task => TaskRunner.toPromise(PRIVATE, task)));
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Array<T>> {
+        return Promise.all(this.tasks.map(task => TaskRunner.toPromise(task, promises)));
     }
 }
 
@@ -300,8 +302,8 @@ class Mapper<E, T, R> extends Task<E, R> {
         super();
     }
 
-    protected toPromise(): Promise<R> {
-        return TaskRunner.toPromise(PRIVATE, this.task).then(this.fn);
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<R> {
+        return TaskRunner.toPromise(this.task, promises).then(this.fn);
     }
 }
 
@@ -313,9 +315,9 @@ class Chainer<E, T, R> extends Task<E, R> {
         super();
     }
 
-    protected toPromise(): Promise<R> {
-        return TaskRunner.toPromise(PRIVATE, this.task)
-            .then((value: T) => TaskRunner.toPromise(PRIVATE, this.fn(value)));
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<R> {
+        return TaskRunner.toPromise(this.task, promises)
+            .then(value => TaskRunner.toPromise(this.fn(value), promises));
     }
 }
 
@@ -324,8 +326,8 @@ class Spawn extends Task<never, Process> {
         super();
     }
 
-    protected toPromise(key: PRIVATE): Promise<Process> {
-        return ProcessRunner.toPromise(key, this.process);
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Process> {
+        return ProcessRunner.toPromise(this.process, promises);
     }
 }
 
@@ -341,16 +343,6 @@ class Sleep extends Task<never, Unit> {
     }
 }
 
-class Kill extends Task<never, Unit> {
-    public constructor(private readonly killer: () => Unit) {
-        super();
-    }
-
-    protected toPromise(): Promise<Unit> {
-        return Promise.resolve(this.killer());
-    }
-}
-
 export class Process {
     public static spawn<E, T>(task: Task<E, T>): Task<never, Process> {
         return new Spawn(new Process(task));
@@ -360,28 +352,26 @@ export class Process {
         return new Sleep(milliseconds);
     }
 
-    protected static toPromise(key: PRIVATE, process: Process): Promise<Process> {
-        return process.toPromise(key);
+    protected static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
+        return process.toPromise(promises, PRIVATE);
     }
 
     protected constructor(private readonly task: Task<unknown, unknown>) {}
-
-    public kill(): Task<never, Unit> {
-        return new Kill(() => Unit);
-    }
 
     public tap<R>(fn: (process: Process) => R): R {
         return fn(this);
     }
 
-    private toPromise(key: PRIVATE): Promise<Process> {
-        return TaskRunner.toPromise(key, this.task).then(() => this);
+    private toPromise(promises: Array<Promise<Unit>>, _key: PRIVATE): Promise<Process> {
+        promises.push(TaskRunner.toPromise(this.task, promises).then(unit));
+
+        return Promise.resolve(this);
     }
 }
 
 abstract class ProcessRunner extends Process {
-    public static toPromise(key: PRIVATE, process: Process): Promise<Process> {
-        return super.toPromise(key, process);
+    public static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
+        return super.toPromise(process, promises);
     }
 }
 
@@ -395,11 +385,8 @@ const taskManager = new class TaskManager extends Manager<Unit> {
     public onEffects<AppMsg>(
         router: Router<AppMsg>,
         commands: Array<Perform<AppMsg>>
-    ): [ Unit, Task<never, Unit> ] {
-        return [
-            Unit,
-            Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit)
-        ];
+    ): Task<never, Unit> {
+        return Task.all(commands.map(cmd => cmd.onEffects(router))).map(unit);
     }
 }();
 
@@ -414,8 +401,8 @@ class Perform<Msg> extends Cmd<Msg> {
         return new Perform(this.task.map(fn));
     }
 
-    public onEffects(router: Router<Msg>): Task<never, Unit> {
-        return this.task.chain(router.sendToApp);
+    public onEffects(router: Router<Msg>): Task<never, Process> {
+        return this.task.chain(router.sendToApp).spawn();
     }
     protected getManager(): Manager<Unit> {
         return taskManager;
@@ -440,21 +427,25 @@ class Runtime<Msg, State> {
 
     public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
         const bags: Map<number, Bag<Msg, State>> = new Map();
-        const promises: Array<Promise<Unit>> = [];
+        const nextStatePromises: Array<Promise<State>> = [];
+        const processPromises: Array<Promise<Unit>> = [];
 
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
-            const statePromise = this.states.get(bag.manager.id) || TaskRunner.toPromise(PRIVATE, bag.manager.init);
-            const tuplePromise = statePromise.then(state => {
-                return bag.manager.onEffects(this.router, bag.commands, state);
-            });
+            const statePromise = this.states.get(bag.manager.id)
+                || TaskRunner.toPromise(bag.manager.init, processPromises);
 
-            promises.push(tuplePromise.then(([ , task ]) => TaskRunner.toPromise(PRIVATE, task)));
-            this.states.set(bag.manager.id, tuplePromise.then(([ state ]) => state));
+            const promise = statePromise.then(state => TaskRunner.toPromise(
+                bag.manager.onEffects(this.router, bag.commands, state),
+                processPromises
+            ));
+
+            nextStatePromises.push(promise);
+            this.states.set(bag.manager.id, promise);
         }
 
-        return Promise.all(promises).then(() => Unit);
+        return Promise.all(nextStatePromises).then(() => Promise.all(processPromises)).then(unit);
     }
 }
 
