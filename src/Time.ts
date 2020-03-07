@@ -1,56 +1,55 @@
-// import { Router, Manager, Task, Cmd } from './remade';
-// import { Unit } from './Basics';
-// import Dict from './Dict';
+import { Router, Manager, Process, Task, Cmd } from './remade';
+import { Maybe } from './Maybe';
+import Dict from './Dict';
 
-// interface State {
-//     readonly timeouts: Dict<string, number>;
-// }
+type State = Dict<string, Process>;
 
-// const initial: State = {
-//     timeouts: Dict.empty as Dict<string, number>
-// }
+const initial = Dict.empty as State;
 
-// const manager = new class TimeManager extends Manager<State> {
-//     public init = Task.succeed(initial);
+const manager = new class TimeManager extends Manager<State> {
+    public init = Task.succeed(initial);
 
-//     public onEffects<AppMsg>(
-//         router: Router<AppMsg>,
-//         commands: Array<After<AppMsg>>,
-//         state: State
-//     ): [ State, Task<never, Unit> ] {
-//         return [
-//             state,
-//             Task.succeed(Unit)
-//         ];
-//     }
-// }();
+    public onEffects<AppMsg>(
+        router: Router<AppMsg>,
+        commands: Array<After<AppMsg>>,
+        state: State
+    ): Task<never, State> {
+        return commands.reduce(
+            (acc, task) => acc.chain(nextState => task.onEffects(router, nextState)),
+            Task.succeed(state)
+        );
+    }
+}();
 
-// class After<Msg> extends Cmd<Msg> {
-//     public constructor(
-//         private readonly milliseconds: number,
-//         private readonly msg: Msg
-//     ) {
-//         super();
-//     }
+class After<Msg> extends Cmd<Msg> {
+    public constructor(
+        private readonly name: Maybe<string>,
+        private readonly timeout: number,
+        private readonly msg: Msg
+    ) {
+        super();
+    }
 
-//     public map<R>(fn: (msg: Msg) => R): Cmd<R> {
-//         return new After(this.milliseconds, fn(this.msg));
-//     }
+    public map<R>(fn: (msg: Msg) => R): Cmd<R> {
+        return new After(this.name, this.timeout, fn(this.msg));
+    }
 
-//     public onEffects<AppMsg>(
-//         createTask: <T>(cb: (done: (value: T) => void) => void) => Task<never, T>,
-//         router: Router<AppMsg>,
-//         state: State
-//     ): [ State, Task<never, Unit> ] {
-//         return [
-//             state,
-//             createTask(done => {
-//                 done(Unit);
-//             })
-//         ];
-//     }
+    public onEffects(
+        router: Router<Msg>,
+        state: State
+    ): Task<never, State> {
+        return router.sendToApp(done => {
+            const timeoutID = setTimeout(() => done(this.msg), this.timeout);
 
-//     protected getManager(): Manager<State> {
-//         return manager;
-//     }
-// }
+            return () => clearTimeout(timeoutID);
+        })
+            .spawn()
+            .map(process => this.name.map(name => state.insert(name, process)).getOrElse(state));
+    }
+
+    protected getManager(): Manager<State> {
+        return manager;
+    }
+}
+
+// export function after() {}
