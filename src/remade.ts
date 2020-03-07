@@ -1,27 +1,30 @@
 import { Either, Left, Right } from './Either';
 import { Unit } from './Basics';
 
+const PRIVATE = Symbol();
+type PRIVATE = typeof PRIVATE;
+
 /**
  * E F F E C T S
  */
 
-interface Bag<Msg> {
-    readonly manager: Manager<Msg>;
+interface Bag<Msg, State> {
+    readonly manager: Manager<Msg, State>;
     readonly commands: Array<Cmd<Msg>>;
 }
 
 abstract class Effect<Msg> {
-    protected static collect<Msg>(effect: Effect<Msg>, bags: Map<number, Bag<Msg>>): void {
+    protected static collect<Msg, State>(effect: Effect<Msg>, bags: Map<number, Bag<Msg, State>>): void {
         effect.collect(bags);
     }
 
     public abstract map<R>(fn: (msg: Msg) => R): Effect<R>;
 
-    protected abstract collect(bags: Map<number, Bag<Msg>>): void;
+    protected abstract collect(bags: Map<number, Bag<Msg, unknown>>): void;
 }
 
 abstract class Collector<Msg> extends Effect<Msg> {
-    public static collect<Msg>(effect: Effect<Msg>, bags: Map<number, Bag<Msg>>): void {
+    public static collect<Msg, State>(effect: Effect<Msg>, bags: Map<number, Bag<Msg, State>>): void {
         super.collect(effect, bags);
     }
 }
@@ -68,7 +71,7 @@ class Batch<Msg> extends Effect<Msg> {
         return new Batch(nextEffects);
     }
 
-    protected collect(bags: Map<number, Bag<Msg>>): void {
+    protected collect(bags: Map<number, Bag<Msg, unknown>>): void {
         for (const effect of this.effects) {
             Effect.collect(effect, bags);
         }
@@ -80,11 +83,11 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 
     public static batch = Batch.of as <Msg>(cmds: Array<Cmd<Msg>>) => Cmd<Msg>;
 
-    protected abstract manager: Manager<Msg>;
+    protected abstract manager: Manager<Msg, unknown>;
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
-    protected collect(bags: Map<number, Bag<Msg>>): void {
+    protected collect(bags: Map<number, Bag<Msg, unknown>>): void {
         const bag = bags.get(this.manager.id);
 
         if (typeof bag === 'undefined') {
@@ -102,28 +105,31 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
  * M A N A G E R
  */
 
-export interface Manager<Msg> {
+export interface Manager<Msg, State> {
     readonly id: number;
-    onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>): Task<never, Unit>;
+    readonly init: Task<never, State>;
+    onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>, state: State): Task<never, State>;
 }
 
 namespace Manager {
-    export const register = <Msg>(create: () => {
-        onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>): Task<never, Unit>;
-    }): Manager<Msg> => {
-        const { onEffects } = create();
+    export const register = <Msg, State>(create: () => {
+        init: Task<never, State>;
+        onEffects(router: Router<Msg>, commands: Array<Cmd<Msg>>, state: State): Task<never, State>;
+    }): Manager<Msg, State> => {
+        const { init, onEffects } = create();
 
-        return new ManagerImpl(onEffects);
+        return new ManagerImpl(init, onEffects);
     };
 }
 
-class ManagerImpl<Msg> {
+class ManagerImpl<Msg, State> {
     private static count = 0;
 
     public readonly id: number;
 
     public constructor(
-        public readonly onEffects: (router: Router<Msg>, commands: Array<Cmd<Msg>>) => Task<never, Unit>
+        public readonly init: Task<never, State>,
+        public readonly onEffects: (router: Router<Msg>, commands: Array<Cmd<Msg>>, state: State) => Task<never, State>
     ) {
         this.id = ManagerImpl.count++;
     }
@@ -133,41 +139,13 @@ class ManagerImpl<Msg> {
  * T A S K
  */
 
-export interface Router<Msg> {
-    sendToApp(msg: Msg): Task<never, Unit>;
-}
-
-const taskManager: Manager<unknown> = Manager.register(<Msg>() => ({
-    onEffects(router: Router<Msg>, commands: Array<Perform<Msg>>): Task<never, Unit> {
-        return Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit);
-    }
-}));
-
-class Perform<Msg> extends Cmd<Msg> {
-    protected readonly manager = taskManager;
-
-    public constructor(
-        private readonly task: Task<never, Msg>
-    ) {
-        super();
-    }
-
-    public map<R>(fn: (msg: Msg) => R): Cmd<R> {
-        return new Perform(this.task.map(fn));
-    }
-
-    public onEffects(router: Router<Msg>): Task<never, Unit> {
-        return this.task.chain(router.sendToApp);
-    }
-}
-
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(task: Task<E, T>): Promise<T> {
-        return task.toPromise();
+    protected static toPromise<E, T>(key: PRIVATE, task: Task<E, T>): Promise<T> {
+        return task.toPromise(key);
     }
 
     public attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg> {
-        const task: Task<never, Msg> = this
+        const task = this
             .map(value => tagger(Right(value)))
             .chainError(error => Task.succeed(tagger(Left(error))));
 
@@ -198,7 +176,7 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected abstract toPromise(): Promise<T>;
+    protected abstract toPromise(key: PRIVATE): Promise<T>;
 }
 
 export namespace Task {
@@ -224,8 +202,8 @@ export namespace Task {
 }
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T>(task: Task<E, T>): Promise<T> {
-        return super.toPromise(task);
+    public static toPromise<E, T>(key: PRIVATE, task: Task<E, T>): Promise<T> {
+        return super.toPromise(key, task);
     }
 }
 
@@ -296,11 +274,11 @@ class Sequence<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise(): Promise<Array<T>> {
+    protected toPromise(key: PRIVATE): Promise<Array<T>> {
         let root: Promise<Array<T>> = Promise.resolve([]);
 
         for (const task of this.tasks) {
-            root = root.then(acc => TaskRunner.toPromise(task).then(value => {
+            root = root.then(acc => TaskRunner.toPromise(key, task).then(value => {
                 acc.push(value);
 
                 return acc;
@@ -317,7 +295,7 @@ class All<E, T> extends Task<E, Array<T>> {
     }
 
     protected toPromise(): Promise<Array<T>> {
-        return Promise.all(this.tasks.map(TaskRunner.toPromise));
+        return Promise.all(this.tasks.map(task => TaskRunner.toPromise(PRIVATE, task)));
     }
 }
 
@@ -330,7 +308,7 @@ class Mapper<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(): Promise<R> {
-        return TaskRunner.toPromise(this.task).then(this.fn);
+        return TaskRunner.toPromise(PRIVATE, this.task).then(this.fn);
     }
 }
 
@@ -343,7 +321,8 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(): Promise<R> {
-        return TaskRunner.toPromise(this.task).then((value: T) => TaskRunner.toPromise(this.fn(value)));
+        return TaskRunner.toPromise(PRIVATE, this.task)
+            .then((value: T) => TaskRunner.toPromise(PRIVATE, this.fn(value)));
     }
 }
 
@@ -352,8 +331,8 @@ class Spawn extends Task<never, Process> {
         super();
     }
 
-    protected toPromise(): Promise<Process> {
-        return ProcessRunner.toPromise(this.process);
+    protected toPromise(key: PRIVATE): Promise<Process> {
+        return ProcessRunner.toPromise(key, this.process);
     }
 }
 
@@ -388,8 +367,8 @@ export class Process {
         return new Sleep(milliseconds);
     }
 
-    protected static toPromise(process: Process): Promise<Process> {
-        return process.toPromise();
+    protected static toPromise(key: PRIVATE, process: Process): Promise<Process> {
+        return process.toPromise(key);
     }
 
     protected constructor(private readonly task: Task<unknown, unknown>) {}
@@ -402,14 +381,44 @@ export class Process {
         return fn(this);
     }
 
-    private toPromise(): Promise<Process> {
-        return TaskRunner.toPromise(this.task).then(() => this);
+    private toPromise(key: PRIVATE): Promise<Process> {
+        return TaskRunner.toPromise(key, this.task).then(() => this);
     }
 }
 
 abstract class ProcessRunner extends Process {
-    public static toPromise(process: Process): Promise<Process> {
-        return super.toPromise(process);
+    public static toPromise(key: PRIVATE, process: Process): Promise<Process> {
+        return super.toPromise(key, process);
+    }
+}
+
+export interface Router<Msg> {
+    sendToApp(msg: Msg): Task<never, Unit>;
+}
+
+const taskManager: Manager<unknown, Unit> = Manager.register(<Msg>() => ({
+    init: Task.succeed(Unit),
+
+    onEffects(router: Router<Msg>, commands: Array<Perform<Msg>>): Task<never, Unit> {
+        return Task.all(commands.map(cmd => cmd.onEffects(router))).map(() => Unit);
+    }
+}));
+
+class Perform<Msg> extends Cmd<Msg> {
+    protected readonly manager = taskManager;
+
+    public constructor(
+        private readonly task: Task<never, Msg>
+    ) {
+        super();
+    }
+
+    public map<R>(fn: (msg: Msg) => R): Cmd<R> {
+        return new Perform(this.task.map(fn));
+    }
+
+    public onEffects(router: Router<Msg>): Task<never, Unit> {
+        return this.task.chain(router.sendToApp);
     }
 }
 
@@ -417,8 +426,9 @@ abstract class ProcessRunner extends Process {
  * R U N T I M E
  */
 
-class Runtime<Msg> {
+class Runtime<Msg, State> {
     private readonly router: Router<Msg>;
+    private readonly states: Map<number, Promise<State>> = new Map();
 
     public constructor(
         dispatch: (msg: Msg) => Promise<Unit>
@@ -429,15 +439,19 @@ class Runtime<Msg> {
     }
 
     public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
-        const bags: Map<number, Bag<Msg>> = new Map();
-        const promises: Array<Promise<Unit>> = [];
+        const bags: Map<number, Bag<Msg, State>> = new Map();
+        const promises: Array<Promise<State>> = [];
 
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
-            const task = bag.manager.onEffects(this.router, bag.commands);
+            const statePromise = this.states.get(bag.manager.id) || TaskRunner.toPromise(PRIVATE, bag.manager.init);
+            const promise = statePromise.then(state => {
+                return TaskRunner.toPromise(PRIVATE, bag.manager.onEffects(this.router, bag.commands, state));
+            });
 
-            promises.push(TaskRunner.toPromise(task));
+            promises.push(promise);
+            this.states.set(bag.manager.id, promise);
         }
 
         return Promise.all(promises).then(() => Unit);
@@ -474,7 +488,7 @@ export namespace Program {
 
 class ClientProgram<Msg, Model> implements Program<Msg, Model> {
     private model: Model;
-    private readonly runtime: Runtime<Msg>;
+    private readonly runtime: Runtime<Msg, unknown>;
     private readonly subscribers: Array<() => void> = [];
 
     public constructor(
@@ -523,7 +537,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
 class ServerProgram<Msg, Model> {
     private model: Model;
     private cmd: Cmd<Msg>;
-    private runtime: Runtime<Msg>;
+    private runtime: Runtime<Msg, unknown>;
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
