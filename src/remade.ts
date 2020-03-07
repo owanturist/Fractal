@@ -156,8 +156,8 @@ class Perform<Msg> extends Cmd<Msg> {
         return new Perform(this.task.map(fn));
     }
 
-    public onEffects(router: Router<Msg>): Task<never, Process> {
-        return this.task.chain(router.sendToApp).spawn();
+    public onEffects(router: Router<Msg>): Task<never, Unit> {
+        return this.task.chain(router.sendToApp);
     }
 }
 
@@ -281,12 +281,22 @@ class Fail<E> extends Task<E, never> {
     }
 }
 
+class Identity<T> extends Task<never, T> {
+    public constructor(private readonly promise: Promise<T>) {
+        super();
+    }
+
+    protected toPromise(): Promise<T> {
+        return this.promise;
+    }
+}
+
 class Sequence<E, T> extends Task<E, Array<T>> {
     public constructor(private readonly tasks: Array<Task<E, T>>) {
         super();
     }
 
-    public toPromise(): Promise<Array<T>> {
+    protected toPromise(): Promise<Array<T>> {
         let root: Promise<Array<T>> = Promise.resolve([]);
 
         for (const task of this.tasks) {
@@ -306,7 +316,7 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    public toPromise(): Promise<Array<T>> {
+    protected toPromise(): Promise<Array<T>> {
         return Promise.all(this.tasks.map(TaskRunner.toPromise));
     }
 }
@@ -411,26 +421,26 @@ class Runtime<Msg> {
     private readonly router: Router<Msg>;
 
     public constructor(
-        dispatch: (msg: Msg) => Task<never, Unit>
+        dispatch: (msg: Msg) => Promise<Unit>
     ) {
         this.router = {
-            sendToApp: dispatch
+            sendToApp: (msg: Msg): Task<never, Unit> => new Identity(dispatch(msg))
         };
     }
 
-    public runEffects(cmd: Cmd<Msg>): Task<never, Unit> {
+    public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
         const bags: Map<number, Bag<Msg>> = new Map();
-        const tasks: Array<Task<never, Unit>> = [];
+        const promises: Array<Promise<Unit>> = [];
 
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
             const task = bag.manager.onEffects(this.router, bag.commands);
 
-            tasks.push(task);
+            promises.push(TaskRunner.toPromise(task));
         }
 
-        return Task.all(tasks).map(() => Unit);
+        return Promise.all(promises).then(() => Unit);
     }
 }
 
@@ -475,16 +485,17 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         this.runtime = new Runtime(msg => {
             this.dispatch(msg);
 
-            return Task.succeed(Unit);
+            return Promise.resolve(Unit);
         });
-        TaskRunner.toPromise(this.runtime.runEffects(initialCmd));
+
+        this.runtime.runEffects(initialCmd);
     }
 
     public dispatch = (msg: Msg): void => {
         const [ nextModel, cmd ] = this.update(msg, this.model);
 
         this.model = nextModel;
-        TaskRunner.toPromise(this.runtime.runEffects(cmd));
+        this.runtime.runEffects(cmd);
 
         for (const subscriber of this.subscribers) {
             subscriber();
@@ -524,10 +535,10 @@ class ServerProgram<Msg, Model> {
     }
 
     public collect(): Promise<Model> {
-        return TaskRunner.toPromise(this.runtime.runEffects(this.cmd)).then(() => this.model);
+        return this.runtime.runEffects(this.cmd).then(() => this.model);
     }
 
-    private dispatch = (msg: Msg): Task<never, Unit> => {
+    private dispatch = (msg: Msg): Promise<Unit> => {
         const [ nextModel, cmd ] = this.update(msg, this.model);
 
         this.model = nextModel;
