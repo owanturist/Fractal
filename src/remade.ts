@@ -135,12 +135,12 @@ export abstract class Manager<State> {
  */
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<T> {
-        return task.toPromise(promises, PRIVATE);
+    protected static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>, key: PRIVATE): Promise<T> {
+        return task.toPromise(promises, key);
     }
 
-    protected static abort<E, T>(task: Task<E, T>): Task<never, Unit> {
-        return task.abort(PRIVATE);
+    protected static cancel<E, T>(task: Task<E, T>, key: PRIVATE): Task<never, Unit> {
+        return task.cancel(key);
     }
 
     public attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg> {
@@ -175,7 +175,7 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected abort(_key: PRIVATE): Task<never, Unit> {
+    protected cancel(_key: PRIVATE): Task<never, Unit> {
         return Task.succeed(Unit);
     }
 
@@ -189,6 +189,12 @@ export namespace Task {
 
     export const fail = <E>(error: E): Task<E, never> => {
         return new Fail(error);
+    };
+
+    export const custom = <E, T>(
+        callback: (done: (task: Task<E, T>) => void, cancel: (abort: () => void) => void) => void
+    ): Task<E, T> => {
+        return new Custom(callback);
     };
 
     export const sequence = <E, T>(tasks: Array<Task<E, T>>): Task<WhenUnknown<E, never>, Array<T>> => {
@@ -206,7 +212,41 @@ export namespace Task {
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
     public static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<T> {
-        return super.toPromise(task, promises);
+        return super.toPromise(task, promises, PRIVATE);
+    }
+}
+
+class Custom<E, T> extends Task<E, T> {
+    private abort: void | (() => void) = undefined;
+
+    public constructor(
+        private readonly callback: (
+            done: (task: Task<E, T>) => void,
+            cancel: (abort: () => void) => void
+        ) => void
+    ) {
+        super();
+    }
+
+    protected cancel(): Task<never, Unit> {
+        if (typeof this.abort === 'function') {
+            this.abort();
+            this.abort = undefined;
+        }
+
+        return Task.succeed(Unit);
+    }
+
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<T> {
+        return new Promise(resolve => this.callback(
+            (task: Task<E, T>): void => {
+                this.abort = undefined;
+                resolve(Task.toPromise(task, promises, PRIVATE));
+            },
+            (abort: () => void): void => {
+                this.abort = abort;
+            }
+        ));
     }
 }
 
@@ -262,38 +302,15 @@ class Fail<E> extends Task<E, never> {
     }
 }
 
-class Custom<T> extends Task<never, Unit> {
-    private cancel?: () => void;
-
+class Identity<T> extends Task<never, T> {
     public constructor(
-        private readonly dispatch: (msg: T) => Promise<Unit>,
-        private readonly cb: (done: (value: T) => void) => void | (() => void)
+        private readonly promise: Promise<T>
     ) {
         super();
     }
 
-    protected abort(): Task<never, Unit> {
-        if (typeof this.cancel === 'function') {
-            this.cancel();
-            this.cancel = undefined;
-        }
-
-        return Task.succeed(Unit);
-    }
-
-    protected toPromise(): Promise<Unit> {
-        return new Promise((resolve: (value: Unit) => void, reject) => {
-            const cancel = this.cb((value: T) => {
-                this.dispatch(value).then(resolve);
-            });
-
-            if (typeof cancel === 'function') {
-                this.cancel = () => {
-                    cancel();
-                    reject(PRIVATE);
-                };
-            }
-        }).then(unit).catch(error => error === PRIVATE ? Unit : Promise.reject(error));
+    public toPromise(): Promise<T> {
+        return this.promise;
     }
 }
 
@@ -306,7 +323,7 @@ class Sequence<E, T> extends Task<E, Array<T>> {
         let root: Promise<Array<T>> = Promise.resolve([]);
 
         for (const task of this.tasks) {
-            root = root.then(acc => Task.toPromise(task, promises).then(value => {
+            root = root.then(acc => Task.toPromise(task, promises, PRIVATE).then(value => {
                 acc.push(value);
 
                 return acc;
@@ -323,7 +340,7 @@ class All<E, T> extends Task<E, Array<T>> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Array<T>> {
-        return Promise.all(this.tasks.map(task => Task.toPromise(task, promises)));
+        return Promise.all(this.tasks.map(task => Task.toPromise(task, promises, PRIVATE)));
     }
 }
 
@@ -336,7 +353,7 @@ class Mapper<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<R> {
-        return Task.toPromise(this.task, promises).then(this.fn);
+        return Task.toPromise(this.task, promises, PRIVATE).then(this.fn);
     }
 }
 
@@ -349,8 +366,8 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<R> {
-        return Task.toPromise(this.task, promises)
-            .then(value => Task.toPromise(this.fn(value), promises));
+        return Task.toPromise(this.task, promises, PRIVATE)
+            .then(value => Task.toPromise(this.fn(value), promises, PRIVATE));
     }
 }
 
@@ -364,25 +381,13 @@ class Spawn extends Task<never, Process> {
     }
 }
 
-class Sleep extends Task<never, Unit> {
-    public constructor(private readonly milliseconds: number) {
-        super();
-    }
-
-    protected toPromise(): Promise<Unit> {
-        return new Promise(resolve => {
-            setTimeout(() => resolve(Unit), this.milliseconds);
-        });
-    }
-}
-
 class Kill extends Task<never, Unit> {
     public constructor(private readonly task: Task<unknown, unknown>) {
         super();
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Unit> {
-        return Task.toPromise(Task.abort(this.task), promises);
+        return Task.toPromise(Task.cancel(this.task, PRIVATE), promises, PRIVATE);
     }
 }
 
@@ -392,11 +397,15 @@ export class Process {
     }
 
     public static sleep(milliseconds: number): Task<never, Unit> {
-        return new Sleep(milliseconds);
+        return Task.custom((done, cancel) => {
+            const timeoutID = setTimeout(() => done(Task.succeed(Unit)), milliseconds);
+
+            cancel(() => clearTimeout(timeoutID));
+        });
     }
 
-    protected static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
-        return process.toPromise(promises, PRIVATE);
+    protected static toPromise(process: Process, promises: Array<Promise<Unit>>, key: PRIVATE): Promise<Process> {
+        return process.toPromise(promises, key);
     }
 
     protected constructor(private readonly task: Task<unknown, unknown>) {}
@@ -418,12 +427,12 @@ export class Process {
 
 abstract class ProcessRunner extends Process {
     public static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
-        return super.toPromise(process, promises);
+        return super.toPromise(process, promises, PRIVATE);
     }
 }
 
 export interface Router<Msg> {
-    sendToApp(cb: (done: (value: Msg) => void) => void | (() => void)): Task<never, Unit>;
+    sendToApp(msg: Msg): Task<never, Unit>;
 }
 
 const taskManager = new class TaskManager extends Manager<Unit> {
@@ -449,7 +458,7 @@ class Perform<Msg> extends Cmd<Msg> {
     }
 
     public onEffects(router: Router<Msg>): Task<never, Process> {
-        return this.task.chain(msg => router.sendToApp(done => done(msg))).spawn();
+        return this.task.chain(router.sendToApp).spawn();
     }
     protected getManager(): Manager<Unit> {
         return taskManager;
@@ -468,9 +477,7 @@ class Runtime<Msg, State> {
         dispatch: (msg: Msg) => Promise<Unit>
     ) {
         this.router = {
-            sendToApp: (cb: (done: (value: Msg) => void) => void | (() => void)): Task<never, Unit> => {
-                return new Custom(dispatch, cb);
-            }
+            sendToApp: (msg: Msg): Task<never, Unit> => new Identity(dispatch(msg))
         };
     }
 
