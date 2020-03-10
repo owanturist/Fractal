@@ -241,24 +241,18 @@ class Custom<E, T> extends Task<E, T> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
-        return new Promise((resolve: (promise: Promise<Either<E, T>>) => void, reject) => {
-            this.callback(
-                (task: Task<E, T>): void => {
-                    this.abort = undefined;
-                    resolve(Task.toPromise(task, promises, PRIVATE));
-                },
-                (abort: () => void): void => {
-                    this.abort = () => {
-                        abort();
-                        reject();
-                    };
-                }
-            );
-        }).then(result => {
+        return new Promise((resolve: (task: Task<E, T>) => void, reject) => {
+            this.callback(resolve, abort => {
+                this.abort = () => {
+                    abort();
+                    reject();
+                };
+            });
+        }).then(task => {
             // don't call it when resolved
             this.abort = undefined;
 
-            return result;
+            return Task.toPromise(task, promises, PRIVATE);
         });
     }
 }
@@ -415,10 +409,6 @@ export class Process {
         return new Kill(this.task);
     }
 
-    public tap<R>(fn: (process: Process) => R): R {
-        return fn(this);
-    }
-
     private toPromise(promises: Array<Promise<Unit>>, _key: PRIVATE): Promise<Process> {
         promises.push(TaskRunner.toPromise(this.task, promises).then(unit));
 
@@ -513,7 +503,8 @@ class Runtime<Msg, State> {
         return Promise.all(nextStatePromises)
             // individual process cancelation should not affect to the rest
             .then(() => Promise.all(processPromises.map(processPromise => processPromise.catch(unit))))
-            .then(unit);
+            .then(unit)
+            .catch(unit);
     }
 }
 
