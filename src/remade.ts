@@ -1,4 +1,5 @@
-import { Either, Left, Right } from './Either';
+import Either, { Left, Right } from './Either';
+import Maybe, { Nothing, Just } from './Maybe';
 import {
     WhenUnknown,
     Unit
@@ -135,7 +136,11 @@ export abstract class Manager<State> {
  */
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>, key: PRIVATE): Promise<T> {
+    protected static toPromise<E, T>(
+        task: Task<E, T>,
+        promises: Array<Promise<Unit>>,
+        key: PRIVATE
+    ): Promise<Either<E, T>> {
         return task.toPromise(promises, key);
     }
 
@@ -179,7 +184,7 @@ export abstract class Task<E, T> {
         return Task.succeed(Unit);
     }
 
-    protected abstract toPromise(promises: Array<Promise<Unit>>, key: PRIVATE): Promise<T>;
+    protected abstract toPromise(promises: Array<Promise<Unit>>, key: PRIVATE): Promise<Either<E, T>>;
 }
 
 export namespace Task {
@@ -197,10 +202,6 @@ export namespace Task {
         return new Custom(callback);
     };
 
-    export const sequence = <E, T>(tasks: Array<Task<E, T>>): Task<WhenUnknown<E, never>, Array<T>> => {
-        return new Sequence(tasks) as unknown as Task<WhenUnknown<E, never>, Array<T>>;
-    };
-
     export const all = <E, T>(tasks: Array<Task<E, T>>): Task<WhenUnknown<E, never> , Array<T>> => {
         return new All(tasks) as unknown as Task<WhenUnknown<E, never>, Array<T>>;
     };
@@ -211,7 +212,7 @@ export namespace Task {
 }
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<T> {
+    public static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
         return super.toPromise(task, promises, PRIVATE);
     }
 }
@@ -231,22 +232,34 @@ class Custom<E, T> extends Task<E, T> {
     protected cancel(): Task<never, Unit> {
         if (typeof this.abort === 'function') {
             this.abort();
+
+            // don't call it twise
             this.abort = undefined;
         }
 
         return Task.succeed(Unit);
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<T> {
-        return new Promise(resolve => this.callback(
-            (task: Task<E, T>): void => {
-                this.abort = undefined;
-                resolve(Task.toPromise(task, promises, PRIVATE));
-            },
-            (abort: () => void): void => {
-                this.abort = abort;
-            }
-        ));
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
+        return new Promise((resolve: (promise: Promise<Either<E, T>>) => void, reject) => {
+            this.callback(
+                (task: Task<E, T>): void => {
+                    this.abort = undefined;
+                    resolve(Task.toPromise(task, promises, PRIVATE));
+                },
+                (abort: () => void): void => {
+                    this.abort = () => {
+                        abort();
+                        reject();
+                    };
+                }
+            );
+        }).then(result => {
+            // don't call it when resolved
+            this.abort = undefined;
+
+            return result;
+        });
     }
 }
 
@@ -271,8 +284,8 @@ class Succeed<T> extends Task<never, T> {
         return this;
     }
 
-    protected toPromise(): Promise<T> {
-        return Promise.resolve(this.value);
+    protected toPromise(): Promise<Either<never, T>> {
+        return Promise.resolve(Right(this.value));
     }
 }
 
@@ -297,8 +310,8 @@ class Fail<E> extends Task<E, never> {
         return fn(this.error);
     }
 
-    protected toPromise(): Promise<never> {
-        return Promise.reject(this.error);
+    protected toPromise(): Promise<Either<E, never>> {
+        return Promise.resolve(Left(this.error));
     }
 }
 
@@ -309,28 +322,8 @@ class Identity<T> extends Task<never, T> {
         super();
     }
 
-    public toPromise(): Promise<T> {
-        return this.promise;
-    }
-}
-
-class Sequence<E, T> extends Task<E, Array<T>> {
-    public constructor(private readonly tasks: Array<Task<E, T>>) {
-        super();
-    }
-
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Array<T>> {
-        let root: Promise<Array<T>> = Promise.resolve([]);
-
-        for (const task of this.tasks) {
-            root = root.then(acc => Task.toPromise(task, promises, PRIVATE).then(value => {
-                acc.push(value);
-
-                return acc;
-            }));
-        }
-
-        return root;
+    public toPromise(): Promise<Either<never, T>> {
+        return this.promise.then(Right);
     }
 }
 
@@ -339,8 +332,13 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Array<T>> {
-        return Promise.all(this.tasks.map(task => Task.toPromise(task, promises, PRIVATE)));
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, Array<T>>> {
+        return Promise.all(this.tasks.map((task): Promise<Maybe<Either<E, T>>> => {
+            return Task.toPromise(task, promises, PRIVATE).then(Just).catch(() => Nothing);
+        })).then(promises => Maybe.combine(promises).fold(
+            () => Promise.reject(),
+            value => Promise.resolve(Either.combine(value))
+        ));
     }
 }
 
@@ -352,8 +350,8 @@ class Mapper<E, T, R> extends Task<E, R> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<R> {
-        return Task.toPromise(this.task, promises, PRIVATE).then(this.fn);
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, R>> {
+        return Task.toPromise(this.task, promises, PRIVATE).then(result => result.map(this.fn));
     }
 }
 
@@ -365,9 +363,12 @@ class Chainer<E, T, R> extends Task<E, R> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<R> {
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, R>> {
         return Task.toPromise(this.task, promises, PRIVATE)
-            .then(value => Task.toPromise(this.fn(value), promises, PRIVATE));
+            .then(result => result.map(this.fn).fold(
+                error => Promise.resolve(Left(error)),
+                task => Task.toPromise(task, promises, PRIVATE)
+            ));
     }
 }
 
@@ -376,8 +377,8 @@ class Spawn extends Task<never, Process> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Process> {
-        return ProcessRunner.toPromise(this.process, promises);
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<never, Process>> {
+        return ProcessRunner.toPromise(this.process, promises).then(Right);
     }
 }
 
@@ -386,7 +387,7 @@ class Kill extends Task<never, Unit> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Unit> {
+    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<never, Unit>> {
         return Task.toPromise(Task.cancel(this.task, PRIVATE), promises, PRIVATE);
     }
 }
@@ -490,18 +491,29 @@ class Runtime<Msg, State> {
 
         for (const bag of bags.values()) {
             const statePromise = this.states.get(bag.manager.id)
-                || TaskRunner.toPromise(bag.manager.init, processPromises);
+                || TaskRunner.toPromise(bag.manager.init, processPromises).then(result => result.fold(
+                    // Manager.init always Task<never, State>
+                    () => Promise.reject(),
+                    state => Promise.resolve(state)
+                ));
 
-            const promise = statePromise.then(state => TaskRunner.toPromise(
-                bag.manager.onEffects(this.router, bag.commands, state),
-                processPromises
-            ));
+            const promise = statePromise.then(state => {
+                return TaskRunner.toPromise(
+                    bag.manager.onEffects(this.router, bag.commands, state),
+                    processPromises
+                );
+            }).then(result => {
+                return result.fold(() => statePromise, state => Promise.resolve(state));
+            }).catch(() => statePromise);
 
             nextStatePromises.push(promise);
             this.states.set(bag.manager.id, promise);
         }
 
-        return Promise.all(nextStatePromises).then(() => Promise.all(processPromises)).then(unit);
+        return Promise.all(nextStatePromises)
+            .then(() => Promise.all(processPromises))
+            .then(unit)
+            .catch(unit);
     }
 }
 

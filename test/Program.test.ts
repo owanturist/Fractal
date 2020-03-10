@@ -670,7 +670,7 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
     });
 });
 
-test.serial('Program.server() never completing init', async t => {
+test.serial('Program.server() never completes with cyclic sleep', async t => {
     interface Msg {
         update(model: Model): [ Model, Cmd<Msg> ];
     }
@@ -714,8 +714,140 @@ test.serial('Program.server() never completing init', async t => {
     t.false(done, 'Effects chain is not done');
 
     await clock.tickAsync(1000); // 1100
-    t.false(done, 'Sleep end produces new sleep');
+    t.false(done, 'Sleep produces new sleep');
 
     await clock.tickAsync(10000);
     t.false(done, 'Never reaches the end of sleep chain');
+});
+
+test.serial('Program.server() completes with spawned sleep', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const NoOp = inst(class NoOp implements Msg {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    });
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                Task.perform(() => NoOp, Process.sleep(1000).spawn())
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Task.perform(() => Increment, Process.sleep(100))
+    ];
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(10); // 100
+    t.false(done, 'Effects chain is not done');
+
+    await clock.tickAsync(100); // 200
+    t.false(done, 'Spawned sleep not done');
+
+    await clock.tickAsync(900); // 1100
+    t.true(done, 'Spawned sleep done');
+    t.deepEqual(await promise, { count: 1 });
+});
+
+test.serial('Program.server() kills spawned sleep', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const NoOp = inst(class NoOp implements Msg {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    });
+
+    const Kill = cons(class Kill implements Msg {
+        public constructor(private readonly process: Process) {}
+
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                model,
+                Task.perform(
+                    () => NoOp,
+                    Process.sleep(500).chain(() => this.process.kill())
+                )
+            ];
+        }
+    });
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                Task.perform(Kill, Process.sleep(1000).spawn())
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Task.perform(() => Increment, Process.sleep(100))
+    ];
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(10); // 100
+    t.false(done, 'Effects chain is not done');
+
+    await clock.tickAsync(100); // 200
+    t.false(done, 'Spawned sleep not done');
+
+    await clock.tickAsync(400); // 600
+    t.true(done, 'Spawned sleep killed');
+    t.deepEqual(await promise, { count: 1 });
 });
