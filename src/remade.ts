@@ -511,9 +511,9 @@ class Runtime<Msg, State> {
         }
 
         return Promise.all(nextStatePromises)
-            .then(() => Promise.all(processPromises))
-            .then(unit)
-            .catch(unit);
+            // individual process cancelation should not affect to the rest
+            .then(() => Promise.all(processPromises.map(processPromise => processPromise.catch(unit))))
+            .then(unit);
     }
 }
 
