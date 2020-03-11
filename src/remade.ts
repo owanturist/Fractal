@@ -5,6 +5,8 @@ import {
     Unit
 } from './Basics';
 
+const noop = () => {/* do nothing */};
+
 const unit = () => Unit;
 
 /**
@@ -211,7 +213,10 @@ abstract class TaskRunner<E, T> extends Task<E, T> {
 }
 
 class Custom<E, T> extends Task<E, T> {
-    private abort: void | (() => void) = undefined;
+    /**
+     * Mutable field but it mutates only in Runtime.
+     */
+    private abort = noop;
 
     public constructor(
         private readonly callback: (
@@ -223,18 +228,16 @@ class Custom<E, T> extends Task<E, T> {
     }
 
     protected cancel(): Task<never, Unit> {
-        if (typeof this.abort === 'function') {
-            this.abort();
+        this.abort();
 
-            // don't call it twise
-            this.abort = undefined;
-        }
+        // don't abort it twise
+        this.abort = noop;
 
         return Task.succeed(Unit);
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
-        return new Promise((resolve: (task: Task<E, T>) => void, reject) => {
+        return new Promise((resolve: (task: Task<E, T>) => void, reject: (unit: Unit) => void) => {
             this.callback(resolve, abort => {
                 this.abort = () => {
                     abort();
@@ -243,7 +246,7 @@ class Custom<E, T> extends Task<E, T> {
             });
         }).then(task => {
             // don't call it when resolved
-            this.abort = undefined;
+            this.abort = noop;
 
             return Task.toPromise(task, promises);
         });
