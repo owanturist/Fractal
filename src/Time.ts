@@ -1,4 +1,4 @@
-// import { Router, Manager, Process, TaskImpl, Cmd } from './remade';
+// import { Router, Manager, Process, Task, Cmd } from './remade';
 // import { Maybe } from './Maybe';
 // import Dict from './Dict';
 
@@ -7,7 +7,7 @@
 // const initial = Dict.empty as State;
 
 // const manager = new class TimeManager extends Manager<State> {
-//     public init = TaskImpl.succeed(initial);
+//     public init = Task.succeed(initial);
 
 //     public onEffects<AppMsg>(
 //         router: Router<AppMsg>,
@@ -16,7 +16,7 @@
 //     ): Task<never, State> {
 //         return commands.reduce(
 //             (acc, task) => acc.chain(nextState => task.onEffects(router, nextState)),
-//             TaskImpl.succeed(state)
+//             Task.succeed(state)
 //         );
 //     }
 // }();

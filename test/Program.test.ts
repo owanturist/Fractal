@@ -933,3 +933,50 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
     t.true(done, 'Second sleep done');
     t.deepEqual(await promise, { count: 1 });
 });
+
+test.serial('Program.server() catches unexpected error', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const error = new Error('Unexpected error');
+
+    const Throw = inst(class Throw implements Msg {
+        public update(): [ Model, Cmd<Msg> ] {
+            throw error;
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Task.perform(() => Throw, Process.sleep(100))
+    ];
+
+    t.plan(3);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    }).catch(error => {
+        done = true;
+
+        return error;
+    });
+
+    await clock.tickAsync(90);
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(10); // 100
+    t.true(done, 'Effects chain done');
+    t.is(await promise, error);
+});

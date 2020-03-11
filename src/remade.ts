@@ -5,9 +5,6 @@ import {
     Unit
 } from './Basics';
 
-const PRIVATE = Symbol();
-type PRIVATE = typeof PRIVATE;
-
 const unit = () => Unit;
 
 /**
@@ -136,16 +133,12 @@ export abstract class Manager<State> {
  */
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(
-        task: Task<E, T>,
-        promises: Array<Promise<Unit>>,
-        key: PRIVATE
-    ): Promise<Either<E, T>> {
-        return task.toPromise(promises, key);
+    protected static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
+        return task.toPromise(promises);
     }
 
-    protected static cancel<E, T>(task: Task<E, T>, key: PRIVATE): Task<never, Unit> {
-        return task.cancel(key);
+    protected static cancel<E, T>(task: Task<E, T>): Task<never, Unit> {
+        return task.cancel();
     }
 
     public attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg> {
@@ -180,11 +173,11 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected cancel(_key: PRIVATE): Task<never, Unit> {
+    protected cancel(): Task<never, Unit> {
         return Task.succeed(Unit);
     }
 
-    protected abstract toPromise(promises: Array<Promise<Unit>>, key: PRIVATE): Promise<Either<E, T>>;
+    protected abstract toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, T>>;
 }
 
 export namespace Task {
@@ -213,7 +206,7 @@ export namespace Task {
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
     public static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
-        return super.toPromise(task, promises, PRIVATE);
+        return super.toPromise(task, promises);
     }
 }
 
@@ -245,14 +238,14 @@ class Custom<E, T> extends Task<E, T> {
             this.callback(resolve, abort => {
                 this.abort = () => {
                     abort();
-                    reject();
+                    reject(Unit);
                 };
             });
         }).then(task => {
             // don't call it when resolved
             this.abort = undefined;
 
-            return Task.toPromise(task, promises, PRIVATE);
+            return Task.toPromise(task, promises);
         });
     }
 }
@@ -322,13 +315,17 @@ class Identity<T> extends Task<never, T> {
 }
 
 class All<E, T> extends Task<E, Array<T>> {
+    private static catchCancel(error: Unit): Promise<Maybe<never>> {
+        return error === Unit ? Promise.resolve(Nothing) : Promise.reject(error);
+    }
+
     public constructor(private readonly tasks: Array<Task<E, T>>) {
         super();
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, Array<T>>> {
         return Promise.all(this.tasks.map((task): Promise<Maybe<Either<E, T>>> => {
-            return Task.toPromise(task, promises, PRIVATE).then(Just).catch(() => Nothing);
+            return Task.toPromise(task, promises).then(Just).catch(All.catchCancel);
         })).then(promises => Maybe.combine(promises).fold(
             () => Promise.reject(),
             value => Promise.resolve(Either.combine(value))
@@ -345,7 +342,7 @@ class Mapper<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, R>> {
-        return Task.toPromise(this.task, promises, PRIVATE).then(result => result.map(this.fn));
+        return Task.toPromise(this.task, promises).then(result => result.map(this.fn));
     }
 }
 
@@ -358,10 +355,10 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, R>> {
-        return Task.toPromise(this.task, promises, PRIVATE)
+        return Task.toPromise(this.task, promises)
             .then(result => result.map(this.fn).fold(
                 error => Promise.resolve(Left(error)),
-                task => Task.toPromise(task, promises, PRIVATE)
+                task => Task.toPromise(task, promises)
             ));
     }
 }
@@ -382,7 +379,7 @@ class Kill extends Task<never, Unit> {
     }
 
     protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<never, Unit>> {
-        return Task.toPromise(Task.cancel(this.task, PRIVATE), promises, PRIVATE);
+        return Task.toPromise(Task.cancel(this.task), promises);
     }
 }
 
@@ -399,8 +396,8 @@ export class Process {
         });
     }
 
-    protected static toPromise(process: Process, promises: Array<Promise<Unit>>, key: PRIVATE): Promise<Process> {
-        return process.toPromise(promises, key);
+    protected static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
+        return process.toPromise(promises);
     }
 
     protected constructor(private readonly task: Task<unknown, unknown>) {}
@@ -409,7 +406,7 @@ export class Process {
         return new Kill(this.task);
     }
 
-    private toPromise(promises: Array<Promise<Unit>>, _key: PRIVATE): Promise<Process> {
+    private toPromise(promises: Array<Promise<Unit>>): Promise<Process> {
         promises.push(TaskRunner.toPromise(this.task, promises).then(unit));
 
         return Promise.resolve(this);
@@ -418,7 +415,7 @@ export class Process {
 
 abstract class ProcessRunner extends Process {
     public static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
-        return super.toPromise(process, promises, PRIVATE);
+        return super.toPromise(process, promises);
     }
 }
 
@@ -461,6 +458,10 @@ class Perform<Msg> extends Cmd<Msg> {
  */
 
 class Runtime<Msg, State> {
+    private static catchCancel(error: Unit): Promise<Unit> {
+        return error === Unit ? Promise.resolve(Unit) : Promise.reject(error);
+    }
+
     private readonly router: Router<Msg>;
     private readonly states: Map<number, Promise<State>> = new Map();
 
@@ -492,9 +493,10 @@ class Runtime<Msg, State> {
                     bag.manager.onEffects(this.router, bag.commands, state),
                     processPromises
                 );
-            }).then(result => {
-                return result.fold(() => statePromise, state => Promise.resolve(state));
-            }).catch(() => statePromise);
+            }).then(result => result.fold(
+                () => statePromise,
+                state => Promise.resolve(state))
+            ).catch(() => statePromise);
 
             nextStatePromises.push(promise);
             this.states.set(bag.manager.id, promise);
@@ -502,9 +504,8 @@ class Runtime<Msg, State> {
 
         return Promise.all(nextStatePromises)
             // individual process cancelation should not affect to the rest
-            .then(() => Promise.all(processPromises.map(processPromise => processPromise.catch(unit))))
-            .then(unit)
-            .catch(unit);
+            .then(() => Promise.all(processPromises.map(processPromise => processPromise.catch(Runtime.catchCancel))))
+            .then(unit);
     }
 }
 
