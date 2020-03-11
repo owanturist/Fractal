@@ -373,6 +373,62 @@ test.serial('Program.client() TEA in action', async t => {
     }, 'Sleep 100 Decrement affects right counter');
 });
 
+test.serial('Program.client() Process sends messages', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const NoOp = inst(class NoOp implements Msg {
+        public update(model: Model): Model {
+            return model;
+        }
+    });
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): Model {
+            return {
+                ...model,
+                count: model.count + 1
+            };
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Process.sleep(1000).spawn<Msg>()
+            .chain(process => process.send(Increment))
+            .chain(process => process.send(Increment))
+            .chain(process => process.send(Increment))
+            .tap(task => Task.perform(() => NoOp, task))
+    ];
+
+    const subscriber = spy();
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    program.subscribe(subscriber);
+
+    t.plan(6);
+
+    t.is(subscriber.callCount, 0, 'Subscribed not called');
+    t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
+
+    await clock.tickAsync(500);
+    t.is(subscriber.callCount, 0, 'Subscribed not called still');
+    t.deepEqual(program.getModel(), { count: 0 }, 'Nothing changed');
+
+    await clock.tickAsync(500); // 1000
+    t.is(subscriber.callCount, 1, 'Subscribed called just once');
+    t.deepEqual(program.getModel(), { count: 3 }, 'Increment applied after timeout');
+});
+
 test('Program.server() done immidiatelly when non of async', async t => {
     t.plan(1);
 
@@ -791,7 +847,7 @@ test.serial('Program.server() kills spawned sleep', async t => {
     });
 
     const Kill = cons(class Kill implements Msg {
-        public constructor(private readonly process: Process) {}
+        public constructor(private readonly process: Process<Msg>) {}
 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
@@ -864,7 +920,7 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
     });
 
     const Kill = cons(class Kill implements Msg {
-        public constructor(private readonly process: Process) {}
+        public constructor(private readonly process: Process<Msg>) {}
 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [

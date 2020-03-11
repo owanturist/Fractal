@@ -135,7 +135,10 @@ export abstract class Manager<State> {
  */
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
+    protected static toPromise<E, T, Msg>(
+        task: Task<E, T>,
+        promises: Array<Promise<Array<Msg>>>
+    ): Promise<Either<E, T>> {
         return task.toPromise(promises);
     }
 
@@ -167,7 +170,7 @@ export abstract class Task<E, T> {
         throw new Error(fn + '');
     }
 
-    public spawn(): Task<never, Process> {
+    public spawn<Msg>(): Task<never, Process<Msg>> {
         return Process.spawn(this);
     }
 
@@ -179,7 +182,7 @@ export abstract class Task<E, T> {
         return Task.succeed(Unit);
     }
 
-    protected abstract toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, T>>;
+    protected abstract toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, T>>;
 }
 
 export namespace Task {
@@ -207,7 +210,7 @@ export namespace Task {
 }
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T>(task: Task<E, T>, promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
+    public static toPromise<E, T, Msg>(task: Task<E, T>, promises: Array<Promise<Array<Msg>>>): Promise<Either<E, T>> {
         return super.toPromise(task, promises);
     }
 }
@@ -236,7 +239,7 @@ class Custom<E, T> extends Task<E, T> {
         return Task.succeed(Unit);
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, T>> {
+    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, T>> {
         return new Promise((resolve: (task: Task<E, T>) => void, reject: (unit: Unit) => void) => {
             this.callback(resolve, abort => {
                 this.abort = () => {
@@ -326,7 +329,7 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, Array<T>>> {
+    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, Array<T>>> {
         return Promise.all(this.tasks.map((task): Promise<Maybe<Either<E, T>>> => {
             return Task.toPromise(task, promises).then(Just).catch(All.catchCancel);
         })).then(promises => Maybe.combine(promises).fold(
@@ -344,7 +347,21 @@ class Mapper<E, T, R> extends Task<E, R> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, R>> {
+    public map<P>(fn: (value: R) => P): Task<E, P> {
+        return new Mapper(
+            value => fn(this.fn(value)),
+            this.task
+        );
+    }
+
+    public chain<P>(fn: (value: R) => Task<E, P>): Task<E, P> {
+        return new Chainer(
+            value => fn(this.fn(value)),
+            this.task
+        );
+    }
+
+    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, R>> {
         return Task.toPromise(this.task, promises).then(result => result.map(this.fn));
     }
 }
@@ -357,7 +374,21 @@ class Chainer<E, T, R> extends Task<E, R> {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<E, R>> {
+    public map<P>(fn: (value: R) => P): Task<E, P> {
+        return new Chainer(
+            value => this.fn(value).map(fn),
+            this.task
+        );
+    }
+
+    public chain<P>(fn: (value: R) => Task<E, P>): Task<E, P> {
+        return new Chainer(
+            value => this.fn(value).chain(fn),
+            this.task
+        );
+    }
+
+    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, R>> {
         return Task.toPromise(this.task, promises)
             .then(result => result.map(this.fn).fold(
                 error => Promise.resolve(Left(error)),
@@ -366,29 +397,34 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 }
 
-class Spawn extends Task<never, Process> {
-    public constructor(private readonly process: Process) {
+class Spawn<Msg> extends Task<never, Process<Msg>> {
+    public constructor(private readonly process: Process<Msg>) {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<never, Process>> {
+    public chain<R>(fn: (process: Process<Msg>) => Task<never, R>): Task<never, R> {
+        return fn(this.process);
+    }
+
+    protected toPromise<M>(promises: Array<Promise<Array<M>>>): Promise<Either<never, Process<Msg>>>;
+    protected toPromise(promises: Array<Promise<Array<Msg>>>): Promise<Either<never, Process<Msg>>> {
         return ProcessRunner.toPromise(this.process, promises).then(Right);
     }
 }
 
-class Kill extends Task<never, Unit> {
-    public constructor(private readonly task: Task<unknown, unknown>) {
+class Kill<E, T> extends Task<never, Unit> {
+    public constructor(private readonly task: Task<E, T>) {
         super();
     }
 
-    protected toPromise(promises: Array<Promise<Unit>>): Promise<Either<never, Unit>> {
+    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<never, Unit>> {
         return Task.toPromise(Task.cancel(this.task), promises);
     }
 }
 
-export class Process {
-    public static spawn<E, T>(task: Task<E, T>): Task<never, Process> {
-        return new Spawn(new Process(task));
+export class Process<Msg> {
+    public static spawn<E, T, Msg>(task: Task<E, T>): Task<never, Process<Msg>> {
+        return new Spawn(new Process([], task));
     }
 
     public static sleep(milliseconds: number): Task<never, Unit> {
@@ -399,25 +435,37 @@ export class Process {
         });
     }
 
-    protected static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
+    protected static toPromise<Msg>(
+        process: Process<Msg>,
+        promises: Array<Promise<Array<Msg>>>
+    ): Promise<Process<Msg>> {
         return process.toPromise(promises);
     }
 
-    protected constructor(private readonly task: Task<unknown, unknown>) {}
+    protected constructor(
+        private readonly mailbox: Array<Msg>,
+        private readonly task: Task<unknown, unknown>
+    ) {}
 
     public kill(): Task<never, Unit> {
         return new Kill(this.task);
     }
 
-    private toPromise(promises: Array<Promise<Unit>>): Promise<Process> {
-        promises.push(TaskRunner.toPromise(this.task, promises).then(unit));
+    public send(msg: Msg): Task<never, Process<Msg>> {
+        return new Spawn(new Process([ ...this.mailbox, msg ], this.task));
+    }
+
+    private toPromise(promises: Array<Promise<Array<Msg>>>): Promise<Process<Msg>> {
+        const promise = TaskRunner.toPromise(this.task, promises).then(() => this.mailbox);
+
+        promises.push(promise);
 
         return Promise.resolve(this);
     }
 }
 
-abstract class ProcessRunner extends Process {
-    public static toPromise(process: Process, promises: Array<Promise<Unit>>): Promise<Process> {
+abstract class ProcessRunner<Msg> extends Process<Msg> {
+    public static toPromise<Msg>(process: Process<Msg>, promises: Array<Promise<Array<Msg>>>): Promise<Process<Msg>> {
         return super.toPromise(process, promises);
     }
 }
@@ -448,7 +496,7 @@ class Perform<Msg> extends Cmd<Msg> {
         return new Perform(this.task.map(fn));
     }
 
-    public onEffects(router: Router<Msg>): Task<never, Process> {
+    public onEffects(router: Router<Msg>): Task<never, Process<Msg>> {
         return this.task.chain(router.sendToApp).spawn();
     }
     protected getManager(): Manager<Unit> {
@@ -469,17 +517,17 @@ class Runtime<Msg, State> {
     private readonly states: Map<number, Promise<State>> = new Map();
 
     public constructor(
-        dispatch: (msg: Msg) => Promise<Unit>
+        private readonly dispatch: (messages: Array<Msg>) => Promise<Unit>
     ) {
         this.router = {
-            sendToApp: (msg: Msg): Task<never, Unit> => new Identity(dispatch(msg))
+            sendToApp: (msg: Msg): Task<never, Unit> => new Identity(dispatch([ msg ]))
         };
     }
 
     public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
         const bags: Map<number, Bag<Msg, State>> = new Map();
         const nextStatePromises: Array<Promise<State>> = [];
-        const processPromises: Array<Promise<Unit>> = [];
+        const processPromises: Array<Promise<Array<Msg>>> = [];
 
         Collector.collect(cmd, bags);
 
@@ -507,7 +555,9 @@ class Runtime<Msg, State> {
 
         return Promise.all(nextStatePromises)
             // individual process cancelation should not affect to the rest
-            .then(() => Promise.all(processPromises.map(processPromise => processPromise.catch(Runtime.catchCancel))))
+            .then(() => Promise.all(processPromises.map(processPromise => {
+                return processPromise.then(this.dispatch).catch(Runtime.catchCancel);
+            })))
             .then(unit);
     }
 }
@@ -550,8 +600,8 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ]
     ) {
         this.model = initialModel;
-        this.runtime = new Runtime(msg => {
-            this.dispatch(msg);
+        this.runtime = new Runtime(messages => {
+            this.dispatchMany(messages);
 
             return Promise.resolve(Unit);
         });
@@ -559,16 +609,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         this.runtime.runEffects(initialCmd);
     }
 
-    public dispatch = (msg: Msg): void => {
-        const [ nextModel, cmd ] = this.update(msg, this.model);
-
-        this.model = nextModel;
-        this.runtime.runEffects(cmd);
-
-        for (const subscriber of this.subscribers) {
-            subscriber();
-        }
-    }
+    public readonly dispatch = (msg: Msg): void => this.dispatchMany([ msg ]);
 
     public getModel(): Model {
         return this.model;
@@ -585,6 +626,33 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
                 this.subscribers.splice(this.subscribers.indexOf(subscriber), 1);
             }
         };
+    }
+
+    private dispatchMany(messages: Array<Msg>): void {
+        if (messages.length === 0) {
+            return;
+        }
+
+        const initialModel = this.model;
+        const cmds: Array<Cmd<Msg>> = [];
+
+        for (const msg of messages) {
+            const [ nextModel, cmd ] = this.update(msg, this.model);
+
+            this.model = nextModel;
+            cmds.push(cmd);
+        }
+
+        this.runtime.runEffects(Cmd.batch(cmds));
+
+        // prevents subscribers call when model not changed
+        if (initialModel === this.model) {
+            return;
+        }
+
+        for (const subscriber of this.subscribers) {
+            subscriber();
+        }
     }
 }
 
@@ -606,11 +674,16 @@ class ServerProgram<Msg, Model> {
         return this.runtime.runEffects(this.cmd).then(() => this.model);
     }
 
-    private dispatch = (msg: Msg): Promise<Unit> => {
-        const [ nextModel, cmd ] = this.update(msg, this.model);
+    private dispatch = (messages: Array<Msg>): Promise<Unit> => {
+        const cmds: Array<Cmd<Msg>> = [];
 
-        this.model = nextModel;
+        for (const msg of messages) {
+            const [ nextModel, cmd ] = this.update(msg, this.model);
 
-        return this.runtime.runEffects(cmd);
+            this.model = nextModel;
+            cmds.push(cmd);
+        }
+
+        return this.runtime.runEffects(Cmd.batch(cmds));
     }
 }
