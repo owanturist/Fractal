@@ -135,15 +135,13 @@ export abstract class Manager<AppMsg, SelfMsg, State> {
  * T A S K
  */
 
-interface Context<Msg> {
+interface Context {
     promises: Array<Promise<Unit>>;
-    processes: Map<number, Processing<Msg>>;
     generatePID(): number;
-    dispatch(messages: Array<Msg>): Promise<Unit>;
 }
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T, Msg>(task: Task<E, T>, context: Context<Msg>): Promise<Either<E, T>> {
+    protected static toPromise<E, T>(task: Task<E, T>, context: Context): Promise<Either<E, T>> {
         return task.toPromise(context);
     }
 
@@ -179,7 +177,7 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected abstract toPromise<Msg>(context: Context<Msg>): Promise<Either<E, T>>;
+    protected abstract toPromise(context: Context): Promise<Either<E, T>>;
 }
 
 export namespace Task {
@@ -207,7 +205,7 @@ export namespace Task {
 }
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T, Msg>(task: Task<E, T>, context: Context<Msg>): Promise<Either<E, T>> {
+    public static toPromise<E, T>(task: Task<E, T>, context: Context): Promise<Either<E, T>> {
         return super.toPromise(task, context);
     }
 }
@@ -224,7 +222,7 @@ class Custom<E, T> extends Task<E, T> {
         super();
     }
 
-    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, T>> {
+    protected toPromise(context: Context): Promise<Either<E, T>> {
         return new Promise((resolve: (task: Task<E, T>) => void, reject: (unit: Unit) => void) => {
             this.callback(resolve, abort => {
                 this.abort = () => {
@@ -309,7 +307,7 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, Array<T>>> {
+    protected toPromise(context: Context): Promise<Either<E, Array<T>>> {
         return Promise.all(this.tasks.map((task): Promise<Maybe<Either<E, T>>> => {
             return Task.toPromise(task, context).then(Just).catch(All.catchCancel);
         })).then(promises => Maybe.combine(promises).fold(
@@ -341,7 +339,7 @@ class Mapper<E, T, R> extends Task<E, R> {
         );
     }
 
-    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, R>> {
+    protected toPromise(context: Context): Promise<Either<E, R>> {
         return Task.toPromise(this.task, context).then(result => result.map(this.fn));
     }
 }
@@ -368,7 +366,7 @@ class Chainer<E, T, R> extends Task<E, R> {
         );
     }
 
-    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, R>> {
+    protected toPromise(context: Context): Promise<Either<E, R>> {
         return Task.toPromise(this.task, context).then(result => result.map(this.fn).fold(
             error => Promise.resolve(Left(error)),
             task => Task.toPromise(task, context)
@@ -384,24 +382,10 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
         super();
     }
 
-    protected toPromise<M>(context: Context<M>): Promise<Either<never, Process<Msg>>>;
-    protected toPromise(context: Context<Msg>): Promise<Either<never, Process<Msg>>> {
+    protected toPromise(context: Context): Promise<Either<never, Process<Msg>>> {
         const pid = context.generatePID();
 
-        context.processes.set(pid, {
-            mailbox: [],
-            kill: noop
-        });
-
-        const promise = TaskRunner.toPromise(this.task, context).then(() => {
-            const processing = context.processes.get(pid);
-
-            if (processing != null) {
-                return context.dispatch(processing.mailbox);
-            }
-
-            return Promise.resolve(Unit);
-        });
+        const promise = TaskRunner.toPromise(this.task, context).then(unit);
 
         context.promises.push(promise);
 
@@ -570,10 +554,9 @@ class Runtime<AppMsg, SelfMsg, State> {
     private pid = 0;
     private readonly router: Router<AppMsg, SelfMsg>;
     private readonly states: Map<number, Promise<State>> = new Map();
-    private readonly processes: Map<number, Processing<AppMsg>> = new Map();
 
     public constructor(
-        private readonly dispatch: (messages: Array<AppMsg>) => Promise<Unit>
+        dispatch: (messages: Array<AppMsg>) => Promise<Unit>
     ) {
         this.router = {
             sendToApp: (messages: Array<AppMsg>): Task<never, Unit> => new Identity(dispatch(messages)),
@@ -592,9 +575,7 @@ class Runtime<AppMsg, SelfMsg, State> {
             const statePromise = this.states.get(bag.manager.id)
                 || TaskRunner.toPromise(bag.manager.init, {
                     promises: processPromises,
-                    processes: this.processes,
-                    generatePID: this.generatePID,
-                    dispatch: this.dispatch
+                    generatePID: this.generatePID
                 })
                     .then(result => result.fold(
                         // Manager.init always Task<never, State>
@@ -607,9 +588,7 @@ class Runtime<AppMsg, SelfMsg, State> {
                     bag.manager.onEffects(this.router, bag.commands, state),
                     {
                         promises: processPromises,
-                        processes: this.processes,
-                        generatePID: this.generatePID,
-                        dispatch: this.dispatch
+                        generatePID: this.generatePID
                     }
                 );
             }).then(result => result.fold(
