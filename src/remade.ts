@@ -400,8 +400,8 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
 }
 
 export class Process<Msg> {
-    public static spawn<E, T, Msg>(task: Task<E, T>): Task<never, Process<Msg>> {
-        return new Spawn(Process.create, task);
+    public static spawn<Msg>(task: Task<unknown, unknown>): Task<never, Process<Msg>> {
+        return new Spawn<Msg>(Process.create, task);
     }
 
     public static sleep(milliseconds: number): Task<never, Unit> {
@@ -577,7 +577,7 @@ class Runtime<AppMsg, SelfMsg, State> {
     ) {
         this.router = {
             sendToApp: (messages: Array<AppMsg>): Task<never, Unit> => new Identity(dispatch(messages)),
-            sendToSelf: (selfMsg: SelfMsg): Task<never, Unit> => Task.succeed(Unit)
+            sendToSelf: (_selfMsg: SelfMsg): Task<never, Unit> => Task.succeed(Unit)
         };
     }
 
@@ -619,9 +619,9 @@ class Runtime<AppMsg, SelfMsg, State> {
 
         return Promise.all(nextStatePromises)
             // individual process cancelation should not affect to the rest
-            .then(() => Promise.all(processPromises.map(processPromise => {
-                return processPromise.then(unit).catch(Runtime.catchCancel);
-            })))
+            .then(() => Promise.all(processPromises.map(
+                processPromise => processPromise.catch(Runtime.catchCancel)
+            )))
             .then(unit);
     }
 
