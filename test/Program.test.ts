@@ -375,21 +375,33 @@ test.serial('Program.client() TEA in action', async t => {
 
 test.serial('Program.client() Process sends messages', async t => {
     interface Msg {
-        update(model: Model): Model;
+        update(model: Model): [ Model, Cmd<Msg> ];
     }
 
-    const NoOp = inst(class NoOp implements Msg {
-        public update(model: Model): Model {
-            return model;
+    const Send = cons(class Send implements Msg {
+        public constructor(private readonly process: Process<Msg>) {}
+
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                model,
+                Cmd.batch([
+                    this.process.send(Increment),
+                    this.process.send(Increment),
+                    this.process.send(Increment)
+                ])
+            ];
         }
     });
 
     const Increment = inst(class Increment implements Msg {
-        public update(model: Model): Model {
-            return {
-                ...model,
-                count: model.count + 1
-            };
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                Cmd.none
+            ];
         }
     });
 
@@ -399,20 +411,14 @@ test.serial('Program.client() Process sends messages', async t => {
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        Process.sleep(1000).spawn<Msg>()
-            .chain(process => Task.all([
-                process.send(Increment),
-                process.send(Increment),
-                process.send(Increment)
-            ]))
-            .tap(task => Task.perform(() => NoOp, task))
+        Task.perform(Send, Process.sleep(1000).spawn())
     ];
 
     const subscriber = spy();
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => msg.update(model)
     });
 
     program.subscribe(subscriber);
@@ -842,22 +848,13 @@ test.serial('Program.server() kills spawned sleep', async t => {
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
-    const NoOp = inst(class NoOp implements Msg {
-        public update(model: Model): [ Model, Cmd<Msg> ] {
-            return [ model, Cmd.none ];
-        }
-    });
-
     const Kill = cons(class Kill implements Msg {
         public constructor(private readonly process: Process<Msg>) {}
 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                Task.perform(
-                    () => NoOp,
-                    Process.sleep(500).chain(() => this.process.kill())
-                )
+                this.process.kill()
             ];
         }
     });
@@ -869,7 +866,9 @@ test.serial('Program.server() kills spawned sleep', async t => {
                     ...model,
                     count: model.count + 1
                 },
-                Task.perform(Kill, Process.sleep(1000).spawn())
+                Process.sleep(1000).spawn()
+                    .chain(process => Process.sleep(500).map(() => process))
+                    .tap(task => Task.perform(Kill, task))
             ];
         }
     });
@@ -927,10 +926,7 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                Task.perform(
-                    () => NoOp,
-                    Process.sleep(500).chain(() => this.process.kill())
-                )
+                this.process.kill()
             ];
         }
     });
@@ -943,7 +939,10 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
                     count: model.count + 1
                 },
                 Cmd.batch([
-                    Task.perform(Kill, Process.sleep(1000).spawn()),
+                    Process.sleep(1000).spawn()
+                        .chain(process => Process.sleep(500).map(() => process))
+                        .tap(task => Task.perform(Kill, task)),
+
                     Task.perform(() => NoOp, Process.sleep(2000).spawn())
                 ])
             ];

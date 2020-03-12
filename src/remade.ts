@@ -1,9 +1,10 @@
-import Either, { Left, Right } from './Either';
-import Maybe, { Nothing, Just } from './Maybe';
 import {
     WhenUnknown,
     Unit
 } from './Basics';
+import Either, { Left, Right } from './Either';
+import Maybe, { Nothing, Just } from './Maybe';
+import Dict from './Dict';
 
 const noop = () => {/* do nothing */};
 
@@ -13,23 +14,23 @@ const unit = () => Unit;
  * E F F E C T S
  */
 
-interface Bag<Msg, State> {
-    readonly manager: Manager<State>;
-    readonly commands: Array<Cmd<Msg>>;
+interface Bag<AppMsg, SelfMsg, State> {
+    readonly manager: Manager<AppMsg, SelfMsg, State>;
+    readonly commands: Array<Cmd<AppMsg>>;
 }
 
 abstract class Effect<Msg> {
-    protected static collect<Msg, State>(effect: Effect<Msg>, bags: Map<number, Bag<Msg, State>>): void {
+    protected static collect<Msg, State>(effect: Effect<Msg>, bags: Map<number, Bag<Msg, unknown, State>>): void {
         effect.collect(bags);
     }
 
     public abstract map<R>(fn: (msg: Msg) => R): Effect<R>;
 
-    protected abstract collect(bags: Map<number, Bag<Msg, unknown>>): void;
+    protected abstract collect(bags: Map<number, Bag<Msg, unknown, unknown>>): void;
 }
 
 abstract class Collector<Msg> extends Effect<Msg> {
-    public static collect<Msg, State>(effect: Effect<Msg>, bags: Map<number, Bag<Msg, State>>): void {
+    public static collect<Msg, State>(effect: Effect<Msg>, bags: Map<number, Bag<Msg, unknown, State>>): void {
         super.collect(effect, bags);
     }
 }
@@ -76,7 +77,7 @@ class Batch<Msg> extends Effect<Msg> {
         return new Batch(nextEffects);
     }
 
-    protected collect(bags: Map<number, Bag<Msg, unknown>>): void {
+    protected collect(bags: Map<number, Bag<Msg, unknown, unknown>>): void {
         for (const effect of this.effects) {
             Effect.collect(effect, bags);
         }
@@ -90,14 +91,14 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
-    protected abstract getManager(): Manager<unknown>;
+    protected abstract getManager(): Manager<unknown, unknown, unknown>;
 
-    protected collect(bags: Map<number, Bag<Msg, unknown>>): void {
+    protected collect(bags: Map<number, Bag<Msg, unknown, unknown>>): void {
         const manager = this.getManager();
 
         const bag = bags.get(manager.id);
 
-        if (typeof bag === 'undefined') {
+        if (bag == null) {
             bags.set(manager.id, {
                 commands: [ this ],
                 manager
@@ -112,7 +113,7 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
  * M A N A G E R
  */
 
-export abstract class Manager<State> {
+export abstract class Manager<AppMsg, SelfMsg, State> {
     private static count = 0;
 
     public readonly id: number;
@@ -123,8 +124,8 @@ export abstract class Manager<State> {
         this.id = Manager.count++;
     }
 
-    public abstract onEffects<AppMsg>(
-        router: Router<AppMsg>,
+    public abstract onEffects(
+        router: Router<AppMsg, SelfMsg>,
         commands: Array<Cmd<AppMsg>>,
         state: State
     ): Task<never, State>;
@@ -395,7 +396,7 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
         const promise = TaskRunner.toPromise(this.task, context).then(() => {
             const processing = context.processes.get(pid);
 
-            if (typeof processing !== 'undefined') {
+            if (processing != null) {
                 return context.dispatch(processing.mailbox);
             }
 
@@ -405,43 +406,6 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
         context.promises.push(promise);
 
         return Promise.resolve(Right(this.createProcess(pid)));
-    }
-}
-
-class Send<Msg> extends Task<never, Unit> {
-    public constructor(
-        private readonly pid: number,
-        private readonly msg: Msg
-    ) {
-        super();
-    }
-
-    protected toPromise<M>(context: Context<M>): Promise<Either<never, Unit>>;
-    protected toPromise(context: Context<Msg>): Promise<Either<never, Unit>> {
-        const processing = context.processes.get(this.pid);
-
-        if (typeof processing !== 'undefined') {
-            processing.mailbox.push(this.msg);
-        }
-
-        return Promise.resolve(Right(Unit));
-    }
-}
-
-class Kill extends Task<never, Unit> {
-    public constructor(private readonly pid: number) {
-        super();
-    }
-
-    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<never, Unit>> {
-        const processing = context.processes.get(this.pid);
-
-        if (typeof processing !== 'undefined') {
-            processing.kill();
-            context.processes.delete(this.pid);
-        }
-
-        return Promise.resolve(Right(Unit));
     }
 }
 
@@ -458,50 +422,139 @@ export class Process<Msg> {
         });
     }
 
-    private static readonly create = <Msg>(id: number): Process<Msg> => new Process(id);
+    private static create<Msg>(id: number): Process<Msg> {
+        return new Process(id);
+    }
 
     private constructor(private readonly id: number) {}
 
-    public send(msg: Msg): Task<never, Unit> {
+    public send(msg: Msg): Cmd<Msg> {
         return new Send(this.id, msg);
     }
 
-    public kill(): Task<never, Unit> {
+    public kill(): Cmd<never> {
         return new Kill(this.id);
     }
 }
 
-export interface Router<Msg> {
-    sendToApp(msg: Msg): Task<never, Unit>;
+export interface Router<AppMsg, SelfMsg> {
+    sendToApp(messages: Array<AppMsg>): Task<never, Unit>;
+    sendToSelf(selfMsg: SelfMsg): Task<never, Unit>;
 }
 
-const taskManager = new class TaskManager extends Manager<Unit> {
-    public init = Task.succeed(Unit);
+interface Processing<Msg> {
+    mailbox: Array<Msg>;
+    kill: Task<never, Unit>;
+}
 
-    public onEffects<AppMsg>(
-        router: Router<AppMsg>,
-        commands: Array<Perform<AppMsg>>
-    ): Task<never, Unit> {
-        return Task.all(commands.map(cmd => cmd.onEffects(router))).map(unit);
+class TaskState<AppMsg> {
+    public static initial: TaskState<unknown> = new TaskState(Dict.empty as Dict<number, Processing<unknown>>);
+
+    private constructor(
+        private readonly processes: Dict<number, Processing<AppMsg>>
+    ) {}
+
+    public scheduleLetter(pid: number, msg: AppMsg): TaskState<AppMsg> {
+        return this.processes.get(pid).map(processing => new TaskState(
+            this.processes.insert(pid, {
+                ...processing,
+                mailbox: [ ...processing.mailbox, msg ]
+            })
+        )).getOrElse(this);
+    }
+
+    public releaseLetters(pid: number): Maybe<[ Array<AppMsg>, TaskState<AppMsg> ]> {
+        return this.processes.get(pid).map(processing => [
+            processing.mailbox,
+            this.removeProcess(pid)
+        ]);
+    }
+
+    public killProcess(pid: number): Maybe<[ Task<never, Unit>, TaskState<AppMsg> ]> {
+        return this.processes.get(pid).map(processing => [
+            processing.kill,
+            this.removeProcess(pid)
+        ]);
+    }
+
+    public removeProcess(pid: number): TaskState<AppMsg> {
+        return new TaskState(this.processes.remove(pid));
+    }
+}
+
+const taskManager = new class TaskManager<AppMsg> extends Manager<AppMsg, number, TaskState<AppMsg>> {
+    public init = Task.succeed(TaskState.initial as TaskState<AppMsg>);
+
+    public onEffects(
+        router: Router<AppMsg, number>,
+        commands: Array<Perform<AppMsg>>,
+        state: TaskState<AppMsg>
+    ): Task<never, TaskState<AppMsg>> {
+        let nextState = Task.succeed(state);
+
+        for (const cmd of commands) {
+            nextState = nextState.chain(acc => cmd.onEffects(router, acc));
+        }
+
+        return nextState;
     }
 }();
 
-class Perform<Msg> extends Cmd<Msg> {
+abstract class TaskCmd<AppMsg> extends Cmd<AppMsg> {
+    public abstract onEffects(router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>>;
+
+    protected getManager(): Manager<AppMsg, number, TaskState<AppMsg>> {
+        return taskManager as Manager<AppMsg, number, TaskState<AppMsg>>;
+    }
+}
+
+class Perform<AppMsg> extends TaskCmd<AppMsg> {
     public constructor(
-        private readonly task: Task<never, Msg>
+        private readonly task: Task<never, AppMsg>
     ) {
         super();
     }
 
-    public map<R>(fn: (msg: Msg) => R): Cmd<R> {
+    public map<R>(fn: (msg: AppMsg) => R): Cmd<R> {
         return new Perform(this.task.map(fn));
     }
 
-    public onEffects(router: Router<Msg>): Task<never, Process<Msg>> {
-        return this.task.chain(router.sendToApp).spawn();
+    public onEffects(router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
+        return this.task.chain(msg => router.sendToApp([ msg ])).spawn().map(() => state);
     }
-    protected getManager(): Manager<Unit> {
-        return taskManager;
+}
+
+class Send<AppMsg> extends TaskCmd<AppMsg> {
+    public constructor(
+        private readonly pid: number,
+        private readonly msg: AppMsg
+    ) {
+        super();
+    }
+
+    public map<R>(fn: (msg: AppMsg) => R): Cmd<R> {
+        return new Send(this.pid, fn(this.msg));
+    }
+
+    public onEffects(_router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
+        return Task.succeed(state.scheduleLetter(this.pid, this.msg));
+    }
+}
+
+class Kill<AppMsg> extends TaskCmd<AppMsg> {
+    public constructor(private readonly pid: number) {
+        super();
+    }
+
+    public map(): Cmd<never> {
+        return this;
+    }
+
+    public onEffects(_router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
+        return state.killProcess(this.pid).fold(
+            () => Task.succeed(state),
+            ([ kill, nextState ]) => kill.map(() => nextState)
+        );
     }
 }
 
@@ -509,26 +562,27 @@ class Perform<Msg> extends Cmd<Msg> {
  * R U N T I M E
  */
 
-class Runtime<Msg, State> {
+class Runtime<AppMsg, SelfMsg, State> {
     private static catchCancel(error: Unit): Promise<Unit> {
         return error === Unit ? Promise.resolve(Unit) : Promise.reject(error);
     }
 
     private pid = 0;
-    private readonly router: Router<Msg>;
+    private readonly router: Router<AppMsg, SelfMsg>;
     private readonly states: Map<number, Promise<State>> = new Map();
-    private readonly processes: Map<number, Processing<Msg>> = new Map();
+    private readonly processes: Map<number, Processing<AppMsg>> = new Map();
 
     public constructor(
-        private readonly dispatch: (messages: Array<Msg>) => Promise<Unit>
+        private readonly dispatch: (messages: Array<AppMsg>) => Promise<Unit>
     ) {
         this.router = {
-            sendToApp: (msg: Msg): Task<never, Unit> => new Identity(dispatch([ msg ]))
+            sendToApp: (messages: Array<AppMsg>): Task<never, Unit> => new Identity(dispatch(messages)),
+            sendToSelf: (selfMsg: SelfMsg): Task<never, Unit> => Task.succeed(Unit)
         };
     }
 
-    public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
-        const bags: Map<number, Bag<Msg, State>> = new Map();
+    public runEffects(cmd: Cmd<AppMsg>): Promise<Unit> {
+        const bags: Map<number, Bag<AppMsg, SelfMsg, State>> = new Map();
         const nextStatePromises: Array<Promise<State>> = [];
         const processPromises: Array<Promise<Unit>> = [];
 
@@ -608,14 +662,9 @@ export namespace Program {
     };
 }
 
-interface Processing<Msg> {
-    mailbox: Array<Msg>;
-    kill(): void;
-}
-
 class ClientProgram<Msg, Model> implements Program<Msg, Model> {
     private model: Model;
-    private readonly runtime: Runtime<Msg, unknown>;
+    private readonly runtime: Runtime<Msg, unknown, unknown>;
     private readonly subscribers: Array<() => void> = [];
 
     public constructor(
@@ -682,7 +731,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
 class ServerProgram<Msg, Model> {
     private model: Model;
     private cmd: Cmd<Msg>;
-    private runtime: Runtime<Msg, unknown>;
+    private runtime: Runtime<Msg, unknown, unknown>;
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
