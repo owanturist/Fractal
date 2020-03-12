@@ -400,9 +400,11 @@ test.serial('Program.client() Process sends messages', async t => {
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
         Process.sleep(1000).spawn<Msg>()
-            .chain(process => process.send(Increment))
-            .chain(process => process.send(Increment))
-            .chain(process => process.send(Increment))
+            .chain(process => Task.all([
+                process.send(Increment),
+                process.send(Increment),
+                process.send(Increment)
+            ]))
             .tap(task => Task.perform(() => NoOp, task))
     ];
 

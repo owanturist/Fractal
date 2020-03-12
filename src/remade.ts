@@ -134,16 +134,16 @@ export abstract class Manager<State> {
  * T A S K
  */
 
-export abstract class Task<E, T> {
-    protected static toPromise<E, T, Msg>(
-        task: Task<E, T>,
-        promises: Array<Promise<Array<Msg>>>
-    ): Promise<Either<E, T>> {
-        return task.toPromise(promises);
-    }
+interface Context<Msg> {
+    promises: Array<Promise<Unit>>;
+    processes: Map<number, Processing<Msg>>;
+    generatePID(): number;
+    dispatch(messages: Array<Msg>): Promise<Unit>;
+}
 
-    protected static cancel<E, T>(task: Task<E, T>): Task<never, Unit> {
-        return task.cancel();
+export abstract class Task<E, T> {
+    protected static toPromise<E, T, Msg>(task: Task<E, T>, context: Context<Msg>): Promise<Either<E, T>> {
+        return task.toPromise(context);
     }
 
     public attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg> {
@@ -178,11 +178,7 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected cancel(): Task<never, Unit> {
-        return Task.succeed(Unit);
-    }
-
-    protected abstract toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, T>>;
+    protected abstract toPromise<Msg>(context: Context<Msg>): Promise<Either<E, T>>;
 }
 
 export namespace Task {
@@ -210,16 +206,13 @@ export namespace Task {
 }
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T, Msg>(task: Task<E, T>, promises: Array<Promise<Array<Msg>>>): Promise<Either<E, T>> {
-        return super.toPromise(task, promises);
+    public static toPromise<E, T, Msg>(task: Task<E, T>, context: Context<Msg>): Promise<Either<E, T>> {
+        return super.toPromise(task, context);
     }
 }
 
 class Custom<E, T> extends Task<E, T> {
-    /**
-     * Mutable field but it mutates only in Runtime.
-     */
-    private abort = noop;
+    public abort = noop;
 
     public constructor(
         private readonly callback: (
@@ -230,16 +223,7 @@ class Custom<E, T> extends Task<E, T> {
         super();
     }
 
-    protected cancel(): Task<never, Unit> {
-        this.abort();
-
-        // don't abort it twise
-        this.abort = noop;
-
-        return Task.succeed(Unit);
-    }
-
-    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, T>> {
+    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, T>> {
         return new Promise((resolve: (task: Task<E, T>) => void, reject: (unit: Unit) => void) => {
             this.callback(resolve, abort => {
                 this.abort = () => {
@@ -247,12 +231,7 @@ class Custom<E, T> extends Task<E, T> {
                     reject(Unit);
                 };
             });
-        }).then(task => {
-            // don't call it when resolved
-            this.abort = noop;
-
-            return Task.toPromise(task, promises);
-        });
+        }).then(task => Task.toPromise(task, context));
     }
 }
 
@@ -329,9 +308,9 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, Array<T>>> {
+    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, Array<T>>> {
         return Promise.all(this.tasks.map((task): Promise<Maybe<Either<E, T>>> => {
-            return Task.toPromise(task, promises).then(Just).catch(All.catchCancel);
+            return Task.toPromise(task, context).then(Just).catch(All.catchCancel);
         })).then(promises => Maybe.combine(promises).fold(
             () => Promise.reject(),
             value => Promise.resolve(Either.combine(value))
@@ -361,8 +340,8 @@ class Mapper<E, T, R> extends Task<E, R> {
         );
     }
 
-    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, R>> {
-        return Task.toPromise(this.task, promises).then(result => result.map(this.fn));
+    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, R>> {
+        return Task.toPromise(this.task, context).then(result => result.map(this.fn));
     }
 }
 
@@ -388,43 +367,87 @@ class Chainer<E, T, R> extends Task<E, R> {
         );
     }
 
-    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<E, R>> {
-        return Task.toPromise(this.task, promises)
-            .then(result => result.map(this.fn).fold(
-                error => Promise.resolve(Left(error)),
-                task => Task.toPromise(task, promises)
-            ));
+    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<E, R>> {
+        return Task.toPromise(this.task, context).then(result => result.map(this.fn).fold(
+            error => Promise.resolve(Left(error)),
+            task => Task.toPromise(task, context)
+        ));
     }
 }
 
 class Spawn<Msg> extends Task<never, Process<Msg>> {
-    public constructor(private readonly process: Process<Msg>) {
+    public constructor(
+        private readonly createProcess: (pid: number) => Process<Msg>,
+        private readonly task: Task<unknown, unknown>
+    ) {
         super();
     }
 
-    public chain<R>(fn: (process: Process<Msg>) => Task<never, R>): Task<never, R> {
-        return fn(this.process);
-    }
+    protected toPromise<M>(context: Context<M>): Promise<Either<never, Process<Msg>>>;
+    protected toPromise(context: Context<Msg>): Promise<Either<never, Process<Msg>>> {
+        const pid = context.generatePID();
 
-    protected toPromise<M>(promises: Array<Promise<Array<M>>>): Promise<Either<never, Process<Msg>>>;
-    protected toPromise(promises: Array<Promise<Array<Msg>>>): Promise<Either<never, Process<Msg>>> {
-        return ProcessRunner.toPromise(this.process, promises).then(Right);
+        context.processes.set(pid, {
+            mailbox: [],
+            kill: noop
+        });
+
+        const promise = TaskRunner.toPromise(this.task, context).then(() => {
+            const processing = context.processes.get(pid);
+
+            if (typeof processing !== 'undefined') {
+                return context.dispatch(processing.mailbox);
+            }
+
+            return Promise.resolve(Unit);
+        });
+
+        context.promises.push(promise);
+
+        return Promise.resolve(Right(this.createProcess(pid)));
     }
 }
 
-class Kill<E, T> extends Task<never, Unit> {
-    public constructor(private readonly task: Task<E, T>) {
+class Send<Msg> extends Task<never, Unit> {
+    public constructor(
+        private readonly pid: number,
+        private readonly msg: Msg
+    ) {
         super();
     }
 
-    protected toPromise<Msg>(promises: Array<Promise<Array<Msg>>>): Promise<Either<never, Unit>> {
-        return Task.toPromise(Task.cancel(this.task), promises);
+    protected toPromise<M>(context: Context<M>): Promise<Either<never, Unit>>;
+    protected toPromise(context: Context<Msg>): Promise<Either<never, Unit>> {
+        const processing = context.processes.get(this.pid);
+
+        if (typeof processing !== 'undefined') {
+            processing.mailbox.push(this.msg);
+        }
+
+        return Promise.resolve(Right(Unit));
+    }
+}
+
+class Kill extends Task<never, Unit> {
+    public constructor(private readonly pid: number) {
+        super();
+    }
+
+    protected toPromise<Msg>(context: Context<Msg>): Promise<Either<never, Unit>> {
+        const processing = context.processes.get(this.pid);
+
+        if (typeof processing !== 'undefined') {
+            processing.kill();
+            context.processes.delete(this.pid);
+        }
+
+        return Promise.resolve(Right(Unit));
     }
 }
 
 export class Process<Msg> {
     public static spawn<E, T, Msg>(task: Task<E, T>): Task<never, Process<Msg>> {
-        return new Spawn(new Process([], task));
+        return new Spawn(Process.create, task);
     }
 
     public static sleep(milliseconds: number): Task<never, Unit> {
@@ -435,38 +458,16 @@ export class Process<Msg> {
         });
     }
 
-    protected static toPromise<Msg>(
-        process: Process<Msg>,
-        promises: Array<Promise<Array<Msg>>>
-    ): Promise<Process<Msg>> {
-        return process.toPromise(promises);
-    }
+    private static readonly create = <Msg>(id: number): Process<Msg> => new Process(id);
 
-    protected constructor(
-        private readonly mailbox: Array<Msg>,
-        private readonly task: Task<unknown, unknown>
-    ) {}
+    private constructor(private readonly id: number) {}
+
+    public send(msg: Msg): Task<never, Unit> {
+        return new Send(this.id, msg);
+    }
 
     public kill(): Task<never, Unit> {
-        return new Kill(this.task);
-    }
-
-    public send(msg: Msg): Task<never, Process<Msg>> {
-        return new Spawn(new Process([ ...this.mailbox, msg ], this.task));
-    }
-
-    private toPromise(promises: Array<Promise<Array<Msg>>>): Promise<Process<Msg>> {
-        const promise = TaskRunner.toPromise(this.task, promises).then(() => this.mailbox);
-
-        promises.push(promise);
-
-        return Promise.resolve(this);
-    }
-}
-
-abstract class ProcessRunner<Msg> extends Process<Msg> {
-    public static toPromise<Msg>(process: Process<Msg>, promises: Array<Promise<Array<Msg>>>): Promise<Process<Msg>> {
-        return super.toPromise(process, promises);
+        return new Kill(this.id);
     }
 }
 
@@ -513,8 +514,10 @@ class Runtime<Msg, State> {
         return error === Unit ? Promise.resolve(Unit) : Promise.reject(error);
     }
 
+    private pid = 0;
     private readonly router: Router<Msg>;
     private readonly states: Map<number, Promise<State>> = new Map();
+    private readonly processes: Map<number, Processing<Msg>> = new Map();
 
     public constructor(
         private readonly dispatch: (messages: Array<Msg>) => Promise<Unit>
@@ -527,22 +530,33 @@ class Runtime<Msg, State> {
     public runEffects(cmd: Cmd<Msg>): Promise<Unit> {
         const bags: Map<number, Bag<Msg, State>> = new Map();
         const nextStatePromises: Array<Promise<State>> = [];
-        const processPromises: Array<Promise<Array<Msg>>> = [];
+        const processPromises: Array<Promise<Unit>> = [];
 
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
             const statePromise = this.states.get(bag.manager.id)
-                || TaskRunner.toPromise(bag.manager.init, processPromises).then(result => result.fold(
-                    // Manager.init always Task<never, State>
-                    () => Promise.reject(),
-                    state => Promise.resolve(state)
-                ));
+                || TaskRunner.toPromise(bag.manager.init, {
+                    promises: processPromises,
+                    processes: this.processes,
+                    generatePID: this.generatePID,
+                    dispatch: this.dispatch
+                })
+                    .then(result => result.fold(
+                        // Manager.init always Task<never, State>
+                        () => Promise.reject(),
+                        state => Promise.resolve(state)
+                    ));
 
             const promise = statePromise.then(state => {
                 return TaskRunner.toPromise(
                     bag.manager.onEffects(this.router, bag.commands, state),
-                    processPromises
+                    {
+                        promises: processPromises,
+                        processes: this.processes,
+                        generatePID: this.generatePID,
+                        dispatch: this.dispatch
+                    }
                 );
             }).then(result => result.fold(
                 () => statePromise,
@@ -556,9 +570,13 @@ class Runtime<Msg, State> {
         return Promise.all(nextStatePromises)
             // individual process cancelation should not affect to the rest
             .then(() => Promise.all(processPromises.map(processPromise => {
-                return processPromise.then(this.dispatch).catch(Runtime.catchCancel);
+                return processPromise.then(unit).catch(Runtime.catchCancel);
             })))
             .then(unit);
+    }
+
+    private readonly generatePID = () => {
+        return this.pid++;
     }
 }
 
@@ -588,6 +606,11 @@ export namespace Program {
     }): Promise<Model> => {
         return new ServerProgram(init(flags), update).collect();
     };
+}
+
+interface Processing<Msg> {
+    mailbox: Array<Msg>;
+    kill(): void;
 }
 
 class ClientProgram<Msg, Model> implements Program<Msg, Model> {
