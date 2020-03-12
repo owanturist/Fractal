@@ -129,6 +129,12 @@ export abstract class Manager<AppMsg, SelfMsg, State> {
         commands: Array<Cmd<AppMsg>>,
         state: State
     ): Task<never, State>;
+
+    public abstract onSelfMsg(
+        router: Router<AppMsg, SelfMsg>,
+        selfMsg: SelfMsg,
+        state: State
+    ): Task<never, State>;
 }
 
 /**
@@ -461,17 +467,17 @@ class TaskState<AppMsg> {
         ]);
     }
 
-    public removeProcess(pid: number): TaskState<AppMsg> {
+    private removeProcess(pid: number): TaskState<AppMsg> {
         return new TaskState(this.processes.remove(pid));
     }
 }
 
 const taskManager = new class TaskManager<AppMsg> extends Manager<AppMsg, number, TaskState<AppMsg>> {
-    public init = Task.succeed(TaskState.initial as TaskState<AppMsg>);
+    public readonly init = Task.succeed(TaskState.initial as TaskState<AppMsg>);
 
     public onEffects(
         router: Router<AppMsg, number>,
-        commands: Array<Perform<AppMsg>>,
+        commands: Array<TaskCmd<AppMsg>>,
         state: TaskState<AppMsg>
     ): Task<never, TaskState<AppMsg>> {
         let nextState = Task.succeed(state);
@@ -481,6 +487,17 @@ const taskManager = new class TaskManager<AppMsg> extends Manager<AppMsg, number
         }
 
         return nextState;
+    }
+
+    public onSelfMsg(
+        router: Router<AppMsg, number>,
+        pid: number,
+        state: TaskState<AppMsg>
+    ): Task<never, TaskState<AppMsg>> {
+        return state.releaseLetters(pid).fold(
+            () => Task.succeed(state),
+            ([ letters, nextState ]) => router.sendToApp(letters).map(() => nextState)
+        );
     }
 }();
 
@@ -579,7 +596,7 @@ class Runtime<AppMsg, SelfMsg, State> {
                 })
                     .then(result => result.fold(
                         // Manager.init always Task<never, State>
-                        () => Promise.reject(),
+                        () => Promise.reject(new TypeError('Manager.init might by only Task<never, State>')),
                         state => Promise.resolve(state)
                     ));
 
