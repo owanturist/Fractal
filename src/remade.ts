@@ -755,3 +755,102 @@ class ServerProgram<Msg, Model> {
         return this.runtime.runEffects(Cmd.batch(cmds));
     }
 }
+
+/**
+ * V O W
+ */
+
+class Vow<E, T> {
+    public static resolve<E, T>(value: T): Vow<E, T> {
+        return new Vow(
+            Nothing,
+            Promise.resolve(Right(value))
+        );
+    }
+
+    public static reject<E, T>(error: E): Vow<E, T> {
+        return new Vow(
+            Nothing,
+            Promise.resolve(Left(error))
+        );
+    }
+
+    public static create<E, T>(executor: (
+        reject: (error: E) => void,
+        resolve: (value: T) => void,
+        onCancel: (abort: () => void) => void
+    ) => void): Vow<E, T> {
+        let onCancel: Maybe<() => void> = Nothing;
+
+        return new Vow(
+            onCancel,
+            new Promise((resolve: (value: Either<E, T>) => void, reject: (error: Error) => void): void => {
+                executor(
+                    error => resolve(Left(error)),
+                    value => resolve(Right(value)),
+                    killer => {
+                        onCancel = Just(() => {
+                            onCancel = Nothing;
+                            killer();
+                        });
+
+                        reject(Vow.CANCEL);
+                    }
+                );
+            })
+        );
+    }
+
+    public static fromPromise<T>(promise: Promise<T>): Vow<never, T> {
+        return new Vow(Nothing, promise.then(Right));
+    }
+
+    public static all<E, T>(vows: Array<Vow<E, T>>): Vow<E, Array<T>> {
+        const acc: Array<Promise<Maybe<Either<E, T>>>> = new Array(vows.length);
+
+        for (let i = 0; i < vows.length; i++) {
+            acc[ i ] = vows[ i ].root.then(Just).catch(Vow.catchAllCancel);
+        }
+
+        return new Vow(
+            Nothing,
+            Promise.all(acc).then(Maybe.values).then(Either.combine)
+        );
+    }
+
+    private static CANCEL = new Error('Vow canceled.');
+
+    private static catchAllCancel(error: Error): Promise<Maybe<never>> {
+        if (error === Vow.CANCEL) {
+            return Promise.resolve(Nothing);
+        }
+
+        return Promise.reject(error);
+    }
+
+    private constructor(
+        private readonly onCancel: Maybe<() => void>,
+        private readonly root: Promise<Either<E, T>>
+    ) {}
+
+    public map<R>(fn: (value: T) => R): Vow<E, R> {
+        return new Vow(
+            this.onCancel,
+            this.root.then(result => result.map(fn))
+        );
+    }
+
+    public chain<R>(fn: (value: T) => Vow<E, R>): Vow<E, R> {
+        return new Vow(
+            this.onCancel,
+            this.root.then(result => result.fold(
+                error => Promise.resolve(Left(error)),
+                value => fn(value).root
+            ))
+        );
+    }
+
+    public cancel(): void {
+        this.onCancel.getOrElse(noop)();
+    }
+}
