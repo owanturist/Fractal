@@ -697,9 +697,11 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
 }
 
 class ServerProgram<Msg, Model> {
+    private static readonly DONE = {};
+
     private model: Model;
-    private cmd: Cmd<Msg>;
-    private runtime: Runtime<Msg, unknown, unknown>;
+    private cmd: Cmd<typeof ServerProgram.DONE | Msg>;
+    private readonly runtime: Runtime<typeof ServerProgram.DONE | Msg, unknown, unknown>;
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
@@ -718,6 +720,10 @@ class ServerProgram<Msg, Model> {
         const cmds: Array<Cmd<Msg>> = [];
 
         for (const msg of messages) {
+            if (msg === ServerProgram.DONE) {
+                return Vow.resolve(Unit);
+            }
+
             const [ nextModel, cmd ] = this.update(msg, this.model);
 
             this.model = nextModel;
