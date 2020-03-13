@@ -196,13 +196,13 @@ export namespace Task {
     };
 
     export const custom = <E, T>(
-        executor: (
-            reject: (error: E) => void,
-            resolve: (value: T) => void,
-            onCancel: (abort: () => void) => void
-        ) => void
+        executor: (executor: {
+            reject(error: E): void;
+            resolve(value: T): void;
+            onCancel(abort: () => void): void;
+        }) => void
     ): Task<E, T> => {
-        return new Custom(executor);
+        return new Custom((reject, resolve, onCancel) => executor({ reject, resolve, onCancel }));
     };
 
     export const all = <E, T>(tasks: Array<Task<E, T>>): Task<WhenUnknown<E, never> , Array<T>> => {
@@ -212,12 +212,6 @@ export namespace Task {
     export const perform = <T, Msg>(tagger: (value: T) => Msg, task: Task<never, T>): Cmd<Msg> => {
         return new Perform(task.map(tagger));
     };
-}
-
-abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T>(task: Task<E, T>, context: Context): Vow<E, T> {
-        return super.toPromise(task, context);
-    }
 }
 
 class Custom<E, T> extends Task<E, T> {
@@ -306,7 +300,7 @@ class All<E, T> extends Task<E, Array<T>> {
     }
 
     protected toPromise(context: Context): Vow<E, Array<T>> {
-        return Vow.all(this.tasks.map(task => TaskRunner.toPromise(task, context)));
+        return Vow.all(this.tasks.map(task => Task.toPromise(task, context)));
     }
 }
 
@@ -360,9 +354,7 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 
     protected toPromise(context: Context): Vow<E, R> {
-        const foo = Task.toPromise(this.task, context);
-
-        return foo.chain(value => TaskRunner.toPromise(this.fn(value), context));
+        return Task.toPromise(this.task, context).chain(value => Task.toPromise(this.fn(value), context));
     }
 }
 
@@ -377,7 +369,7 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
     protected toPromise(context: Context): Vow<never, Process<Msg>> {
         const pid = context.generatePID();
 
-        const promise = TaskRunner.toPromise(this.task, context).map(unit);
+        const promise = Task.toPromise(this.task, context).map(unit);
 
         context.promises.push(promise);
 
@@ -391,7 +383,7 @@ export class Process<Msg> {
     }
 
     public static sleep(milliseconds: number): Task<never, Unit> {
-        return Task.custom((_reject, resolve, onCancel) => {
+        return Task.custom(({ resolve, onCancel }) => {
             const timeoutID = setTimeout(() => resolve(Unit), milliseconds);
 
             onCancel(() => clearTimeout(timeoutID));
@@ -466,13 +458,13 @@ const taskManager = new class TaskManager<AppMsg> extends Manager<AppMsg, number
         commands: Array<TaskCmd<AppMsg>>,
         state: TaskState<AppMsg>
     ): Task<never, TaskState<AppMsg>> {
-        let nextState = Task.succeed(state);
+        let result = Task.succeed(state);
 
         for (const cmd of commands) {
-            nextState = nextState.chain(acc => cmd.onEffects(router, acc));
+            result = result.chain(nextState => cmd.onEffects(router, nextState));
         }
 
-        return nextState;
+        return result;
     }
 
     public onSelfMsg(
@@ -488,7 +480,10 @@ const taskManager = new class TaskManager<AppMsg> extends Manager<AppMsg, number
 }();
 
 abstract class TaskCmd<AppMsg> extends Cmd<AppMsg> {
-    public abstract onEffects(router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>>;
+    public abstract onEffects(
+        router: Router<AppMsg, number>,
+        state: TaskState<AppMsg>
+    ): Task<never, TaskState<AppMsg>>;
 
     protected getManager(): Manager<AppMsg, number, TaskState<AppMsg>> {
         return taskManager as Manager<AppMsg, number, TaskState<AppMsg>>;
@@ -549,6 +544,12 @@ class Kill<AppMsg> extends TaskCmd<AppMsg> {
  * R U N T I M E
  */
 
+abstract class TaskRunner<E, T> extends Task<E, T> {
+    public static toPromise<E, T>(task: Task<E, T>, context: Context): Vow<E, T> {
+        return super.toPromise(task, context);
+    }
+}
+
 class Runtime<AppMsg, SelfMsg, State> {
     private pid = 0;
     private readonly router: Router<AppMsg, SelfMsg>;
@@ -592,7 +593,6 @@ class Runtime<AppMsg, SelfMsg, State> {
         }
 
         return Vow.all(nextStatePromises)
-            // individual process cancelation should not affect to the rest
             .chain(() => Vow.all(processPromises))
             .map(unit);
     }
