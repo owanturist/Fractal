@@ -646,7 +646,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
             return Vow.resolve(Unit);
         });
 
-        this.runtime.runEffects(initialCmd).then(unit);
+        this.runtime.runEffects(initialCmd);
     }
 
     public readonly dispatch = (msg: Msg): void => this.dispatchMany([ msg ]);
@@ -683,7 +683,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
             cmds.push(cmd);
         }
 
-        this.runtime.runEffects(Cmd.batch(cmds)).then(unit);
+        this.runtime.runEffects(Cmd.batch(cmds));
 
         // prevents subscribers call when model not changed
         if (initialModel === this.model) {
