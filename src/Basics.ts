@@ -69,13 +69,11 @@ export function toInt(input: string): Maybe<number> {
 }
 
 export interface Unit {
-    replace<T>(value: T): T;
+    secret?: never;
 }
 
-export const Unit = new class Unit$ implements Unit {
-    public replace<T>(value: T): T {
-        return value;
-    }
+export const Unit = new class Unit {
+    public readonly secret?: never;
 }();
 
 export interface Order {

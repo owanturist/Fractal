@@ -142,13 +142,13 @@ export abstract class Manager<AppMsg, SelfMsg, State> {
  */
 
 interface Context {
-    promises: Array<Vow<unknown, Unit>>;
+    contracts: Array<Contract<unknown, unknown>>;
     generatePID(): number;
 }
 
 export abstract class Task<E, T> {
-    protected static toPromise<E, T>(task: Task<E, T>, context: Context): Vow<E, T> {
-        return task.toPromise(context);
+    protected static execute<E, T>(task: Task<E, T>, context: Context): Contract<E, T> {
+        return task.execute(context);
     }
 
     public attempt<Msg>(tagger: (result: Either<E, T>) => Msg): Cmd<Msg> {
@@ -183,7 +183,7 @@ export abstract class Task<E, T> {
         return fn(this);
     }
 
-    protected abstract toPromise(context: Context): Vow<E, T>;
+    protected abstract execute(context: Context): Contract<E, T>;
 }
 
 export namespace Task {
@@ -219,14 +219,14 @@ class Custom<E, T> extends Task<E, T> {
         private readonly executor: (
             reject: (error: E) => void,
             resolve: (value: T) => void,
-            onCancel: (abort: () => void) => void
+            onCancel: (cancel: () => void) => void
         ) => void
     ) {
         super();
     }
 
-    protected toPromise(): Vow<E, T> {
-        return Vow.create(this.executor);
+    protected execute(): Contract<E, T> {
+        return Contract.create(this.executor);
     }
 }
 
@@ -251,8 +251,8 @@ class Succeed<T> extends Task<never, T> {
         return this;
     }
 
-    protected toPromise(): Vow<never, T> {
-        return Vow.resolve(this.value);
+    protected execute(): Contract<never, T> {
+        return Contract.resolve(this.value);
     }
 }
 
@@ -277,20 +277,20 @@ class Fail<E> extends Task<E, never> {
         return fn(this.error);
     }
 
-    protected toPromise(): Vow<E, never> {
-        return Vow.reject(this.error);
+    protected execute(): Contract<E, never> {
+        return Contract.reject(this.error);
     }
 }
 
 class Identity<T> extends Task<never, T> {
     public constructor(
-        private readonly vow: Vow<never, T>
+        private readonly contract: Contract<never, T>
     ) {
         super();
     }
 
-    public toPromise(): Vow<never, T> {
-        return this.vow;
+    public execute(): Contract<never, T> {
+        return this.contract;
     }
 }
 
@@ -299,8 +299,8 @@ class All<E, T> extends Task<E, Array<T>> {
         super();
     }
 
-    protected toPromise(context: Context): Vow<E, Array<T>> {
-        return Vow.all(this.tasks.map(task => Task.toPromise(task, context)));
+    protected execute(context: Context): Contract<E, Array<T>> {
+        return Contract.all(this.tasks.map(task => Task.execute(task, context)));
     }
 }
 
@@ -326,8 +326,8 @@ class Mapper<E, T, R> extends Task<E, R> {
         );
     }
 
-    protected toPromise(context: Context): Vow<E, R> {
-        return Task.toPromise(this.task, context).map(this.fn);
+    protected execute(context: Context): Contract<E, R> {
+        return Task.execute(this.task, context).map(this.fn);
     }
 }
 
@@ -353,55 +353,59 @@ class Chainer<E, T, R> extends Task<E, R> {
         );
     }
 
-    protected toPromise(context: Context): Vow<E, R> {
-        return Task.toPromise(this.task, context).chain(value => Task.toPromise(this.fn(value), context));
+    protected execute(context: Context): Contract<E, R> {
+        return Task.execute(this.task, context).chain(value => Task.execute(this.fn(value), context));
     }
 }
 
 class Spawn<Msg> extends Task<never, Process<Msg>> {
     public constructor(
-        private readonly createProcess: (pid: number) => Process<Msg>,
         private readonly task: Task<unknown, unknown>
     ) {
         super();
     }
 
-    protected toPromise(context: Context): Vow<never, Process<Msg>> {
-        const pid = context.generatePID();
+    protected execute(context: Context): Contract<never, Process<Msg>> {
+        const contract = Task.execute(this.task, context);
 
-        const promise = Task.toPromise(this.task, context).map(unit);
+        context.contracts.push(contract);
 
-        context.promises.push(promise);
-
-        return Vow.resolve(this.createProcess(pid));
+        return Contract.resolve(new AsyncProcess(context.generatePID(), contract.cancel));
     }
 }
 
-export class Process<Msg> {
-    public static spawn<Msg>(task: Task<unknown, unknown>): Task<never, Process<Msg>> {
-        return new Spawn<Msg>(Process.create, task);
-    }
+export interface Process<Msg> {
+    send(msg: Msg): Cmd<Msg>;
 
-    public static sleep(milliseconds: number): Task<never, Unit> {
+    kill(): Cmd<never>;
+}
+
+export namespace Process {
+    export const spawn = <Msg>(task: Task<unknown, unknown>): Task<never, Process<Msg>> => {
+        return new Spawn<Msg>(task);
+    };
+
+    export const sleep = (milliseconds: number): Task<never, Unit> => {
         return Task.custom(({ resolve, onCancel }) => {
             const timeoutID = setTimeout(() => resolve(Unit), milliseconds);
 
             onCancel(() => clearTimeout(timeoutID));
         });
-    }
+    };
+}
 
-    private static create<Msg>(id: number): Process<Msg> {
-        return new Process(id);
-    }
-
-    private constructor(private readonly id: number) {}
+class AsyncProcess<Msg> implements Process<Msg> {
+    public constructor(
+        private readonly id: number,
+        private readonly cancel: () => void
+    ) {}
 
     public send(msg: Msg): Cmd<Msg> {
         return new Send(this.id, msg);
     }
 
     public kill(): Cmd<never> {
-        return new Kill(this.id);
+        return new Kill(this.cancel);
     }
 }
 
@@ -410,42 +414,27 @@ export interface Router<AppMsg, SelfMsg> {
     sendToSelf(selfMsg: SelfMsg): Task<never, Unit>;
 }
 
-interface Processing<Msg> {
-    mailbox: Array<Msg>;
-    kill: Task<never, Unit>;
-}
-
 class TaskState<AppMsg> {
-    public static initial: TaskState<unknown> = new TaskState(Dict.empty as Dict<number, Processing<unknown>>);
+    public static initial: TaskState<unknown> = new TaskState(Dict.empty as Dict<number, Array<unknown>>);
 
     private constructor(
-        private readonly processes: Dict<number, Processing<AppMsg>>
+        private readonly processes: Dict<number, Array<AppMsg>>
     ) {}
 
     public scheduleLetter(pid: number, msg: AppMsg): TaskState<AppMsg> {
-        return this.processes.get(pid).map(processing => new TaskState(
-            this.processes.insert(pid, {
-                ...processing,
-                mailbox: [ ...processing.mailbox, msg ]
-            })
+        return this.processes.get(pid).map(mailbox => new TaskState(
+            this.processes.insert(pid, [ ...mailbox, msg ])
         )).getOrElse(this);
     }
 
     public releaseLetters(pid: number): Maybe<[ Array<AppMsg>, TaskState<AppMsg> ]> {
-        return this.processes.get(pid).map(processing => [
-            processing.mailbox,
+        return this.processes.get(pid).map(mailbox => [
+            mailbox,
             this.removeProcess(pid)
         ]);
     }
 
-    public killProcess(pid: number): Maybe<[ Task<never, Unit>, TaskState<AppMsg> ]> {
-        return this.processes.get(pid).map(processing => [
-            processing.kill,
-            this.removeProcess(pid)
-        ]);
-    }
-
-    private removeProcess(pid: number): TaskState<AppMsg> {
+    public removeProcess(pid: number): TaskState<AppMsg> {
         return new TaskState(this.processes.remove(pid));
     }
 }
@@ -524,7 +513,7 @@ class Send<AppMsg> extends TaskCmd<AppMsg> {
 }
 
 class Kill<AppMsg> extends TaskCmd<AppMsg> {
-    public constructor(private readonly pid: number) {
+    public constructor(private readonly cancel: () => void) {
         super();
     }
 
@@ -533,10 +522,9 @@ class Kill<AppMsg> extends TaskCmd<AppMsg> {
     }
 
     public onEffects(_router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
-        return state.killProcess(this.pid).fold(
-            () => Task.succeed(state),
-            ([ kill, nextState ]) => kill.map(() => nextState)
-        );
+        this.cancel();
+
+        return Task.succeed(state);
     }
 }
 
@@ -545,18 +533,18 @@ class Kill<AppMsg> extends TaskCmd<AppMsg> {
  */
 
 abstract class TaskRunner<E, T> extends Task<E, T> {
-    public static toPromise<E, T>(task: Task<E, T>, context: Context): Vow<E, T> {
-        return super.toPromise(task, context);
+    public static execute<E, T>(task: Task<E, T>, context: Context): Contract<E, T> {
+        return super.execute(task, context);
     }
 }
 
 class Runtime<AppMsg, SelfMsg, State> {
-    private pid = 0;
+    private nextPID = 0;
     private readonly router: Router<AppMsg, SelfMsg>;
-    private readonly states: Map<number, Vow<never, State>> = new Map();
+    private readonly states: Map<number, Contract<never, State>> = new Map();
 
     public constructor(
-        dispatch: (messages: Array<AppMsg>) => Vow<never, Unit>
+        dispatch: (messages: Array<AppMsg>) => Contract<never, Unit>
     ) {
         this.router = {
             sendToApp: (messages: Array<AppMsg>): Task<never, Unit> => new Identity(dispatch(messages)),
@@ -564,41 +552,41 @@ class Runtime<AppMsg, SelfMsg, State> {
         };
     }
 
-    public runEffects(cmd: Cmd<AppMsg>): Vow<never, Unit> {
+    public runEffects(cmd: Cmd<AppMsg>): Contract<never, Unit> {
         const bags: Map<number, Bag<AppMsg, SelfMsg, State>> = new Map();
-        const nextStatePromises: Array<Vow<never, State>> = [];
-        const processPromises: Array<Vow<never, Unit>> = [];
+        const nextStateVows: Array<Contract<never, State>> = [];
+        const context: Context = {
+            generatePID: this.generatePID,
+            contracts: []
+        };
 
         Collector.collect(cmd, bags);
 
         for (const bag of bags.values()) {
-            const statePromise = this.states.get(bag.manager.id)
-                || TaskRunner.toPromise(bag.manager.init, {
-                    promises: processPromises,
-                    generatePID: this.generatePID
-                });
+            const contract = this.getManagerState(bag.manager, context)
+                .map(state => bag.manager.onEffects(this.router, bag.commands, state))
+                .chain(task => TaskRunner.execute(task, context));
 
-            const promise = statePromise.chain(state => {
-                return TaskRunner.toPromise(
-                    bag.manager.onEffects(this.router, bag.commands, state),
-                    {
-                        promises: processPromises,
-                        generatePID: this.generatePID
-                    }
-                );
-            });
-
-            nextStatePromises.push(promise);
-            this.states.set(bag.manager.id, promise);
+            nextStateVows.push(contract);
+            this.states.set(bag.manager.id, contract);
         }
 
-        return Vow.all(nextStatePromises)
-            .chain(() => Vow.all(processPromises))
-            .map(unit);
+        return Contract.all(nextStateVows)
+            .chain(() => Contract.all(context.contracts).finally(unit));
     }
 
-    private readonly generatePID = () => {
-        return this.pid++;
+    private getManagerState(manager: Manager<AppMsg, SelfMsg, State>, context: Context): Contract<never, State> {
+        const stateVow = this.states.get(manager.id);
+
+        if (stateVow != null) {
+            return stateVow;
+        }
+
+        return TaskRunner.execute(manager.init, context);
+    }
+
+    private readonly generatePID = (): number => {
+        return this.nextPID++;
     }
 }
 
@@ -643,7 +631,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         this.runtime = new Runtime(messages => {
             this.dispatchMany(messages);
 
-            return Vow.resolve(Unit);
+            return Contract.resolve(Unit);
         });
 
         this.runtime.runEffects(initialCmd);
@@ -697,11 +685,9 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
 }
 
 class ServerProgram<Msg, Model> {
-    private static readonly DONE = {};
-
     private model: Model;
-    private cmd: Cmd<typeof ServerProgram.DONE | Msg>;
-    private readonly runtime: Runtime<typeof ServerProgram.DONE | Msg, unknown, unknown>;
+    private cmd: Cmd<Msg>;
+    private readonly runtime: Runtime<Msg, unknown, unknown>;
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
@@ -716,14 +702,10 @@ class ServerProgram<Msg, Model> {
         return this.runtime.runEffects(this.cmd).then(() => this.model);
     }
 
-    private dispatch = (messages: Array<Msg>): Vow<never, Unit> => {
+    private dispatch = (messages: Array<Msg>): Contract<never, Unit> => {
         const cmds: Array<Cmd<Msg>> = [];
 
         for (const msg of messages) {
-            if (msg === ServerProgram.DONE) {
-                return Vow.resolve(Unit);
-            }
-
             const [ nextModel, cmd ] = this.update(msg, this.model);
 
             this.model = nextModel;
@@ -738,17 +720,17 @@ class ServerProgram<Msg, Model> {
  * V O W
  */
 
-class Vow<E, T> {
-    public static resolve<E, T>(value: T): Vow<E, T> {
-        return new Vow(
-            Nothing,
+class Contract<E, T> {
+    public static resolve<E, T>(value: T): Contract<E, T> {
+        return new Contract(
+            noop,
             Promise.resolve(Right(value))
         );
     }
 
-    public static reject<E, T>(error: E): Vow<E, T> {
-        return new Vow(
-            Nothing,
+    public static reject<E, T>(error: E): Contract<E, T> {
+        return new Contract(
+            noop,
             Promise.resolve(Left(error))
         );
     }
@@ -756,41 +738,37 @@ class Vow<E, T> {
     public static create<E, T>(executor: (
         reject: (error: E) => void,
         resolve: (value: T) => void,
-        onCancel: (abort: () => void) => void
-    ) => void): Vow<E, T> {
-        let onCancel: Maybe<() => void> = Nothing;
+        onCancel: (cancel: () => void) => void
+    ) => void): Contract<E, T> {
+        let onCancel = noop;
 
-        return new Vow(
-            onCancel,
+        return new Contract(
+            () => onCancel(),
             new Promise((resolve: (value: Either<E, T>) => void, reject: (error: Error) => void): void => {
                 executor(
                     error => resolve(Left(error)),
                     value => resolve(Right(value)),
-                    abort => {
-                        onCancel = Just(() => {
-                            onCancel = Nothing;
-                            abort();
-                            reject(Vow.CANCEL);
-                        });
+                    cancel => {
+                        onCancel = () => {
+                            onCancel = noop;
+                            cancel();
+                            reject(Contract.CANCEL);
+                        };
                     }
                 );
             })
         );
     }
 
-    public static fromPromise<T>(promise: Promise<T>): Vow<never, T> {
-        return new Vow(Nothing, promise.then(Right));
-    }
+    public static all<E, T>(contracts: Array<Contract<E, T>>): Contract<E, Array<T>> {
+        const acc: Array<Promise<Maybe<Either<E, T>>>> = new Array(contracts.length);
 
-    public static all<E, T>(vows: Array<Vow<E, T>>): Vow<E, Array<T>> {
-        const acc: Array<Promise<Maybe<Either<E, T>>>> = new Array(vows.length);
-
-        for (let i = 0; i < vows.length; i++) {
-            acc[ i ] = vows[ i ].root.then(Just).catch(Vow.catchAllCancel);
+        for (let i = 0; i < contracts.length; i++) {
+            acc[ i ] = contracts[ i ].root.then(Just).catch(Contract.catchAllCancel);
         }
 
-        return new Vow(
-            Nothing,
+        return new Contract(
+            noop,
             Promise.all(acc).then(Maybe.values).then(Either.combine)
         );
     }
@@ -798,7 +776,7 @@ class Vow<E, T> {
     private static CANCEL = new Error('Vow canceled.');
 
     private static catchAllCancel(error: Error): Promise<Maybe<never>> {
-        if (error === Vow.CANCEL) {
+        if (error === Contract.CANCEL) {
             return Promise.resolve(Nothing);
         }
 
@@ -806,7 +784,7 @@ class Vow<E, T> {
     }
 
     private static catchCancel(error: Error): Promise<Unit> {
-        if (error === Vow.CANCEL) {
+        if (error === Contract.CANCEL) {
             return Promise.resolve(Unit);
         }
 
@@ -814,20 +792,20 @@ class Vow<E, T> {
     }
 
     private constructor(
-        private readonly onCancel: Maybe<() => void>,
+        public readonly cancel: () => void,
         private readonly root: Promise<Either<E, T>>
     ) {}
 
-    public map<R>(fn: (value: T) => R): Vow<E, R> {
-        return new Vow(
-            this.onCancel,
+    public map<R>(fn: (value: T) => R): Contract<E, R> {
+        return new Contract(
+            this.cancel,
             this.root.then(result => result.map(fn))
         );
     }
 
-    public chain<R>(fn: (value: T) => Vow<E, R>): Vow<E, R> {
-        return new Vow(
-            this.onCancel,
+    public chain<R>(fn: (value: T) => Contract<E, R>): Contract<E, R> {
+        return new Contract(
+            this.cancel,
             this.root.then(result => result.fold(
                 error => Promise.resolve(Left(error)),
                 value => fn(value).root
@@ -835,11 +813,14 @@ class Vow<E, T> {
         );
     }
 
-    public cancel(): void {
-        this.onCancel.getOrElse(noop)();
+    public finally<R>(fn: () => R): Contract<never, R> {
+        return new Contract(
+            this.cancel,
+            this.root.then(fn).then(Right)
+        );
     }
 
     public then<T>(fn: () => T): Promise<T> {
-        return this.root.catch(Vow.catchCancel).then(fn);
+        return this.root.catch(Contract.catchCancel).then(fn);
     }
 }
