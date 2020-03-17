@@ -785,7 +785,7 @@ test.serial('Program.server() kills spawned sleep', async t => {
     }
 
     const Kill = cons(class Kill implements Msg {
-        public constructor(private readonly process: Process<Msg>) {}
+        public constructor(private readonly process: Process) {}
 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
@@ -857,7 +857,7 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
     });
 
     const Kill = cons(class Kill implements Msg {
-        public constructor(private readonly process: Process<Msg>) {}
+        public constructor(private readonly process: Process) {}
 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [

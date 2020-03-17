@@ -26,6 +26,10 @@ export function identity<T>(value: T): T {
     return value;
 }
 
+export function noop() {
+    /* do nothing */
+}
+
 export function inst<T>(Constructor: new () => T) {
     return new Constructor();
 }

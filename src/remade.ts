@@ -1,12 +1,11 @@
 import {
+    noop,
     WhenUnknown,
     Unit
 } from './Basics';
 import Either, { Left, Right } from './Either';
 import Maybe, { Nothing, Just } from './Maybe';
 import Dict from './Dict';
-
-const noop = () => {/* do nothing */};
 
 const unit = () => Unit;
 
@@ -174,7 +173,7 @@ export abstract class Task<E, T> {
         throw new Error(fn + '');
     }
 
-    public spawn<Msg>(): Task<never, Process<Msg>> {
+    public spawn(): Task<never, Process> {
         return Process.spawn(this);
     }
 
@@ -357,14 +356,14 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 }
 
-class Spawn<Msg> extends Task<never, Process<Msg>> {
+class Spawn extends Task<never, Process> {
     public constructor(
         private readonly task: Task<unknown, unknown>
     ) {
         super();
     }
 
-    protected execute(context: Context): Contract<never, Process<Msg>> {
+    protected execute(context: Context): Contract<never, Process> {
         const contract = Task.execute(this.task, context);
 
         context.contracts.push(contract);
@@ -373,13 +372,13 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
     }
 }
 
-export interface Process<Msg> {
+export interface Process {
     kill(): Cmd<never>;
 }
 
 export namespace Process {
-    export const spawn = <Msg>(task: Task<unknown, unknown>): Task<never, Process<Msg>> => {
-        return new Spawn<Msg>(task);
+    export const spawn = (task: Task<unknown, unknown>): Task<never, Process> => {
+        return new Spawn(task);
     };
 
     export const sleep = (milliseconds: number): Task<never, Unit> => {
@@ -391,7 +390,7 @@ export namespace Process {
     };
 }
 
-class AsyncProcess<Msg> implements Process<Msg> {
+class AsyncProcess implements Process {
     public constructor(
         private readonly cancel: () => void
     ) {}
@@ -686,7 +685,7 @@ class ServerProgram<Msg, Model> {
 }
 
 /**
- * V O W
+ * C O N T R A C T
  */
 
 class Contract<E, T> {
@@ -709,17 +708,17 @@ class Contract<E, T> {
         resolve: (value: T) => void,
         onCancel: (cancel: () => void) => void
     ) => void): Contract<E, T> {
-        let onCancel = noop;
+        let cancelPromise = noop;
 
         return new Contract(
-            () => onCancel(),
+            () => cancelPromise(),
             new Promise((resolve: (value: Either<E, T>) => void, reject: (error: Error) => void): void => {
                 executor(
                     error => resolve(Left(error)),
                     value => resolve(Right(value)),
                     cancel => {
-                        onCancel = () => {
-                            onCancel = noop;
+                        cancelPromise = () => {
+                            cancelPromise = noop;
                             cancel();
                             reject(Contract.CANCEL);
                         };
@@ -730,15 +729,35 @@ class Contract<E, T> {
     }
 
     public static all<E, T>(contracts: Array<Contract<E, T>>): Contract<E, Array<T>> {
-        const acc: Array<Promise<Maybe<Either<E, T>>>> = new Array(contracts.length);
+        const N = contracts.length;
+        const cancels: Array<() => void> = new Array(N);
+        const promises: Array<Promise<Maybe<Either<E, T>>>> = new Array(N);
 
-        for (let i = 0; i < contracts.length; i++) {
-            acc[ i ] = contracts[ i ].root.then(Just).catch(Contract.catchAllCancel);
+        for (let i = 0; i < N; i++) {
+            const contract = contracts[ i ];
+
+            cancels[ i ] = contract.cancel;
+            // prevent canceling of all contracts if one canceled
+            promises[ i ] = contract.root.then(Just).catch(Contract.catchAllCancel);
         }
 
+        let cancelPromise = noop;
+
         return new Contract(
-            noop,
-            Promise.all(acc).then(Maybe.values).then(Either.combine)
+            () => cancelPromise(),
+            new Promise((resolve, reject) => {
+                Promise.all(promises).then(Maybe.values).then(Either.combine).then(resolve).catch(reject);
+
+                cancelPromise = () => {
+                    cancelPromise = noop;
+
+                    for (const cancel of cancels) {
+                        cancel();
+                    }
+
+                    reject(Contract.CANCEL);
+                };
+            })
         );
     }
 
