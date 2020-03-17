@@ -143,7 +143,6 @@ export abstract class Manager<AppMsg, SelfMsg, State> {
 
 interface Context {
     contracts: Array<Contract<unknown, unknown>>;
-    generatePID(): number;
 }
 
 export abstract class Task<E, T> {
@@ -370,13 +369,11 @@ class Spawn<Msg> extends Task<never, Process<Msg>> {
 
         context.contracts.push(contract);
 
-        return Contract.resolve(new AsyncProcess(context.generatePID(), contract.cancel));
+        return Contract.resolve(new AsyncProcess(contract.cancel));
     }
 }
 
 export interface Process<Msg> {
-    send(msg: Msg): Cmd<Msg>;
-
     kill(): Cmd<never>;
 }
 
@@ -396,13 +393,8 @@ export namespace Process {
 
 class AsyncProcess<Msg> implements Process<Msg> {
     public constructor(
-        private readonly id: number,
         private readonly cancel: () => void
     ) {}
-
-    public send(msg: Msg): Cmd<Msg> {
-        return new Send(this.id, msg);
-    }
 
     public kill(): Cmd<never> {
         return new Kill(this.cancel);
@@ -495,23 +487,6 @@ class Perform<AppMsg> extends TaskCmd<AppMsg> {
     }
 }
 
-class Send<AppMsg> extends TaskCmd<AppMsg> {
-    public constructor(
-        private readonly pid: number,
-        private readonly msg: AppMsg
-    ) {
-        super();
-    }
-
-    public map<R>(fn: (msg: AppMsg) => R): Cmd<R> {
-        return new Send(this.pid, fn(this.msg));
-    }
-
-    public onEffects(_router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
-        return Task.succeed(state.scheduleLetter(this.pid, this.msg));
-    }
-}
-
 class Kill<AppMsg> extends TaskCmd<AppMsg> {
     public constructor(private readonly cancel: () => void) {
         super();
@@ -539,7 +514,6 @@ abstract class TaskRunner<E, T> extends Task<E, T> {
 }
 
 class Runtime<AppMsg, SelfMsg, State> {
-    private nextPID = 0;
     private readonly router: Router<AppMsg, SelfMsg>;
     private readonly states: Map<number, Contract<never, State>> = new Map();
 
@@ -556,7 +530,6 @@ class Runtime<AppMsg, SelfMsg, State> {
         const bags: Map<number, Bag<AppMsg, SelfMsg, State>> = new Map();
         const nextStateVows: Array<Contract<never, State>> = [];
         const context: Context = {
-            generatePID: this.generatePID,
             contracts: []
         };
 
@@ -583,10 +556,6 @@ class Runtime<AppMsg, SelfMsg, State> {
         }
 
         return TaskRunner.execute(manager.init, context);
-    }
-
-    private readonly generatePID = (): number => {
-        return this.nextPID++;
     }
 }
 
