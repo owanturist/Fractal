@@ -141,7 +141,7 @@ export abstract class Manager<AppMsg, SelfMsg, State> {
  */
 
 interface Context {
-    contracts: Array<Contract<unknown, unknown>>;
+    contracts: Array<Contract<never, Unit>>;
 }
 
 export abstract class Task<E, T> {
@@ -356,9 +356,9 @@ class Chainer<E, T, R> extends Task<E, R> {
     }
 }
 
-class Spawn extends Task<never, Process> {
+class Spawn<E, T> extends Task<never, Process> {
     public constructor(
-        private readonly task: Task<unknown, unknown>
+        private readonly task: Task<E, T>
     ) {
         super();
     }
@@ -366,7 +366,7 @@ class Spawn extends Task<never, Process> {
     protected execute(context: Context): Contract<never, Process> {
         const contract = Task.execute(this.task, context);
 
-        context.contracts.push(contract);
+        context.contracts.push(contract.finally(unit));
 
         return Contract.resolve(new AsyncProcess(contract.cancel));
     }
@@ -377,7 +377,7 @@ export interface Process {
 }
 
 export namespace Process {
-    export const spawn = (task: Task<unknown, unknown>): Task<never, Process> => {
+    export const spawn = <E, T>(task: Task<E, T>): Task<never, Process> => {
         return new Spawn(task);
     };
 
@@ -527,7 +527,7 @@ class Runtime<AppMsg, SelfMsg, State> {
 
     public runEffects(cmd: Cmd<AppMsg>): Contract<never, Unit> {
         const bags: Map<number, Bag<AppMsg, SelfMsg, State>> = new Map();
-        const nextStateVows: Array<Contract<never, State>> = [];
+        const nextStateContracts: Array<Contract<never, State>> = [];
         const context: Context = {
             contracts: []
         };
@@ -539,19 +539,19 @@ class Runtime<AppMsg, SelfMsg, State> {
                 .map(state => bag.manager.onEffects(this.router, bag.commands, state))
                 .chain(task => TaskRunner.execute(task, context));
 
-            nextStateVows.push(contract);
+            nextStateContracts.push(contract);
             this.states.set(bag.manager.id, contract);
         }
 
-        return Contract.all(nextStateVows)
+        return Contract.all(nextStateContracts)
             .chain(() => Contract.all(context.contracts).finally(unit));
     }
 
     private getManagerState(manager: Manager<AppMsg, SelfMsg, State>, context: Context): Contract<never, State> {
-        const stateVow = this.states.get(manager.id);
+        const stateContract = this.states.get(manager.id);
 
-        if (stateVow != null) {
-            return stateVow;
+        if (stateContract != null) {
+            return stateContract;
         }
 
         return TaskRunner.execute(manager.init, context);
@@ -724,6 +724,11 @@ class Contract<E, T> {
                         };
                     }
                 );
+            }).then(result => {
+                // do not cancel when async is done
+                cancelPromise = noop;
+
+                return result;
             })
         );
     }
@@ -745,7 +750,7 @@ class Contract<E, T> {
 
         return new Contract(
             () => cancelPromise(),
-            new Promise((resolve, reject) => {
+            new Promise((resolve: (value: Either<E, Array<T>>) => void, reject: (error: Error) => void) => {
                 Promise.all(promises).then(Maybe.values).then(Either.combine).then(resolve).catch(reject);
 
                 cancelPromise = () => {
@@ -757,11 +762,16 @@ class Contract<E, T> {
 
                     reject(Contract.CANCEL);
                 };
+            }).then(result => {
+                // do not cancel when async is done
+                cancelPromise = noop;
+
+                return result;
             })
         );
     }
 
-    private static CANCEL = new Error('Vow canceled.');
+    private static CANCEL = new Error('Contract canceled.');
 
     private static catchAllCancel(error: Error): Promise<Maybe<never>> {
         if (error === Contract.CANCEL) {
@@ -792,19 +802,26 @@ class Contract<E, T> {
     }
 
     public chain<R>(fn: (value: T) => Contract<E, R>): Contract<E, R> {
-        return new Contract(
-            this.cancel,
-            this.root.then(result => result.fold(
-                error => Promise.resolve(Left(error)),
-                value => fn(value).root
-            ))
-        );
+        let cancelPromise = this.cancel;
+
+        const promise = this.root.then(result => result.fold(
+            error => Promise.resolve(Left(error)),
+            value => {
+                const contract = fn(value);
+
+                cancelPromise = contract.cancel;
+
+                return contract.root;
+            }
+        ));
+
+        return new Contract(() => cancelPromise(), promise);
     }
 
     public finally<R>(fn: () => R): Contract<never, R> {
         return new Contract(
             this.cancel,
-            this.root.then(fn).then(Right)
+            this.then(fn).then(Right)
         );
     }
 

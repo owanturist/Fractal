@@ -20,7 +20,7 @@ test.after(() => {
     clock.uninstall();
 });
 
-test.serial('Task.perform() Task.succeed applyes almost immediately', async t => {
+test.serial('Task.succeed applyes almost immediately', async t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -64,7 +64,7 @@ test.serial('Task.perform() Task.succeed applyes almost immediately', async t =>
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
 });
 
-test.serial('Task.perform() Task.all waits for all sub tasts to be done', async t => {
+test.serial('Task.all waits for all sub tasts to be done', async t => {
     interface Msg {
         update(model: Model): Model;
     }
@@ -123,7 +123,7 @@ test.serial('Task.perform() Task.all waits for all sub tasts to be done', async 
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
 });
 
-test.serial('Task.perform() Task.all cancel fast sleep does not affect to the rest', async t => {
+test.serial('Task.all cancel fast sleep does not affect to the rest', async t => {
     interface Msg {
         update(model: Model): [ Model, Cmd<Msg> ];
     }
@@ -195,7 +195,7 @@ test.serial('Task.perform() Task.all cancel fast sleep does not affect to the re
     t.deepEqual(await promise, { count: 1 }, 'Increment applied');
 });
 
-test.serial('Task.perform() Task.all early cancel long sleep does affects to the rest', async t => {
+test.serial('Task.all early cancel long sleep does affects to the rest', async t => {
     interface Msg {
         update(model: Model): [ Model, Cmd<Msg> ];
     }
@@ -264,7 +264,7 @@ test.serial('Task.perform() Task.all early cancel long sleep does affects to the
     t.deepEqual(await promise, { count: 1 }, 'Increment applied');
 });
 
-test.serial('Task.perform() Task.all late cancel long sleep does affects to the rest', async t => {
+test.serial('Task.all late cancel long sleep does affects to the rest', async t => {
     interface Msg {
         update(model: Model): [ Model, Cmd<Msg> ];
     }
@@ -333,5 +333,224 @@ test.serial('Task.perform() Task.all late cancel long sleep does affects to the 
 
     await clock.tickAsync(1000); // 2000
     t.true(done, 'Cancelation of sleep 10000 ends the chain');
+    t.deepEqual(await promise, { count: 1 }, 'Increment applied');
+});
+
+test.serial('Task.chain cancelation of parent Process does not affect the whole chain', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const Increment = cons(class Increment implements Msg {
+        public constructor(private readonly process: Process) {}
+
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                this.process.kill()
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Process.sleep(1000).spawn()
+            .chain(process => Process.sleep(2000).spawn().map(() => process))
+            .tap(task => Task.perform(Increment, task))
+    ];
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(0);
+    t.false(done, 'Initial effect is not done after async 0');
+
+    await clock.tickAsync(1000); // 1000
+    t.false(done, 'Killing of 1000 sleep not affect');
+
+    await clock.tickAsync(1000); // 2000
+    t.true(done, '2000 sleep done');
+    t.deepEqual(await promise, { count: 1 }, 'Increment applied');
+});
+
+test.serial('Task.chain cancelation of child Process does not affect the whole chain', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const Increment = cons(class Increment implements Msg {
+        public constructor(private readonly process: Process) {}
+
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                this.process.kill()
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Process.sleep(2000).spawn()
+            .chain(() => Process.sleep(1000).spawn())
+            .tap(task => Task.perform(Increment, task))
+    ];
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(0);
+    t.false(done, 'Initial effect is not done after async 0');
+
+    await clock.tickAsync(1000); // 1000
+    t.false(done, 'Killing of 1000 sleep not affect');
+
+    await clock.tickAsync(1000); // 2000
+    t.true(done, '2000 sleep done');
+    t.deepEqual(await promise, { count: 1 }, 'Increment applied');
+});
+
+test.serial('Task.chain cancelation of child Process after sleep does not affect the whole chain', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const Increment = cons(class Increment implements Msg {
+        public constructor(private readonly process: Process) {}
+
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                this.process.kill()
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Process.sleep(1000)
+            .chain(() => Process.sleep(2000).spawn())
+            .tap(task => Task.perform(Increment, task))
+    ];
+
+    t.plan(5);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(0);
+    t.false(done, 'Initial effect is not done after async 0');
+
+    await clock.tickAsync(100); // 100
+    t.false(done, 'Initial effect is not done after async 100');
+
+    await clock.tickAsync(900); // 1000
+    t.true(done, '1000 sleep done');
+    t.deepEqual(await promise, { count: 1 }, 'Increment applied');
+});
+
+test.serial('Task.chain cancelation of chained child Process affects the whole chain', async t => {
+    interface Msg {
+        update(model: Model): [ Model, Cmd<Msg> ];
+    }
+
+    const Increment = cons(class Increment implements Msg {
+        public constructor(private readonly process: Process) {}
+
+        public update(model: Model): [ Model, Cmd<Msg> ] {
+            return [
+                {
+                    ...model,
+                    count: model.count + 1
+                },
+                this.process.kill()
+            ];
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Process.sleep(2000)
+            .chain(() => Process.sleep(1000))
+            .spawn()
+            .tap(task => Task.perform(Increment, task))
+    ];
+
+    t.plan(3);
+
+    let done = false;
+    const promise = Program.server<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => msg.update(model)
+    }).then(result => {
+        done = true;
+
+        return result;
+    });
+
+    t.false(done, 'Initial effect is not done');
+
+    await clock.tickAsync(0);
+    t.true(done, 'Canceled chained process done almost immediately');
     t.deepEqual(await promise, { count: 1 }, 'Increment applied');
 });
