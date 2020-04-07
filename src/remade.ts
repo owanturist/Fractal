@@ -166,11 +166,11 @@ export abstract class Task<E, T> {
     }
 
     public mapError<Y>(fn: (error: E) => Y): Task<Y, T> {
-        throw new Error(fn + '');
+        return new ErrorMapper(fn, this);
     }
 
     public chainError<Y>(fn: (error: E) => Task<Y, T>): Task<Y, T> {
-        throw new Error(fn + '');
+        return new ErrorChainer(fn, this);
     }
 
     public spawn(): Task<never, Process> {
@@ -229,24 +229,10 @@ class Custom<E, T> extends Task<E, T> {
 }
 
 class Succeed<T> extends Task<never, T> {
-    public constructor(private readonly value: T) {
+    public constructor(
+        private readonly value: T
+    ) {
         super();
-    }
-
-    public map<R>(fn: (value: T) => R): Task<never, R> {
-        return new Succeed(fn(this.value));
-    }
-
-    public chain<E, R>(fn: (value: T) => Task<E, R>): Task<E, R> {
-        return fn(this.value);
-    }
-
-    public mapError(): Task<never, T> {
-        return this;
-    }
-
-    public chainError(): Task<never, T> {
-        return this;
     }
 
     protected execute(): Contract<never, T> {
@@ -255,24 +241,10 @@ class Succeed<T> extends Task<never, T> {
 }
 
 class Fail<E> extends Task<E, never> {
-    public constructor(private readonly error: E) {
+    public constructor(
+        private readonly error: E
+    ) {
         super();
-    }
-
-    public map(): Task<E, never> {
-        return this;
-    }
-
-    public chain(): Task<E, never> {
-        return this;
-    }
-
-    public mapError<T, Y>(fn: (error: E) => Y): Task<Y, T> {
-        return new Fail(fn(this.error));
-    }
-
-    public chainError<T, Y>(fn: (error: E) => Task<Y, T>): Task<Y, T> {
-        return fn(this.error);
     }
 
     protected execute(): Contract<E, never> {
@@ -293,7 +265,9 @@ class Identity<T> extends Task<never, T> {
 }
 
 class All<E, T> extends Task<E, Array<T>> {
-    public constructor(private readonly tasks: Array<Task<E, T>>) {
+    public constructor(
+        private readonly tasks: Array<Task<E, T>>
+    ) {
         super();
     }
 
@@ -310,22 +284,21 @@ class Mapper<E, T, R> extends Task<E, R> {
         super();
     }
 
-    public map<P>(fn: (value: R) => P): Task<E, P> {
-        return new Mapper(
-            value => fn(this.fn(value)),
-            this.task
-        );
-    }
-
-    public chain<P>(fn: (value: R) => Task<E, P>): Task<E, P> {
-        return new Chainer(
-            value => fn(this.fn(value)),
-            this.task
-        );
-    }
-
     protected execute(context: Context): Contract<E, R> {
         return Task.execute(this.task, context).map(this.fn);
+    }
+}
+
+class ErrorMapper<E, T, Y> extends Task<Y, T> {
+    public constructor(
+        private readonly fn: (error: E) => Y,
+        private readonly task: Task<E, T>
+    ) {
+        super();
+    }
+
+    protected execute(context: Context): Contract<Y, T> {
+        return Task.execute(this.task, context).mapError(this.fn);
     }
 }
 
@@ -337,22 +310,21 @@ class Chainer<E, T, R> extends Task<E, R> {
         super();
     }
 
-    public map<P>(fn: (value: R) => P): Task<E, P> {
-        return new Chainer(
-            value => this.fn(value).map(fn),
-            this.task
-        );
-    }
-
-    public chain<P>(fn: (value: R) => Task<E, P>): Task<E, P> {
-        return new Chainer(
-            value => this.fn(value).chain(fn),
-            this.task
-        );
-    }
-
     protected execute(context: Context): Contract<E, R> {
         return Task.execute(this.task, context).chain(value => Task.execute(this.fn(value), context));
+    }
+}
+
+class ErrorChainer<E, T, Y> extends Task<Y, T> {
+    public constructor(
+        private readonly fn: (error: E) => Task<Y, T>,
+        private readonly task: Task<E, T>
+    ) {
+        super();
+    }
+
+    protected execute(context: Context): Contract<Y, T> {
+        return Task.execute(this.task, context).chainError(error => Task.execute(this.fn(error), context));
     }
 }
 
@@ -801,6 +773,13 @@ class Contract<E, T> {
         );
     }
 
+    public mapError<Y>(fn: (error: E) => Y): Contract<Y, T> {
+        return new Contract(
+            this.cancel,
+            this.root.then(result => result.mapLeft(fn))
+        );
+    }
+
     public chain<R>(fn: (value: T) => Contract<E, R>): Contract<E, R> {
         let cancelPromise = this.cancel;
 
@@ -813,6 +792,23 @@ class Contract<E, T> {
 
                 return contract.root;
             }
+        ));
+
+        return new Contract(() => cancelPromise(), promise);
+    }
+
+    public chainError<Y>(fn: (error: E) => Contract<Y, T>): Contract<Y, T> {
+        let cancelPromise = this.cancel;
+
+        const promise = this.root.then(result => result.fold(
+            error => {
+                const contract = fn(error);
+
+                cancelPromise = contract.cancel;
+
+                return contract.root;
+            },
+            value => Promise.resolve(Right(value))
         ));
 
         return new Contract(() => cancelPromise(), promise);

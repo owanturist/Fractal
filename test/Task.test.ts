@@ -3,6 +3,7 @@ import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
 import { Program, Process, Task, Cmd } from '../src/remade';
 import { Unit, inst, cons } from '../src/Basics';
+import Either from '../src/Either';
 
 const clock = useFakeTimers({
     toFake: [ 'setTimeout' ]
@@ -20,16 +21,18 @@ test.after(() => {
     clock.uninstall();
 });
 
-test.serial('Task.succeed applyes almost immediately', async t => {
+test.serial('Task.succeed passes value', async t => {
     interface Msg {
         update(model: Model): Model;
     }
 
-    const Increment = inst(class Increment implements Msg {
+    const Set = cons(class Set implements Msg {
+        public constructor(private readonly value: number) {}
+
         public update(model: Model): Model {
             return {
                 ...model,
-                count: model.count + 1
+                count: this.value
             };
         }
     });
@@ -40,7 +43,7 @@ test.serial('Task.succeed applyes almost immediately', async t => {
 
     const initial: [ Model, Cmd<Msg> ] = [
         { count: 0 },
-        Task.perform(() => Increment, Task.succeed(Unit))
+        Task.perform(Set, Task.succeed(3))
     ];
 
     const subscriber = spy();
@@ -61,7 +64,145 @@ test.serial('Task.succeed applyes almost immediately', async t => {
     await clock.tickAsync(0);
 
     t.is(subscriber.callCount, 1, 'Subscriber called ones');
-    t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
+    t.deepEqual(program.getModel(), { count: 3 }, 'Set applied');
+});
+
+test.serial('Task.fail passes error', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Set = cons(class Set implements Msg {
+        public constructor(private readonly value: Either<string, number>) {}
+
+        public update(model: Model): Model {
+            return {
+                ...model,
+                result: this.value
+            };
+        }
+    });
+
+    interface Model {
+        result: Either<string, number>;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { result: Either.Right(0) },
+        Task.fail('message').attempt(Set)
+    ];
+
+    const subscriber = spy();
+
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    program.subscribe(subscriber);
+
+    t.plan(4);
+
+    t.is(subscriber.callCount, 0, 'Subscriber not called');
+    t.deepEqual(program.getModel(), { result: Either.Right(0) }, 'Initial model does not change');
+
+    await clock.tickAsync(0);
+
+    t.is(subscriber.callCount, 1, 'Subscriber called ones');
+    t.deepEqual(program.getModel(), { result: Either.Left('message') }, 'Set applied');
+});
+
+test.serial('Task.map changes value', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Set = cons(class Set implements Msg {
+        public constructor(private readonly value: number) {}
+
+        public update(model: Model): Model {
+            return {
+                ...model,
+                count: this.value
+            };
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Task.perform(Set, Task.succeed('message').map(str => str.length))
+    ];
+
+    const subscriber = spy();
+
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    program.subscribe(subscriber);
+
+    t.plan(4);
+
+    t.is(subscriber.callCount, 0, 'Subscriber not called');
+    t.deepEqual(program.getModel(), { count: 0 }, 'Initial model does not change');
+
+    await clock.tickAsync(0);
+
+    t.is(subscriber.callCount, 1, 'Subscriber called ones');
+    t.deepEqual(program.getModel(), { count: 7 }, 'Set applied');
+});
+
+test.serial('Task.mapError changes error', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Set = cons(class Set implements Msg {
+        public constructor(private readonly value: Either<string, number>) {}
+
+        public update(model: Model): Model {
+            return {
+                ...model,
+                result: this.value
+            };
+        }
+    });
+
+    interface Model {
+        result: Either<string, number>;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { result: Either.Right(0) },
+        Task.fail(1234).mapError(int => int.toFixed(2)).attempt(Set)
+    ];
+
+    const subscriber = spy();
+
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    program.subscribe(subscriber);
+
+    t.plan(4);
+
+    t.is(subscriber.callCount, 0, 'Subscriber not called');
+    t.deepEqual(program.getModel(), { result: Either.Right(0) }, 'Initial model does not change');
+
+    await clock.tickAsync(0);
+
+    t.is(subscriber.callCount, 1, 'Subscriber called ones');
+    t.deepEqual(program.getModel(), { result: Either.Left('1234.00') }, 'Set applied');
 });
 
 test.serial('Task.all waits for all sub tasts to be done', async t => {
