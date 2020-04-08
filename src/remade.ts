@@ -1,7 +1,8 @@
 import {
     noop,
     WhenUnknown,
-    Unit
+    Unit,
+    WhenNever
 } from './Basics';
 import Either, { Left, Right } from './Either';
 import Maybe, { Nothing, Just } from './Maybe';
@@ -157,18 +158,30 @@ export abstract class Task<E, T> {
         return new Perform(task);
     }
 
+    public map<R>(fn: (value: T) => R): Task<E, R>;
+    public map<T_, R>(fn: (value: WhenNever<T, T_>) => R): Task<E, R>;
     public map<R>(fn: (value: T) => R): Task<E, R> {
         return new Mapper(fn, this);
     }
 
+    public chain<R>(fn: (value: T) => Task<E, R>): Task<E, R>;
+    public chain<E_, R>(fn: (value: T) => Task<WhenNever<E, E_>, R>): Task<WhenNever<E, E_>, R>;
+    public chain<T_, R>(fn: (value: WhenNever<T, T_>) => Task<E, R>): Task<E, R>;
+    public chain<E_, T_, R>(fn: (value: WhenNever<T, T_>) => Task<WhenNever<E, E_>, R>): Task<WhenNever<E, E_>, R>;
     public chain<R>(fn: (value: T) => Task<E, R>): Task<E, R> {
         return new Chainer(fn, this);
     }
 
+    public mapError<Y>(fn: (error: E) => Y): Task<Y, T>;
+    public mapError<E_, Y>(fn: (error: WhenNever<E, E_>) => Y): Task<Y, T>;
     public mapError<Y>(fn: (error: E) => Y): Task<Y, T> {
         return new ErrorMapper(fn, this);
     }
 
+    public chainError<Y>(fn: (error: E) => Task<Y, T>): Task<Y, T>;
+    public chainError<E_, Y>(fn: (error: WhenNever<E, E_>) => Task<Y, T>): Task<Y, T>;
+    public chainError<T_, Y>(fn: (error: E) => Task<Y, WhenNever<T, T_>>): Task<Y, WhenNever<T, T_>>;
+    public chainError<E_, T_, Y>(fn: (error: WhenNever<E, E_>) => Task<Y, WhenNever<T, T_>>): Task<Y, WhenNever<T, T_>>;
     public chainError<Y>(fn: (error: E) => Task<Y, T>): Task<Y, T> {
         return new ErrorChainer(fn, this);
     }
@@ -185,13 +198,17 @@ export abstract class Task<E, T> {
 }
 
 export namespace Task {
-    export const succeed = <T>(value: T): Task<never, T> => {
+    export function succeed<T>(value: T): Task<never, T>;
+    export function succeed<E, T>(value: T): Task<E, T>;
+    export function succeed<T>(value: T): Task<never, T> {
         return new Succeed(value);
-    };
+    }
 
-    export const fail = <E>(error: E): Task<E, never> => {
+    export function fail<E>(error: E): Task<E, never>;
+    export function fail<E, T>(error: E): Task<E, T>;
+    export function fail<E>(error: E): Task<E, never> {
         return new Fail(error);
-    };
+    }
 
     export const custom = <E, T>(
         executor: (executor: {
@@ -199,7 +216,7 @@ export namespace Task {
             resolve(value: T): void;
             onCancel(abort: () => void): void;
         }) => void
-    ): Task<E, T> => {
+    ): Task<WhenUnknown<E, never>, WhenUnknown<T, never>> => {
         return new Custom((reject, resolve, onCancel) => executor({ reject, resolve, onCancel }));
     };
 
@@ -732,13 +749,11 @@ class Contract<E, T> {
 
     public static all<E, T>(contracts: Array<Contract<E, T>>): Contract<E, Array<T>> {
         const N = contracts.length;
-        const cancels: Array<() => void> = new Array(N);
         const promises: Array<Promise<Maybe<Either<E, T>>>> = new Array(N);
 
         for (let i = 0; i < N; i++) {
             const contract = contracts[ i ];
 
-            cancels[ i ] = contract.cancel;
             // prevent canceling of all contracts if one canceled
             promises[ i ] = contract.root.then(Just).catch(Contract.catchAllCancel);
         }
@@ -747,14 +762,15 @@ class Contract<E, T> {
 
         return new Contract(
             () => cancelPromise(),
+
             new Promise((resolve: (value: Either<E, Array<T>>) => void, reject: (error: Error) => void) => {
                 Promise.all(promises).then(Maybe.values).then(Either.combine).then(resolve).catch(reject);
 
                 cancelPromise = () => {
                     cancelPromise = noop;
 
-                    for (const cancel of cancels) {
-                        cancel();
+                    for (const contract of contracts) {
+                        contract.cancel();
                     }
 
                     reject(Contract.CANCEL);
