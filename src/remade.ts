@@ -207,6 +207,31 @@ export namespace Task {
         return new All(tasks) as unknown as Task<WhenUnknown<E, never>, Array<T>>;
     };
 
+    export const shape = <E, O>(object: {[ K in keyof O ]: Task<E, O[ K ]>}): Task<WhenUnknown<E, never>, O> => {
+        const tasks: Array<Task<E, O[ Extract<keyof O, string> ]>> = [];
+        const indexToKey: Array<Extract<keyof O, string>> = [];
+
+        for (const key in object) {
+            if (object.hasOwnProperty(key)) {
+                tasks.push(object[ key ]);
+                indexToKey.push(key);
+            }
+        }
+
+        return new All(tasks).map(values => {
+            const acc = {} as O;
+
+            for (let index = 0; index < values.length; index++) {
+                const value = values[ index ];
+                const key = indexToKey[ index ];
+
+                acc[ key ] = value;
+            }
+
+            return acc;
+        }) as unknown as Task<WhenUnknown<E, never>, O>;
+    };
+
     export const perform = <T, Msg>(tagger: (value: T) => Msg, task: Task<never, T>): Cmd<Msg> => {
         return new Perform(task.map(tagger));
     };

@@ -187,5 +187,5 @@ export const isComparable = <T>(something: unknown): something is Comparable<T> 
         return false;
     }
 
-    return typeof (something as { compareTo?(): boolean }).compareTo === 'function';
+    return typeof (something as Comparable<T>).compareTo === 'function';
 };
