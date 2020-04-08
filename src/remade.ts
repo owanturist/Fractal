@@ -548,14 +548,16 @@ class Runtime<AppMsg, SelfMsg, State> {
 
         Collector.collect(cmd, bags);
 
-        for (const bag of bags.values()) {
+        // Map.forEach works for IE
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
+        bags.forEach(bag => {
             const contract = this.getManagerState(bag.manager, context)
                 .map(state => bag.manager.onEffects(this.router, bag.commands, state))
                 .chain(task => TaskRunner.execute(task, context));
 
             nextStateContracts.push(contract);
             this.states.set(bag.manager.id, contract);
-        }
+        });
 
         return Contract.all(nextStateContracts)
             .chain(() => Contract.all(context.contracts).finally(unit));
