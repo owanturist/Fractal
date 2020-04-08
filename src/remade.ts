@@ -702,18 +702,52 @@ class ServerProgram<Msg, Model> {
  * C O N T R A C T
  */
 
+abstract class Drop<E> {
+    public abstract map<Y>(fn: (error: E) => Y): Drop<Y>;
+
+    public abstract fold<R>(onCancel: () => R, onFail: (error: E) => R): R;
+}
+
+const isDrop = <E>(reason: unknown): reason is Drop<E> => reason instanceof Drop;
+
+const DropCancel = new class DropCancel extends Drop<never> {
+    public map(): Drop<never> {
+        return this;
+    }
+
+    public fold<R>(onCancel: () => R): R {
+        return onCancel();
+    }
+}();
+
+class DropFail<E> extends Drop<E> {
+    public constructor(
+        private readonly error: E
+    ) {
+        super();
+    }
+
+    public map<Y>(fn: (error: E) => Y): Drop<Y> {
+        return new DropFail(fn(this.error));
+    }
+
+    public fold<R>(_onCancel: () => R, onFail: (error: E) => R): R {
+        return onFail(this.error);
+    }
+}
+
 class Contract<E, T> {
     public static resolve<E, T>(value: T): Contract<E, T> {
         return new Contract(
             noop,
-            Promise.resolve(Right(value))
+            Promise.resolve(value)
         );
     }
 
     public static reject<E, T>(error: E): Contract<E, T> {
         return new Contract(
             noop,
-            Promise.resolve(Left(error))
+            Promise.reject(new DropFail(error))
         );
     }
 
@@ -727,15 +761,15 @@ class Contract<E, T> {
         return new Contract(
             // pass arrow function to use mutable cancelPromise from closure
             () => cancelPromise(),
-            new Promise((resolve: (value: Either<E, T>) => void, reject: (error: Error) => void): void => {
+            new Promise((resolve: (value: T) => void, reject: (reason: Drop<E>) => void): void => {
                 executor(
-                    error => resolve(Left(error)),
-                    value => resolve(Right(value)),
+                    error => reject(new DropFail(error)),
+                    value => resolve(value),
                     cancel => {
                         cancelPromise = () => {
                             cancelPromise = noop;
                             cancel();
-                            reject(Contract.CANCEL);
+                            reject(DropCancel);
                         };
                     }
                 );
@@ -757,8 +791,8 @@ class Contract<E, T> {
             // pass arrow function to use mutable cancelPromise from closure
             () => cancelPromise(),
 
-            new Promise((resolve: (value: Either<E, Array<T>>) => void, reject: (error: Error) => void) => {
-                Promise.all(promises).then(Either.combine).then(resolve).catch(reject);
+            new Promise((resolve: (values: Array<T>) => void, reject: (reason: Drop<E>) => void) => {
+                Promise.all(promises).then(resolve).catch(reject);
 
                 cancelPromise = () => {
                     cancelPromise = noop;
@@ -767,7 +801,7 @@ class Contract<E, T> {
                         contract.cancel();
                     }
 
-                    reject(Contract.CANCEL);
+                    reject(DropCancel);
                 };
             }).then(result => {
                 // do not cancel when async is done
@@ -778,48 +812,52 @@ class Contract<E, T> {
         );
     }
 
-    private static CANCEL = new Error('Contract canceled.');
-
-    private static catchCancel(error: Error): Promise<Unit> {
-        if (error === Contract.CANCEL) {
-            return Promise.resolve(Unit);
+    private static catchCancel<E>(reason: Drop<E>): Promise<Unit> {
+        if (!isDrop(reason)) {
+            return Promise.reject(reason);
         }
 
-        return Promise.reject(error);
+        return reason.fold(
+            () => Promise.resolve(Unit),
+            Promise.reject
+        );
     }
 
     private constructor(
         public readonly cancel: () => void,
-        private readonly root: Promise<Either<E, T>>
+        private readonly root: Promise<T>
     ) {}
 
     public map<R>(fn: (value: T) => R): Contract<E, R> {
         return new Contract(
             this.cancel,
-            this.root.then(result => result.map(fn))
+            this.root.then(fn)
         );
     }
 
     public mapError<Y>(fn: (error: E) => Y): Contract<Y, T> {
         return new Contract(
             this.cancel,
-            this.root.then(result => result.mapLeft(fn))
+            this.root.catch((reason: Drop<E>): Promise<T> => {
+                if (!isDrop(reason)) {
+                    return Promise.reject(reason);
+                }
+
+                return Promise.reject(reason.map(fn));
+            })
         );
     }
 
     public chain<R>(fn: (value: T) => Contract<E, R>): Contract<E, R> {
         let cancelPromise = this.cancel;
 
-        const promise = this.root.then(result => result.fold(
-            error => Promise.resolve(Left(error)),
-            value => {
-                const contract = fn(value);
+        const promise = this.root.then(value => {
+            const contract = fn(value);
 
-                cancelPromise = contract.cancel;
+            cancelPromise = contract.cancel;
 
-                return contract.root;
-            }
-        ));
+            return contract.root;
+        });
 
         return new Contract(
             // pass arrow function to use mutable cancelPromise from closure
@@ -831,16 +869,22 @@ class Contract<E, T> {
     public chainError<Y>(fn: (error: E) => Contract<Y, T>): Contract<Y, T> {
         let cancelPromise = this.cancel;
 
-        const promise = this.root.then(result => result.fold(
-            error => {
-                const contract = fn(error);
+        const promise = this.root.catch((reason: Drop<E>): Promise<T> => {
+            if (!isDrop(reason)) {
+                return Promise.reject(reason);
+            }
 
-                cancelPromise = contract.cancel;
+            return reason.fold(
+                () => Promise.reject(DropCancel),
+                error => {
+                    const contract = fn(error);
 
-                return contract.root;
-            },
-            value => Promise.resolve(Right(value))
-        ));
+                    cancelPromise = contract.cancel;
+
+                    return contract.root;
+                }
+            );
+        });
 
         return new Contract(
             // pass arrow function to use mutable cancelPromise from closure
@@ -852,7 +896,7 @@ class Contract<E, T> {
     public finally<R>(fn: () => R): Contract<never, R> {
         return new Contract(
             this.cancel,
-            this.then(fn).then(Right)
+            this.then(fn)
         );
     }
 
