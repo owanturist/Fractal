@@ -1,11 +1,11 @@
 import {
     noop,
-    WhenUnknown,
     Unit,
-    WhenNever
+    WhenNever,
+    WhenUnknown
 } from './Basics';
 import Either, { Left, Right } from './Either';
-import Maybe, { Nothing, Just } from './Maybe';
+import Maybe from './Maybe';
 import Dict from './Dict';
 
 const unit = () => Unit;
@@ -725,6 +725,7 @@ class Contract<E, T> {
         let cancelPromise = noop;
 
         return new Contract(
+            // pass arrow function to use mutable cancelPromise from closure
             () => cancelPromise(),
             new Promise((resolve: (value: Either<E, T>) => void, reject: (error: Error) => void): void => {
                 executor(
@@ -748,23 +749,16 @@ class Contract<E, T> {
     }
 
     public static all<E, T>(contracts: Array<Contract<E, T>>): Contract<E, Array<T>> {
-        const N = contracts.length;
-        const promises: Array<Promise<Maybe<Either<E, T>>>> = new Array(N);
-
-        for (let i = 0; i < N; i++) {
-            const contract = contracts[ i ];
-
-            // prevent canceling of all contracts if one canceled
-            promises[ i ] = contract.root.then(Just).catch(Contract.catchAllCancel);
-        }
-
         let cancelPromise = noop;
 
+        const promises = contracts.map(contract => contract.root);
+
         return new Contract(
+            // pass arrow function to use mutable cancelPromise from closure
             () => cancelPromise(),
 
             new Promise((resolve: (value: Either<E, Array<T>>) => void, reject: (error: Error) => void) => {
-                Promise.all(promises).then(Maybe.values).then(Either.combine).then(resolve).catch(reject);
+                Promise.all(promises).then(Either.combine).then(resolve).catch(reject);
 
                 cancelPromise = () => {
                     cancelPromise = noop;
@@ -785,14 +779,6 @@ class Contract<E, T> {
     }
 
     private static CANCEL = new Error('Contract canceled.');
-
-    private static catchAllCancel(error: Error): Promise<Maybe<never>> {
-        if (error === Contract.CANCEL) {
-            return Promise.resolve(Nothing);
-        }
-
-        return Promise.reject(error);
-    }
 
     private static catchCancel(error: Error): Promise<Unit> {
         if (error === Contract.CANCEL) {
@@ -835,7 +821,11 @@ class Contract<E, T> {
             }
         ));
 
-        return new Contract(() => cancelPromise(), promise);
+        return new Contract(
+            // pass arrow function to use mutable cancelPromise from closure
+            () => cancelPromise(),
+            promise
+        );
     }
 
     public chainError<Y>(fn: (error: E) => Contract<Y, T>): Contract<Y, T> {
@@ -852,7 +842,11 @@ class Contract<E, T> {
             value => Promise.resolve(Right(value))
         ));
 
-        return new Contract(() => cancelPromise(), promise);
+        return new Contract(
+            // pass arrow function to use mutable cancelPromise from closure
+            () => cancelPromise(),
+            promise
+        );
     }
 
     public finally<R>(fn: () => R): Contract<never, R> {

@@ -264,6 +264,67 @@ test.serial('Task.shape waits for all sub tasks to be done', async t => {
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
 });
 
+test.serial.skip('Task.shape fails when one fails', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Increment = inst(class Increment implements Msg {
+        public update(model: Model): Model {
+            return {
+                ...model,
+                count: model.count + 1
+            };
+        }
+    });
+
+    interface Model {
+        count: number;
+    }
+
+    interface Shape {
+        first: Unit;
+        second: Unit;
+        third: Unit;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { count: 0 },
+        Task.shape<string, Shape>({
+            first: Process.sleep(100),
+            second: Process.sleep(1000).chain(() => Task.fail<string, Unit>('Oops')),
+            third: Process.sleep(10000)
+        }).attempt(() => Increment)
+    ];
+
+    const subscriber = spy();
+
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    program.subscribe(subscriber);
+
+    t.plan(8);
+
+    t.is(subscriber.callCount, 0, 'Subscriber not called');
+    t.deepEqual(program.getModel(), { count: 0 }, 'Initial model does not change');
+
+    await clock.tickAsync(0);
+    t.is(subscriber.callCount, 0, 'Subscriber not called after async');
+    t.deepEqual(program.getModel(), { count: 0 }, 'Model does not change');
+
+    await clock.tickAsync(100); // 100
+    t.is(subscriber.callCount, 0, 'Subscriber not called after 100');
+    t.deepEqual(program.getModel(), { count: 0 }, 'First sleep does not change model');
+
+    await clock.tickAsync(900); // 1000
+    t.is(subscriber.callCount, 1, 'Subscriber called ones');
+    t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
+});
+
 test.serial('Task.all waits for all sub tasks to be done', async t => {
     interface Msg {
         update(model: Model): Model;
@@ -321,6 +382,65 @@ test.serial('Task.all waits for all sub tasks to be done', async t => {
     await clock.tickAsync(9000); // 10000
     t.is(subscriber.callCount, 1, 'Subscriber called ones');
     t.deepEqual(program.getModel(), { count: 1 }, 'Increment applied');
+});
+
+test.serial('Task.all fails when one fails', async t => {
+    interface Msg {
+        update(model: Model): Model;
+    }
+
+    const Increment = cons(class Increment implements Msg {
+        public constructor(
+            private readonly result: Either<string, Array<number>>
+        ) {}
+
+        public update(model: Model): Model {
+            return {
+                ...model,
+                result: this.result
+            };
+        }
+    });
+
+    interface Model {
+        result: Either<string, Array<number>>;
+    }
+
+    const initial: [ Model, Cmd<Msg> ] = [
+        { result: Either.Right([]) },
+        Task.all([
+            Process.sleep(100).map(() => 1),
+            Process.sleep(1000).chain(() => Task.fail('error')),
+            Process.sleep(10000).map(() => 2)
+        ]).attempt(Increment)
+    ];
+
+    const subscriber = spy();
+
+    const program = Program.client<Unit, Msg, Model>({
+        flags: Unit,
+        init: () => initial,
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
+    });
+
+    program.subscribe(subscriber);
+
+    t.plan(8);
+
+    t.is(subscriber.callCount, 0, 'Subscriber not called');
+    t.deepEqual(program.getModel(), { result: Either.Right([]) }, 'Initial model does not change');
+
+    await clock.tickAsync(0);
+    t.is(subscriber.callCount, 0, 'Subscriber not called after async');
+    t.deepEqual(program.getModel(), { result: Either.Right([]) }, 'Model does not change');
+
+    await clock.tickAsync(100); // 100
+    t.is(subscriber.callCount, 0, 'Subscriber not called after 100');
+    t.deepEqual(program.getModel(), { result: Either.Right([]) }, 'First sleep does not change model');
+
+    await clock.tickAsync(900); // 1000
+    t.is(subscriber.callCount, 1, 'Subscriber called ones');
+    t.deepEqual(program.getModel(), { result: Either.Left('error') }, 'Increment applied');
 });
 
 test.serial('Task.all cancel fast sleep does not affect to the rest', async t => {
