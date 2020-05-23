@@ -687,15 +687,11 @@ test('Dict.keys()', t => {
     t.deepEqual(alphabet.keys(), [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 ]);
 });
 
-test.todo('Dict.keys.iterator()');
-
 test('Dict.values()', t => {
     t.deepEqual(Dict.empty.values(), []);
     t.deepEqual(Dict.singleton(0, 'A').values(), [ 'A' ]);
     t.deepEqual(alphabet.values(), [ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' ]);
 });
-
-test.todo('Dict.values.iterator()');
 
 test('Dict.entries()', t => {
     t.deepEqual(Dict.empty.entries(), []);
@@ -730,5 +726,3 @@ test('Dict.entries()', t => {
         [ 25, 'Z' ]
     ]);
 });
-
-test.todo('Dict.entries.iterator()');
