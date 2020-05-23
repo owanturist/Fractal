@@ -1,7 +1,7 @@
 import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
-import { Program, Process, Task, Cmd } from '../src/remade';
+import { Program, Process, Task, Cmd, Sub } from '../src/remade';
 import { Unit, inst, cons } from '../src/Basics';
 import Either from '../src/Either';
 
@@ -51,7 +51,8 @@ test.serial('Task.succeed passes value', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -97,7 +98,8 @@ test.serial('Task.fail passes error', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -143,7 +145,8 @@ test.serial('Task.map changes value', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -189,7 +192,8 @@ test.serial('Task.mapError changes error', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -237,7 +241,8 @@ test.serial('Task.shape waits for all sub tasks to be done', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -312,7 +317,8 @@ test.serial('Task.shape fails when one fails', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -367,7 +373,8 @@ test.serial('Task.all waits for all sub tasks to be done', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);
@@ -430,7 +437,8 @@ test.serial('Task.all fails when one fails', async t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     program.subscribe(subscriber);

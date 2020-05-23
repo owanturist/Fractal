@@ -1,7 +1,7 @@
 import test from 'ava';
 import { SinonFakeTimers, spy, useFakeTimers } from 'sinon';
 
-import { Program, Process, Task, Cmd } from '../src/remade';
+import { Program, Process, Task, Cmd, Sub } from '../src/remade';
 import { Unit, inst, cons } from '../src/Basics';
 
 const clock = useFakeTimers({
@@ -46,7 +46,8 @@ test.serial('Program.client() initial model and command works correctly', async 
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     t.deepEqual(program.getModel(), { count: 0 }, 'Initial model keeps the same value');
@@ -70,7 +71,8 @@ test('Program.client() flags are passed correctly', t => {
     const program = Program.client<{ initial: number }, Msg, Model>({
         flags: { initial: 10 },
         init: flags => [ init(flags.initial), Cmd.none ],
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     t.deepEqual(program.getModel(), { count: 10 });
@@ -99,7 +101,8 @@ test('Program.client() subscribers works correctly', t => {
     const program = Program.client<Unit, Msg, Model>({
         flags: Unit,
         init: () => [ initial, Cmd.none ],
-        update: (msg, model) => [ msg.update(model), Cmd.none ]
+        update: (msg, model) => [ msg.update(model), Cmd.none ],
+        subscriptions: () => Sub.none
     });
 
     const subscriber1 = spy();
@@ -193,7 +196,8 @@ test.serial('Program.client() effects call Msg', async t => {
     const program = Program.client<Flags, Msg, Model>({
         flags: { initial: 5 },
         init,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     });
 
     t.deepEqual(program.getModel(), { count: 5 }, 'Initial Model');
@@ -329,7 +333,8 @@ test.serial('Program.client() TEA in action', async t => {
     const program = Program.client<Unit, AppMsg, AppModel>({
         flags: Unit,
         init: initApp,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     });
 
     t.deepEqual(program.getModel(), {

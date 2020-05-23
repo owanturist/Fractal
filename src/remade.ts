@@ -17,6 +17,7 @@ const unit = () => Unit;
 interface Bag<AppMsg, SelfMsg, State> {
     readonly manager: Manager<AppMsg, SelfMsg, State>;
     readonly commands: Array<Cmd<AppMsg>>;
+    readonly subscriptions: Array<Sub<AppMsg>>;
 }
 
 abstract class Effect<Msg> {
@@ -87,7 +88,7 @@ class Batch<Msg> extends Effect<Msg> {
 export abstract class Cmd<Msg> extends Effect<Msg> {
     public static none = None as unknown as Cmd<never>;
 
-    public static batch = Batch.of as <Msg>(cmds: Array<Cmd<Msg>>) => Cmd<Msg>;
+    public static batch = Batch.of as <Msg>(commands: Array<Cmd<Msg>>) => Cmd<Msg>;
 
     public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
 
@@ -101,10 +102,37 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
         if (bag == null) {
             bags.set(manager.id, {
                 commands: [ this ],
+                subscriptions: [],
                 manager
             });
         } else {
             bag.commands.push(this);
+        }
+    }
+}
+
+export abstract class Sub<Msg> extends Effect<Msg> {
+    public static none = None as unknown as Sub<never>;
+
+    public static batch = Batch.of as <Msg>(commands: Array<Cmd<Msg>>) => Cmd<Msg>;
+
+    public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
+
+    protected abstract getManager(): Manager<unknown, unknown, unknown>;
+
+    protected collect(bags: Map<number, Bag<Msg, unknown, unknown>>): void {
+        const manager = this.getManager();
+
+        const bag = bags.get(manager.id);
+
+        if (bag == null) {
+            bags.set(manager.id, {
+                commands: [],
+                subscriptions: [ this ],
+                manager
+            });
+        } else {
+            bag.subscriptions.push(this);
         }
     }
 }
@@ -589,6 +617,7 @@ export namespace Program {
         flags: Flags;
         init(flags: Flags): [ Model, Cmd<Msg> ];
         update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+        subscriptions(model: Model): Sub<Msg>;
     }): Program<Msg, Model> => {
         return new ClientProgram(init(flags), update);
     };
@@ -646,16 +675,16 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
         }
 
         const initialModel = this.model;
-        const cmds: Array<Cmd<Msg>> = [];
+        const commands: Array<Cmd<Msg>> = [];
 
         for (const msg of messages) {
             const [ nextModel, cmd ] = this.update(msg, this.model);
 
             this.model = nextModel;
-            cmds.push(cmd);
+            commands.push(cmd);
         }
 
-        this.runtime.runEffects(Cmd.batch(cmds));
+        this.runtime.runEffects(Cmd.batch(commands));
 
         // prevents subscribers call when model not changed
         if (initialModel === this.model) {
@@ -687,16 +716,16 @@ class ServerProgram<Msg, Model> {
     }
 
     private dispatch = (messages: Array<Msg>): Contract<never, Unit> => {
-        const cmds: Array<Cmd<Msg>> = [];
+        const commands: Array<Cmd<Msg>> = [];
 
         for (const msg of messages) {
             const [ nextModel, cmd ] = this.update(msg, this.model);
 
             this.model = nextModel;
-            cmds.push(cmd);
+            commands.push(cmd);
         }
 
-        return this.runtime.runEffects(Cmd.batch(cmds));
+        return this.runtime.runEffects(Cmd.batch(commands));
     }
 }
 
