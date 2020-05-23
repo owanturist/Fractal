@@ -567,7 +567,7 @@ class Runtime<AppMsg, SelfMsg, State> {
         };
     }
 
-    public runEffects(cmd: Cmd<AppMsg>): Contract<never, Unit> {
+    public runEffects(cmd: Cmd<AppMsg>, _sub: Sub<AppMsg>): Contract<never, Unit> {
         const bags: Map<number, Bag<AppMsg, SelfMsg, State>> = new Map();
         const nextStateContracts: Array<Contract<never, State>> = [];
         const context: Context = {
@@ -613,21 +613,22 @@ export interface Program<Msg, Model> {
 }
 
 export namespace Program {
-    export const client = <Flags, Msg, Model>({ flags, init, update }: {
+    export const client = <Flags, Msg, Model>({ flags, init, update, subscriptions }: {
         flags: Flags;
         init(flags: Flags): [ Model, Cmd<Msg> ];
         update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
         subscriptions(model: Model): Sub<Msg>;
     }): Program<Msg, Model> => {
-        return new ClientProgram(init(flags), update);
+        return new ClientProgram(init(flags), update, subscriptions);
     };
 
-    export const server = <Flags, Msg, Model>({ flags, init, update }: {
+    export const server = <Flags, Msg, Model>({ flags, init, update, subscriptions }: {
         flags: Flags;
         init(flags: Flags): [ Model, Cmd<Msg> ];
         update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
+        subscriptions(model: Model): Sub<Msg>;
     }): Promise<Model> => {
-        return new ServerProgram(init(flags), update).collect();
+        return new ServerProgram(init(flags), update, subscriptions).run();
     };
 }
 
@@ -638,7 +639,8 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
-        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ]
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
+        private readonly subscriptions: (model: Model) => Sub<Msg>
     ) {
         this.model = initialModel;
         this.runtime = new Runtime(messages => {
@@ -647,7 +649,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
             return Contract.resolve(Unit);
         });
 
-        this.runtime.runEffects(initialCmd);
+        this.runtime.runEffects(initialCmd, subscriptions(initialModel));
     }
 
     public readonly dispatch = (msg: Msg): void => this.dispatchMany([ msg ]);
@@ -684,7 +686,7 @@ class ClientProgram<Msg, Model> implements Program<Msg, Model> {
             commands.push(cmd);
         }
 
-        this.runtime.runEffects(Cmd.batch(commands));
+        this.runtime.runEffects(Cmd.batch(commands), this.subscriptions(this.model));
 
         // prevents subscribers call when model not changed
         if (initialModel === this.model) {
@@ -704,15 +706,19 @@ class ServerProgram<Msg, Model> {
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
-        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ]
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
+        private readonly subscriptions: (model: Model) => Sub<Msg>
     ) {
         this.model = initialModel;
         this.cmd = initialCmd;
         this.runtime = new Runtime(this.dispatch);
     }
 
-    public collect(): Promise<Model> {
-        return this.runtime.runEffects(this.cmd).then(() => this.model);
+    public run(): Promise<Model> {
+        return this.runtime.runEffects(
+            this.cmd,
+            this.subscriptions(this.model)
+        ).then(() => this.model);
     }
 
     private dispatch = (messages: Array<Msg>): Contract<never, Unit> => {
@@ -725,7 +731,10 @@ class ServerProgram<Msg, Model> {
             commands.push(cmd);
         }
 
-        return this.runtime.runEffects(Cmd.batch(commands));
+        return this.runtime.runEffects(
+            Cmd.batch(commands),
+            this.subscriptions(this.model)
+        );
     }
 }
 

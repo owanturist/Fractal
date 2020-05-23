@@ -510,7 +510,8 @@ test.serial('Task.all cancel fast sleep does not affect to the rest', async t =>
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
@@ -582,7 +583,8 @@ test.serial('Task.all early cancel long sleep does affects to the rest', async t
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
@@ -651,7 +653,8 @@ test.serial('Task.all late cancel long sleep does affects to the rest', async t 
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
@@ -710,7 +713,8 @@ test.serial('Task.chain cancelation of parent Process does not affect the whole 
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
@@ -766,7 +770,8 @@ test.serial('Task.chain cancelation of child Process does not affect the whole c
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
@@ -822,7 +827,8 @@ test.serial('Task.chain cancelation of child Process after sleep does not affect
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
@@ -879,7 +885,8 @@ test.serial('Task.chain cancelation of chained child Process affects the whole c
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model)
+        update: (msg, model) => msg.update(model),
+        subscriptions: () => Sub.none
     }).then(result => {
         done = true;
 
