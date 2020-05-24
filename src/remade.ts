@@ -155,6 +155,7 @@ export abstract class Manager<AppMsg, SelfMsg, State> {
     public abstract onEffects(
         router: Router<AppMsg, SelfMsg>,
         commands: Array<Cmd<AppMsg>>,
+        subscriptions: Array<Sub<AppMsg>>,
         state: State
     ): Task<never, State>;
 
@@ -478,6 +479,7 @@ const taskManager = new class TaskManager<AppMsg> extends Manager<AppMsg, number
     public onEffects(
         router: Router<AppMsg, number>,
         commands: Array<TaskCmd<AppMsg>>,
+        _subscriptions: Array<Sub<AppMsg>>,
         state: TaskState<AppMsg>
     ): Task<never, TaskState<AppMsg>> {
         let result = Task.succeed(state);
@@ -567,7 +569,7 @@ class Runtime<AppMsg, SelfMsg, State> {
         };
     }
 
-    public runEffects(cmd: Cmd<AppMsg>, _sub: Sub<AppMsg>): Contract<never, Unit> {
+    public runEffects(cmd: Cmd<AppMsg>, sub: Sub<AppMsg>): Contract<never, Unit> {
         const bags: Map<number, Bag<AppMsg, SelfMsg, State>> = new Map();
         const nextStateContracts: Array<Contract<never, State>> = [];
         const context: Context = {
@@ -575,12 +577,13 @@ class Runtime<AppMsg, SelfMsg, State> {
         };
 
         Collector.collect(cmd, bags);
+        Collector.collect(sub, bags);
 
         // Map.forEach works for IE
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
         bags.forEach(bag => {
             const contract = this.getManagerState(bag.manager, context)
-                .map(state => bag.manager.onEffects(this.router, bag.commands, state))
+                .map(state => bag.manager.onEffects(this.router, bag.commands, bag.subscriptions, state))
                 .chain(task => TaskRunner.execute(task, context));
 
             nextStateContracts.push(contract);
@@ -622,13 +625,12 @@ export namespace Program {
         return new ClientProgram(init(flags), update, subscriptions);
     };
 
-    export const server = <Flags, Msg, Model>({ flags, init, update, subscriptions }: {
+    export const server = <Flags, Msg, Model>({ flags, init, update }: {
         flags: Flags;
         init(flags: Flags): [ Model, Cmd<Msg> ];
         update(msg: Msg, model: Model): [ Model, Cmd<Msg> ];
-        subscriptions(model: Model): Sub<Msg>;
     }): Promise<Model> => {
-        return new ServerProgram(init(flags), update, subscriptions).run();
+        return new ServerProgram(init(flags), update).run();
     };
 }
 
@@ -706,8 +708,7 @@ class ServerProgram<Msg, Model> {
 
     public constructor(
         [ initialModel, initialCmd ]: [ Model, Cmd<Msg> ],
-        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ],
-        private readonly subscriptions: (model: Model) => Sub<Msg>
+        private readonly update: (msg: Msg, model: Model) => [ Model, Cmd<Msg> ]
     ) {
         this.model = initialModel;
         this.cmd = initialCmd;
@@ -715,10 +716,7 @@ class ServerProgram<Msg, Model> {
     }
 
     public run(): Promise<Model> {
-        return this.runtime.runEffects(
-            this.cmd,
-            this.subscriptions(this.model)
-        ).then(() => this.model);
+        return this.runtime.runEffects(this.cmd, Sub.none).then(() => this.model);
     }
 
     private dispatch = (messages: Array<Msg>): Contract<never, Unit> => {
@@ -731,10 +729,7 @@ class ServerProgram<Msg, Model> {
             commands.push(cmd);
         }
 
-        return this.runtime.runEffects(
-            Cmd.batch(commands),
-            this.subscriptions(this.model)
-        );
+        return this.runtime.runEffects(Cmd.batch(commands), Sub.none);
     }
 }
 

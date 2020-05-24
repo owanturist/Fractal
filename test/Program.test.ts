@@ -384,8 +384,7 @@ test('Program.server() done immidiatelly when non of async', async t => {
     const model = await Program.server<number, never, number>({
         flags: 10,
         init: flags => [ flags, Cmd.none ],
-        update: (_msg, model) => [ model, Cmd.none ],
-        subscriptions: () => Sub.none
+        update: (_msg, model) => [ model, Cmd.none ]
     });
 
     t.is(model, 10);
@@ -420,8 +419,7 @@ test.serial('Program.server() waits till initial effect done', async t => {
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ],
-        subscriptions: () => Sub.none
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     }).then(result => {
         done = true;
 
@@ -468,8 +466,7 @@ test.serial('Program.server() waits till all initial effects done', async t => {
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => [ msg.update(model), Cmd.none ],
-        subscriptions: () => Sub.none
+        update: (msg, model) => [ msg.update(model), Cmd.none ]
     }).then(result => {
         done = true;
 
@@ -531,8 +528,7 @@ test.serial('Program.server() waits till chain of effects done', async t => {
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(result => {
         done = true;
 
@@ -655,8 +651,7 @@ test.serial('Program.server() waits till TEA effects are done', async t => {
     const promise = Program.server<Unit, AppMsg, AppModel>({
         flags: Unit,
         init: initApp,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(result => {
         done = true;
 
@@ -712,8 +707,7 @@ test.serial('Program.server() never completes with cyclic sleep', async t => {
     Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(() => {
         done = true;
     });
@@ -769,8 +763,7 @@ test.serial('Program.server() completes with spawned sleep', async t => {
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(result => {
         done = true;
 
@@ -836,8 +829,7 @@ test.serial('Program.server() kills spawned sleep', async t => {
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(result => {
         done = true;
 
@@ -913,8 +905,7 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(result => {
         done = true;
 
@@ -969,8 +960,7 @@ test.serial('Program.server() catches unexpected error', async t => {
     const promise = Program.server<Unit, Msg, Model>({
         flags: Unit,
         init: () => initial,
-        update: (msg, model) => msg.update(model),
-        subscriptions: () => Sub.none
+        update: (msg, model) => msg.update(model)
     }).then(result => {
         done = true;
 
