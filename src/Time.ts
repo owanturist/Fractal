@@ -1,55 +1,139 @@
-// import { Router, Manager, Process, Task, Cmd } from './remade';
-// import { Maybe } from './Maybe';
+// import {
+//     Unit
+// } from './Basics';
+// import { Router, Manager, Process, Task, Cmd, Sub } from './remade';
 // import Dict from './Dict';
 
-// type State = Dict<string, Process>;
+// export type Tagger<AppMsg> = (posix: number) => AppMsg;
 
-// const initial = Dict.empty as State;
+// interface State<AppMsg> {
+//     taggers: Dict<number, Array<Tagger<AppMsg>>>;
+//     processes: Dict<number, Process>;
+// }
 
-// const manager = new class TimeManager extends Manager<State> {
-//     public init = Task.succeed(initial);
+// const taskManager = new class TimeManager<AppMsg> extends Manager<AppMsg, number, State<AppMsg>> {
+//     private static gatherNewTaggers<AppMsg>(
+//         subscriptions: Array<TimeSub<AppMsg>>
+//     ): Dict<number, Array<Tagger<AppMsg>>> {
+//         let newTaggers = Dict.empty as Dict<number, Array<Tagger<AppMsg>>>;
 
-//     public onEffects<AppMsg>(
-//         router: Router<AppMsg>,
-//         commands: Array<After<AppMsg>>,
-//         state: State
-//     ): Task<never, State> {
-//         return commands.reduce(
-//             (acc, task) => acc.chain(nextState => task.onEffects(router, nextState)),
-//             Task.succeed(state)
+//         for (const sub of subscriptions) {
+//             newTaggers = sub.register(newTaggers);
+//         }
+
+//         return newTaggers;
+//     }
+
+//     private static splitProcesses<AppMsg>(
+//         newTaggers: Dict<number, Array<Tagger<AppMsg>>>,
+//         processes: Dict<number, Process>
+//     ): [ Dict<number, Process>, Array<Process> ] {
+//         const acc = processes.foldl(
+//             (interval, process, { existing, expired }) => {
+//                 if (newTaggers.member(interval)) {
+//                     return {
+//                         existing: existing.insert(interval, process),
+//                         expired
+//                     };
+//                 }
+
+//                 return {
+//                     existing,
+//                     expired: [ ...expired, process ]
+//                 };
+//             },
+//             {
+//                 existing: Dict.empty as Dict<number, Process>,
+//                 expired: [] as Array<Process>
+//             }
 //         );
+
+//         return [ acc.existing, acc.expired ];
+//     }
+
+//     private static setEvery(interval: number, task: Task<never, Unit>): Task<never, Unit> {
+//         return Task.custom(({ resolve, onCancel }) => {
+//             const intervalID = setInterval(() => {
+//                 resolve(task);
+//             }, interval);
+
+//             onCancel(() => clearInterval(intervalID));
+//         });
+//     }
+
+//     public readonly init = Task.succeed({
+//         taggers: Dict.empty,
+//         processes: Dict.empty
+//     } as State<AppMsg>);
+
+//     public onEffects(
+//         router: Router<AppMsg, number>,
+//         _commands: Array<Cmd<AppMsg>>,
+//         subscriptions: Array<TimeSub<AppMsg>>,
+//         { processes }: State<AppMsg>
+//     ): Task<never, State<AppMsg>> {
+//         const nextTaggers = TimeManager.gatherNewTaggers(subscriptions);
+//         const [ existingProcesses, expiredProcesses ] = TimeManager.splitProcesses(nextTaggers, processes);
+//         const newIntervals: Array<number> = nextTaggers.keys().reduce(
+//             (acc, interval) => existingProcesses.member(interval) ? acc : [ ...acc, interval ],
+//             []
+//         );
+
+//         return Task.all(expiredProcesses.map(process => process.kill)).chain(() => {
+//             return newIntervals.reduce(
+//                 (acc, interval) => acc.chain(nextProcesses => {
+//                     return
+//                 }),
+//                 Task.succeed(existingProcesses)
+//             );
+//         }).map(nextProcesses => ({
+//             taggers: nextTaggers,
+//             processes: nextProcesses
+//         }));
+//     }
+
+//     public onSelfMsg(
+//         _router: Router<AppMsg, number>,
+//         _pid: number,
+//         state: State<AppMsg>
+//     ): Task<never, State<AppMsg>> {
+//         return Task.succeed(state);
 //     }
 // }();
 
-// class After<Msg> extends Cmd<Msg> {
+// abstract class TimeSub<AppMsg> extends Sub<AppMsg> {
+//     public abstract register(taggers: Dict<number, Array<Tagger<AppMsg>>>): Dict<number, Array<Tagger<AppMsg>>>;
+
+//     protected getManager(): Manager<AppMsg, number, State<AppMsg>> {
+//         return taskManager as Manager<AppMsg, number, State<AppMsg>>;
+//     }
+// }
+
+// class Every<AppMsg> extends TimeSub<AppMsg> {
 //     public constructor(
-//         private readonly name: Maybe<string>,
-//         private readonly timeout: number,
-//         private readonly msg: Msg
+//         private readonly interval: number,
+//         private readonly tagger: Tagger<AppMsg>
 //     ) {
 //         super();
 //     }
 
-//     public map<R>(fn: (msg: Msg) => R): Cmd<R> {
-//         return new After(this.name, this.timeout, fn(this.msg));
+//     public map<R>(fn: (msg: AppMsg) => R): Sub<R> {
+//         return new Every(
+//             this.interval,
+//             (posix: number): R => fn(this.tagger(posix))
+//         );
 //     }
 
-//     public onEffects(
-//         router: Router<Msg>,
-//         state: State
-//     ): Task<never, State> {
-//         return router.sendToApp(done => {
-//             const timeoutID = setTimeout(() => done(this.msg), this.timeout);
-
-//             return () => clearTimeout(timeoutID);
-//         })
-//             .spawn()
-//             .map(process => this.name.map(name => state.insert(name, process)).getOrElse(state));
-//     }
-
-//     protected getManager(): Manager<State> {
-//         return manager;
+//     public register(taggers: Dict<number, Array<Tagger<AppMsg>>>): Dict<number, Array<Tagger<AppMsg>>> {
+//         return taggers.get(this.interval).fold(
+//             () => taggers.insert(this.interval, [ this.tagger ]),
+//             list => taggers.insert(this.interval, [ ...list, this.tagger ])
+//         );
 //     }
 // }
 
-// // export function after() {}
+// export const now: Task<never, number> = Task.custom(({ resolve }) => resolve(Date.now()));
+
+// export const every = <Msg>(interval: number, tagger: Tagger<Msg>): Sub<Msg> => {
+//     return new Every(interval, tagger);
+// };
