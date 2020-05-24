@@ -789,13 +789,19 @@ test.serial('Program.server() kills spawned sleep', async t => {
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Kill = cons(class Kill implements Msg {
         public constructor(private readonly process: Process) {}
 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -855,11 +861,11 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
-    const NoOp = inst(class NoOp implements Msg {
-        public update(model: Model): [ Model, Cmd<Msg> ] {
+    const NoOp = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
             return [ model, Cmd.none ];
         }
-    });
+    };
 
     const Kill = cons(class Kill implements Msg {
         public constructor(private readonly process: Process) {}
@@ -867,7 +873,7 @@ test.serial('Program.server() kills spawned sleep does not affect another one', 
         public update(model: Model): [ Model, Cmd<Msg> ] {
             return [
                 model,
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });

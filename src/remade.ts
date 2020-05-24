@@ -114,9 +114,9 @@ export abstract class Cmd<Msg> extends Effect<Msg> {
 export abstract class Sub<Msg> extends Effect<Msg> {
     public static none = None as unknown as Sub<never>;
 
-    public static batch = Batch.of as <Msg>(commands: Array<Cmd<Msg>>) => Cmd<Msg>;
+    public static batch = Batch.of as <Msg>(commands: Array<Sub<Msg>>) => Sub<Msg>;
 
-    public abstract map<R>(fn: (value: Msg) => R): Cmd<R>;
+    public abstract map<R>(fn: (value: Msg) => R): Sub<R>;
 
     protected abstract getManager(): Manager<unknown, unknown, unknown>;
 
@@ -415,8 +415,20 @@ class Spawn<E, T> extends Task<never, Process> {
     }
 }
 
+class Kill extends Task<never, Unit> {
+    public constructor(private readonly cancel: () => void) {
+        super();
+    }
+
+    protected execute(): Contract<never, Unit> {
+        this.cancel();
+
+        return Contract.resolve(Unit);
+    }
+}
+
 export interface Process {
-    kill(): Cmd<never>;
+    kill: Task<never, Unit>;
 }
 
 export namespace Process {
@@ -438,7 +450,7 @@ class AsyncProcess implements Process {
         private readonly cancel: () => void
     ) {}
 
-    public kill(): Cmd<never> {
+    public get kill(): Task<never, Unit> {
         return new Kill(this.cancel);
     }
 }
@@ -527,22 +539,6 @@ class Perform<AppMsg> extends TaskCmd<AppMsg> {
 
     public onEffects(router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
         return this.task.chain(msg => router.sendToApp([ msg ])).spawn().map(() => state);
-    }
-}
-
-class Kill<AppMsg> extends TaskCmd<AppMsg> {
-    public constructor(private readonly cancel: () => void) {
-        super();
-    }
-
-    public map(): Cmd<never> {
-        return this;
-    }
-
-    public onEffects(_router: Router<AppMsg, number>, state: TaskState<AppMsg>): Task<never, TaskState<AppMsg>> {
-        this.cancel();
-
-        return Task.succeed(state);
     }
 }
 

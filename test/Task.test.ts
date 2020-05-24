@@ -466,6 +466,12 @@ test.serial('Task.all cancel fast sleep does not affect to the rest', async t =>
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Cancel = cons(class Cancel implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -486,7 +492,7 @@ test.serial('Task.all cancel fast sleep does not affect to the rest', async t =>
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -538,6 +544,12 @@ test.serial('Task.all early cancel long sleep does affects to the rest', async t
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Cancel = cons(class Cancel implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -558,7 +570,7 @@ test.serial('Task.all early cancel long sleep does affects to the rest', async t
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -607,6 +619,12 @@ test.serial('Task.all late cancel long sleep does affects to the rest', async t 
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Cancel = cons(class Cancel implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -627,7 +645,7 @@ test.serial('Task.all late cancel long sleep does affects to the rest', async t 
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -679,6 +697,12 @@ test.serial('Task.chain cancelation of parent Process does not affect the whole 
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Increment = cons(class Increment implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -688,7 +712,7 @@ test.serial('Task.chain cancelation of parent Process does not affect the whole 
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -735,6 +759,12 @@ test.serial('Task.chain cancelation of child Process does not affect the whole c
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Increment = cons(class Increment implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -744,7 +774,7 @@ test.serial('Task.chain cancelation of child Process does not affect the whole c
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -791,6 +821,12 @@ test.serial('Task.chain cancelation of child Process after sleep does not affect
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Increment = cons(class Increment implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -800,7 +836,7 @@ test.serial('Task.chain cancelation of child Process after sleep does not affect
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
@@ -847,6 +883,12 @@ test.serial('Task.chain cancelation of chained child Process affects the whole c
         update(model: Model): [ Model, Cmd<Msg> ];
     }
 
+    const NoOp: Msg = {
+        update(model: Model): [ Model, Cmd<Msg> ] {
+            return [ model, Cmd.none ];
+        }
+    };
+
     const Increment = cons(class Increment implements Msg {
         public constructor(private readonly process: Process) {}
 
@@ -856,7 +898,7 @@ test.serial('Task.chain cancelation of chained child Process affects the whole c
                     ...model,
                     count: model.count + 1
                 },
-                this.process.kill()
+                Task.perform(() => NoOp, this.process.kill)
             ];
         }
     });
