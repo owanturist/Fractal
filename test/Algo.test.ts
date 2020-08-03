@@ -505,3 +505,91 @@ test('Algo.heapsort', t => {
         _2
     );
 });
+
+//     v
+//   | a b a b a c
+//   | 0 1 2 3 4 5
+// a | 1 1 3 1 5 1
+// b | 0 2 0 4 0 4
+// c | 0 0 0 0 0 6
+
+//                       v
+// 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
+// a a b a c a a b a b a c a a
+
+//     v
+//         v
+//   | a a b
+//   | 0 1 2
+// a | 1 2 2
+// b | 0 0 3
+
+class DFA {
+    private readonly steps: Array<{
+        [ char: string ]: number;
+    }>;
+
+    public constructor(pattern: string) {
+        const M = pattern.length;
+
+        this.steps = new Array(M);
+
+        if (M > 0) {
+            this.steps[ 0 ] = {
+                [ pattern[ 0 ] ]: 1
+            };
+        }
+
+        for (let i = 1, x = 0; i < M; i++) {
+            const backup = this.steps[ x ];
+            const char = pattern.charAt(i);
+
+            x = backup[ char ] || 0;
+
+            this.steps[ i ] = {
+                ...backup,
+                [ char ]: i + 1
+            };
+        }
+    }
+
+    public lookup(input: string): number {
+        const N = input.length;
+        const M = this.steps.length;
+
+        for (let i = 0, j = 0; i < N; i++) {
+            j = this.next(j, input.charAt(i));
+
+            if (j === M) {
+                return i - M + 1;
+            }
+        }
+
+        return -1;
+    }
+
+    private next(index: number, char: string): number {
+        return this.steps[ index ][ char ] || 0;
+    }
+}
+
+const find = (pattern: string, input: string): number => {
+    return new DFA(pattern).lookup(input);
+};
+
+test('Algo.find', t => {
+    t.is(
+        find('aab', 'aaab'),
+        1
+    );
+
+    t.is(
+        find('ababac', 'aabacaababacaa'),
+        6
+    );
+
+    t.is(
+        find('ababaa', 'aabacaababacaa'),
+        -1
+    );
+});
