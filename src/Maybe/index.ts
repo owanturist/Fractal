@@ -16,8 +16,10 @@ export interface Maybe<T> {
      * Conveniently check if a `Maybe` matches `Nothing`.
      *
      * @example
+     * ```typescript
      * Nothing.isNothing()  // true
      * Just(42).isNothing() // false
+     * ```
      */
     isNothing(): boolean;
 
@@ -25,8 +27,10 @@ export interface Maybe<T> {
      * Conveniently check if a `Maybe` matches `Just<any>`.
      *
      * @example
+     * ```typescript
      * Nothing.isJust()  // false
      * Just(42).isJust() // true
+     * ```
      */
     isJust(): boolean;
 
@@ -36,11 +40,13 @@ export interface Maybe<T> {
      * @param another `Maybe` to check equality.
      *
      * @example
+     * ```typescript
      * Nothing.isEqual(Nothing)   // true
      * Nothing.isEqual(Just(42))  // false
      * Just(42).isEqual(Nothing)  // false
      * Just(42).isEqual(Just(13)) // false
      * Just(42).isEqual(Just(42)) // true
+     * ```
      */
     isEqual<T_>(another: Maybe<WhenNever<T, T_>>): boolean;
 
@@ -50,8 +56,10 @@ export interface Maybe<T> {
      * @param fn Transforming function.
      *
      * @example
+     * ```typescript
      * Nothing.map((a: number) => a * 2) // Nothing
      * Just(3).map((a: number) => a * 2) // Just(6)
+     * ```
      */
     map<R>(fn: (value: T) => R): Maybe<R>;
 
@@ -61,9 +69,11 @@ export interface Maybe<T> {
      * @param fn Chaining function.
      *
      * @example
+     * ```typescript
      * Nothing.chain((a: number) => a > 0 ? Just(a * 2) : Nothing)  // Nothing
      * Just(3).chain((a: number) => a > 0 ? Just(a * 2) : Nothing)  // Just(6)
      * Just(-3).chain((a: number) => a > 0 ? Just(a * 2) : Nothing) // Nothing
+     * ```
      */
     chain<R>(fn: (value: T) => Maybe<R>): Maybe<R>;
 
@@ -74,9 +84,11 @@ export interface Maybe<T> {
      * @param fn Filter function.
      *
      * @example
+     * ```typescript
      * Nothing.filter((a: number) => a > 0)   // Nothing
      * Just(42).filter((a: number) => a > 0)  // Just(42)
      * Just(-42).filter((a: number) => a > 0) // Nothing
+     * ```
      */
     filter<T_>(fn: (value: WhenNever<T, T_>) => boolean): Maybe<WhenNever<T, T_>>;
 
@@ -86,10 +98,12 @@ export interface Maybe<T> {
      * @param fn The function to return next `Maybe`.
      *
      * @example
+     * ```typescript
      * Nothing.orElse(() => Nothing)   // Nothing
      * Nothing.orElse(() => Just(42))  // Just(42)
      * Just(13).orElse(() => Nothing)  // Just(13)
      * Just(13).orElse(() => Just(42)) // Just(13)
+     * ```
      */
     orElse<T_>(fn: () => Maybe<WhenNever<T, T_>>): Maybe<WhenNever<T, T_>>;
 
@@ -99,8 +113,10 @@ export interface Maybe<T> {
      * @param defaults The default `T`.
      *
      * @example
+     * ```typescript
      * Nothing.getOrElse(42)  // 42
      * Just(13).getOrElse(42) // 13
+     * ```
      */
     getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_>;
 
@@ -111,8 +127,10 @@ export interface Maybe<T> {
      * @param onJust    The function calls in `Just` case.
      *
      * @example
+     * ```typescript
      * Nothing.fold(() => 0, (a: number) => a * 2) // 0
      * Just(3).fold(() => 0, (a: number) => a * 2) // 6
+     * ```
      */
     fold<R>(onNothing: () => R, onJust: (value: T) => R): R;
 
@@ -122,6 +140,7 @@ export interface Maybe<T> {
      * @param pattern Pattern matching.
      *
      * @example
+     * ```typescript
      * Nothing.cata({
      *     Nothing: () => 0,
      *     Just: (a: number) => a * 2
@@ -131,6 +150,7 @@ export interface Maybe<T> {
      *     Nothing: () => 0,
      *     Just: (a: number) => a * 2
      * }) // 6
+     * ```
      */
     cata<R>(pattern: Pattern<T, R>): R;
 
@@ -140,8 +160,10 @@ export interface Maybe<T> {
      * @param error `Left` error when `Nothing`.
      *
      * @example
+     * ```typescript
      * Nothing.toEither('error')  // Left('error')
      * Just(42).toEither('error') // Right(42)
+     * ```
      */
     toEither<E>(error: E): Either<E, T>;
 
@@ -152,6 +174,7 @@ export interface Maybe<T> {
      * @param fn Predicate function.
      *
      * @example
+     * ```typescript
      * const helperFunction = (maybeNumber: Maybe<number>): number => {
      *     return maybeNumber
      *         .chain((a: number) => a < 100 ? Just(a) : Nothing)
@@ -169,6 +192,7 @@ export interface Maybe<T> {
      * helperFunction(
      *     Just(42).chain((a: number) => a > 0 ? Just(42 / 2) : Nothing)
      * ).toFixed(2)
+     * ```
      */
     tap<R>(fn: (that: Maybe<T>) => R): R;
 }
@@ -201,9 +225,11 @@ export namespace Maybe {
      * @param value Nullable value.
      *
      * @example
+     * ```typescript
      * fromNullable(null)                   // Nothing
      * fromNullable([ '0', '1', '2' ][ 3 ]) // Nothing
      * fromNullable([ '0', '1', '2' ][ 0 ]) // Just('0')
+     * ```
      */
     export const fromNullable = <T>(value: T | null | undefined): Maybe<T extends null | undefined ? never : T> => {
         return value == null ? Nothing : Just(value as T extends null | undefined ? never : T);
@@ -216,8 +242,10 @@ export namespace Maybe {
      * @param either Converted `Either`
      *
      * @example
+     * ```typescript
      * fromEither(Left('error')) // Nothing
      * fromEither(Right(42))     // Just(42)
+     * ```
      */
     export const fromEither = <E, T>(either: Either<E, T>): Maybe<T> => {
         return either.map(Just).getOrElse(Nothing);
@@ -229,12 +257,14 @@ export namespace Maybe {
      * @param maybe `Maybe` with `Maybe` inside.
      *
      * @example
+     * ```typescript
      * join(Nothing)        // Nothing
      * join(Just(Nothing))  // Nothing
      * join(Just(Just(42))) // Just(42)
      *
      * Nothing.tap(join)              // Nothing
      * Just(42).tap(Just).tap(join) // Just(42)
+     * ```
      */
     export const join = <T>(maybe: Maybe<Maybe<T>>): Maybe<T> => maybe.chain(identity);
 
@@ -245,6 +275,7 @@ export namespace Maybe {
      * @param object Object of `Maybe`s.
      *
      * @example
+     * ```typescript
      * shape({
      *     id: Just(0),
      *     title: Nothing
@@ -254,6 +285,7 @@ export namespace Maybe {
      *     id: Just(0),
      *     title: Just('name')
      * }) // Just({ id: 0, title: 'name' })
+     * ```
      */
     export const shape = <O extends {}>(object: {[ K in keyof O ]: Maybe<O[ K ]>}): Maybe<O> => {
         const acc: O = {} as O;
@@ -280,8 +312,10 @@ export namespace Maybe {
      * @param array Array of `Maybe`s.
      *
      * @example
+     * ```typescript
      * combine([ Nothing, Just(42) ]) // Nothing
      * combine([ Just(1), Just(2) ])  // Just([ 1, 2 ])
+     * ```
      */
     export const combine = <T>(array: Array<Maybe<T>>): Maybe<Array<unknown extends T ? never : T>> => {
         const acc: Array<T> = [];
@@ -303,8 +337,10 @@ export namespace Maybe {
      * @param array Array of `Maybe`s.
      *
      * @example
+     * ```typescript
      * values([ Nothing, Just(42), Just(0) ]) // [ 42, 0 ]
      * values([ Just(1), Just(2), Nothing ])  // [ 1, 2 ]
+     * ```
      */
     export const values = <T>(array: Array<Maybe<T>>): Array<unknown extends T ? never : T> => {
         const acc: Array<T> = [];
@@ -320,47 +356,47 @@ export namespace Maybe {
 }
 
 /**
- * @alias `Maybe.Pattern`
+ * @alias {@linkcode Maybe.Pattern}
  */
 export type Pattern<T, R> = Maybe.Pattern<T, R>;
 
 /**
- * @alias `Maybe.Nothing`
+ * @alias {@linkcode Maybe.Nothing}
  */
 export const Nothing = Maybe.Nothing;
 
 /**
- * @alias `Maybe.Just`
+ * @alias {@linkcode Maybe.Just}
  */
 export const Just = Maybe.Just;
 
 /**
- * @alias `Maybe.fromNullable`
+ * @alias {@linkcode Maybe.fromNullable}
  */
 export const fromNullable = Maybe.fromNullable;
 
 /**
- * @alias `Maybe.fromEither`
+ * @alias {@linkcode Maybe.fromEither}
  */
 export const fromEither = Maybe.fromEither;
 
 /**
- * @alias `Maybe.join`
+ * @alias {@linkcode Maybe.join}
  */
 export const join = Maybe.join;
 
 /**
- * @alias `Maybe.shape`
+ * @alias {@linkcode Maybe.shape}
  */
 export const shape = Maybe.shape;
 
 /**
- * @alias `Maybe.combine`
+ * @alias {@linkcode Maybe.combine}
  */
 export const combine = Maybe.combine;
 
 /**
- * @alias `Maybe.values`
+ * @alias {@linkcode Maybe.values}
  */
 export const values = Maybe.values;
 

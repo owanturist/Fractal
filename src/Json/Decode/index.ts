@@ -135,6 +135,9 @@ interface OptionalLazy {
     <T>(callDecoder: () => _.Decoder<T>): _.Decoder<Maybe<T>>;
 }
 
+/**
+ * @private
+ */
 interface Common {
     string: unknown;
     boolean: unknown;
@@ -155,6 +158,9 @@ interface Common {
     at(path: Array<string | number>): unknown;
 }
 
+/**
+ * @private
+ */
 interface WithOptional extends Common {
     optional: Decode.Optional;
 
@@ -183,12 +189,14 @@ export namespace Decode {
          * Decode a JSON into an optional `string`.
          *
          * @example
+         * ```typescript
          * optional.string.decodeJSON('null')              // Right(Nothing)
          * optional.string.decodeJSON('true')              // Left(...)
          * optional.string.decodeJSON('42')                // Left(...)
          * optional.string.decodeJSON('3.14')              // Left(...)
          * optional.string.decodeJSON('"hello"')           // Right(Just('hello'))
          * optional.string.decodeJSON('{ "hello": 42 }')   // Left(..)
+         * ```
          */
         string: _.Decoder<Maybe<string>>;
 
@@ -196,12 +204,14 @@ export namespace Decode {
          * Decode a JSON into an optional `boolean`.
          *
          * @example
+         * ```typescript
          * optional.boolean.decodeJSON('null')             // Right(Nothing)
          * optional.boolean.decodeJSON('true')             // Right(Just(true))
          * optional.boolean.decodeJSON('42')               // Left(..)
          * optional.boolean.decodeJSON('3.14')             // Left(..)
          * optional.boolean.decodeJSON('"hello"')          // Left(..)
          * optional.boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
+         * ```
          */
         boolean: _.Decoder<Maybe<boolean>>;
 
@@ -209,12 +219,14 @@ export namespace Decode {
          * Decode a JSON into an optional `int` (`number` in fact).
          *
          * @example
+         * ```typescript
          * optional.int.decodeJSON('null')              // Right(Nothing)
          * optional.int.decodeJSON('true')              // Left(..)
          * optional.int.decodeJSON('42')                // Right(Just(42))
          * optional.int.decodeJSON('3.14')              // Left(..)
          * optional.int.decodeJSON('"hello"')           // Left(..)
          * optional.int.decodeJSON('{ "hello": 42 }')   // Left(..)
+         * ```
          */
         int: _.Decoder<Maybe<number>>;
 
@@ -222,12 +234,14 @@ export namespace Decode {
          * Decode a JSON into an optional `float` (`number` in fact).
          *
          * @example
+         * ```typescript
          * optional.float.decodeJSON('null')             // Right(Nothing)
          * optional.float.decodeJSON('true')             // Left(..)
          * optional.float.decodeJSON('42')               // Right(Just(42))
          * optional.float.decodeJSON('3.14')             // Right(Just(3.41))
          * optional.float.decodeJSON('"hello"')          // Left(..)
          * optional.float.decodeJSON('{ "hello": 42 }')  // Left(..)
+         * ```
          */
         float: _.Decoder<Maybe<number>>;
 
@@ -236,6 +250,7 @@ export namespace Decode {
          * Decoding fails if at least one of the fields fails.
          *
          * @example
+         * ```typescript
          * const decoder = optional.shape({
          *     x: field('_x_').float,
          *     y: field('_y_').float,
@@ -246,6 +261,7 @@ export namespace Decode {
          *
          * decoder.decodeJSON('{ "_x_": 12.34, "_y_": 56.78 }')
          * // Right(Just({ x: 12.34, y: 56.78 }))
+         * ```
          */
         shape: OptionalShape;
 
@@ -253,10 +269,12 @@ export namespace Decode {
          * Decode a JSON into an optional `Array`.
          *
          * @example
+         * ```typescript
          * optional.list(int).decodeJSON('null')
          * // Right(Nothing)
          * optional.list(boolean).decodeJSON('[ true, false ]')
          * // Right(Just([ true, false ]))
+         * ```
          */
         list: OptionaldList;
 
@@ -264,10 +282,12 @@ export namespace Decode {
          * Decode a JSON into an optional `Array` of pairs.
          *
          * @example
+         * ```typescript
          * optional.keyValue(number).decodeJSON('null')
          * // Right(Nothing)
          * optional.keyValue(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
          * // Right(Just([[ 'key_1', 2 ], [ 'key_2', 1 ]]))
+         * ```
          */
         keyValue: OptionalKeyValue;
 
@@ -275,10 +295,12 @@ export namespace Decode {
          * Decode a JSON into an optional object.
          *
          * @example
+         * ```typescript
          * optional.dict(number).decodeJSON('null')
          * // Right(Nothing)
          * optional.dict(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
          * // Right(Just({ key_1: 2, key_2: 1 }))
+         * ```
          */
         dict: OptionalDict;
 
@@ -286,7 +308,9 @@ export namespace Decode {
          * Nest a decoder.
          *
          * @example
+         * ```typescript
          * optional.of(string) === optional.string
+         * ```
          */
         of: OptionalOf;
 
@@ -296,6 +320,7 @@ export namespace Decode {
          * For example, say you want to read an array of int, but some of them are strings.
          *
          * @example
+         * ```typescript
          * list(
          *     optional.oneOf([
          *         int,
@@ -303,6 +328,7 @@ export namespace Decode {
          *     ])
          * ).decodeJSON('[ null, 1, "2", 3, "4" ]')
          * // Right([ Nothing, Just(1), Just(2), Just(3), Just(4) ])
+         * ```
          */
         oneOf: OptionalOneOf;
 
@@ -310,6 +336,7 @@ export namespace Decode {
          * Creates optional enum decoder based on variants.
          *
          * @example
+         * ```typescript
          * const currencyDecoder = optional.enums([
          *     [ 'USD', new USD(0) ],
          *     [ 'EUR', new EUR(0) ],
@@ -318,6 +345,7 @@ export namespace Decode {
          *
          * currencyDecoder.decodeJSON('null')  // Right(Nothing)
          * currencyDecoder.decodeJSON('"RUB"') // Right(Just(new RUB(0)))
+         * ```
          */
         enums: OptionalEnums;
 
@@ -327,11 +355,13 @@ export namespace Decode {
          * @param name Name of the field.
          *
          * @example
+         * ```typescript
          * optional.field('name').string.decodeJSON('null')               // Right(Nothing)
          * optional.field('name').string.decodeJSON('{}')                 // Right(Nothing)
          * optional.field('name').string.decodeJSON('{ "name": null }')   // Left(..)
          * optional.field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
          * optional.field('name').string.decodeJSON('{ "name": "tom" }')  // Right(Just('tom'))
+         * ```
          */
         field(name: string): OptionalPath;
 
@@ -341,6 +371,7 @@ export namespace Decode {
          * @param position Exact index of the decoding value.
          *
          * @example
+         * ```typescript
          * const json = '[ "alise", null, "chuck" ]';
          *
          * optional.index(0).string.decodeJSON(json)   // Right(Just('alise'))
@@ -348,6 +379,7 @@ export namespace Decode {
          * optional.index(2).string.decodeJSON(json)   // Right(Just('chuck'))
          * optional.index(-1).string.decodeJSON(json)  // Right(Just('chuck'))
          * optional.index(3).string.decodeJSON(json)   // Right(Nothing)
+         * ```
          */
         index(position: number): OptionalPath;
 
@@ -357,6 +389,7 @@ export namespace Decode {
          * @param path
          *
          * @example
+         * ```typescript
          * const json = '{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ] } }';
          *
          * optional.at([ 'count' ]).int.decodeJSON(json)                     // Right(Nothing)
@@ -374,6 +407,7 @@ export namespace Decode {
          * optional.field('person').optional.field('age').int
          * optional.field('person').optional.field('accounts').optional.index(0).string
          * optional.field('person').optional.field('accounts').optional.index(1).string
+         * ```
          */
         at(path: Array<string | number>): OptionalPath;
     }
@@ -383,11 +417,13 @@ export namespace Decode {
          * Lets create an optional `Decoder`.
          *
          * @example
+         * ```typescript
          * field('name').optional.string.decodeJSON('{ "name": null }')   // Right(Nothing)
          * field('name').optional.string.decodeJSON('{ "name": "tom" }')  // Right(Just('tom'))
          *
          * index(0).optional.string.decodeJSON('[]')          // Right(Nothing)
          * index(0).optional.string.decodeJSON('[ "cats" ]')  // Right(Just('cats'))
+         * ```
          */
         optional: Optional;
 
@@ -395,11 +431,13 @@ export namespace Decode {
          * Decode a JSON into a `string`.
          *
          * @example
+         * ```typescript
          * field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
          * field('name').string.decodeJSON('{ "name": "tom" }')  // Right('tom')
          *
          * index(0).string.decodeJSON('[]')          // Left(..)
          * index(0).string.decodeJSON('[ "cats" ]')  // Right('cats')
+         * ```
          */
         string: _.Decoder<string>;
 
@@ -407,11 +445,13 @@ export namespace Decode {
          * Decode a JSON into a `boolean`.
          *
          * @example
+         * ```typescript
          * field('disabled').boolean.decodeJSON('{ "disabled": 1 }')     // Left(..)
          * field('disabled').boolean.decodeJSON('{ "disabled": true }')  // Right(true)
          *
          * index(0).boolean.decodeJSON('[]')         // Left(..)
          * index(0).boolean.decodeJSON('[ false ]')  // Right(false)
+         * ```
          */
         boolean: _.Decoder<boolean>;
 
@@ -419,11 +459,13 @@ export namespace Decode {
          * Decode a JSON into a `int` (`number` in fact).
          *
          * @example
+         * ```typescript
          * field('age').int.decodeJSON('{ "age": true }')  // Left(..)
          * field('age').int.decodeJSON('{ "age": 42 }')    // Right(42)
          *
          * index(0).int.decodeJSON('[]')      // Left(..)
          * index(0).int.decodeJSON('[ 18 ]')  // Right(18)
+         * ```
          */
         int: _.Decoder<number>;
 
@@ -431,11 +473,13 @@ export namespace Decode {
          * Decode a JSON into a `float` (`number` in fact).
          *
          * @example
+         * ```typescript
          * field('weight').float.decodeJSON('{ "weight": true }')    // Left(..)
          * field('weight').float.decodeJSON('{ "weight": 123.45 }')  // Right(123.45)
          *
          * index(0).float.decodeJSON('[]')        // Left(..)
          * index(0).float.decodeJSON('[ 18.1 ]')  // Right(18.1)
+         * ```
          */
         float: _.Decoder<number>;
 
@@ -451,6 +495,7 @@ export namespace Decode {
          * Decoding fails if at least one of the fields fails.
          *
          * @example
+         * ```typescript
          * field('center').shape({
          *     x: field('_x_').float,
          *     y: field('_y_').float,
@@ -462,6 +507,7 @@ export namespace Decode {
          *     y: field('_y_').float,
          * }).decodeJSON('[{ "_x_": 12.34, "_y_": 56.78 }]')
          * // Right({ x: 12.34, y: 56.78 })
+         * ```
          */
         shape: RequiredShape;
 
@@ -469,11 +515,13 @@ export namespace Decode {
          * Decode a JSON into an `Array`.
          *
          * @example
+         * ```typescript
          * field('sequence').list(int).decodeJSON('{ "sequence": [ 1, 2, 3 ]}')
          * // Right([ 1, 2, 3 ])
          *
          * index(0).list(boolean).decodeJSON('[[ true, false ]]')
          * // Right([ true, false ])
+         * ```
          */
         list: RequiredList;
 
@@ -481,11 +529,13 @@ export namespace Decode {
          * Decode a JSON into an `Array` of pairs.
          *
          * @example
+         * ```typescript
          * field('keys').keyValue(number).decodeJSON('{ "keys": { "key_1": 2, "key_2": 1 }}')
          * // Right([[ 'key_1', 2 ], [ 'key_2', 1 ]])
          *
          * index(0).keyValue(intFromString, boolean).decodeJSON('[{ "1": true, "2": false }]')
          * // Right([[ 1, true ], [ 2, false ]])
+         * ```
          */
         keyValue: RequiredKeyValue;
 
@@ -493,11 +543,13 @@ export namespace Decode {
          * Decode a JSON into an object.
          *
          * @example
+         * ```typescript
          * field('keys').dict(number).decodeJSON('{ "keys": { "key_1": 2, "key_2": 1 }}')
          * // Right({ key_1: 2, key_2: 1 })
          *
          * index(0).dict(number).decodeJSON('[{ "key_1": 2, "key_2": 1 }]')
          * // Right({ key_1: 2, key_2: 1 })
+         * ```
          */
         dict: RequiredDict;
 
@@ -505,8 +557,10 @@ export namespace Decode {
          * Nest a decoder.
          *
          * @example
+         * ```typescript
          * field('name').of(string) === field('name').string
          * index(0).of(int) === index(0).int
+         * ```
          */
         of: RequiredOf;
 
@@ -516,6 +570,7 @@ export namespace Decode {
          * For example, say you want to read an array of int, but some of them are strings.
          *
          * @example
+         * ```typescript
          * list(
          *     field('count').oneOf([
          *         int,
@@ -523,6 +578,7 @@ export namespace Decode {
          *     ])
          * ).decodeJSON('[{ "count": 0 }, { "count": "1" }, { "count": "2" }, { "count": 3 }]')
          * // Right([ 0, 1, 2, 3 ])
+         * ```
          */
         oneOf: RequiredOneOf;
 
@@ -531,12 +587,14 @@ export namespace Decode {
          * Creates enum decoder based on variants.
          *
          * @example
+         * ```typescript
          * field('currency').enums([
          *     [ 'USD', new USD(0) ],
          *     [ 'EUR', new EUR(0) ],
          *     [ 'RUB', new RUB(0) ],
          * ]).decodeJSON('{ "currency": "RUB" }')
          * // Right(new RUB(0))
+         * ```
          */
         enums: RequiredEnums;
 
@@ -545,6 +603,7 @@ export namespace Decode {
          * You can use `lazy` to make sure your decoder unrolls lazily.
          *
          * @example
+         * ```typescript
          * interface Comment {
          *     message: string;
          *     comments: Array<Comment>;
@@ -554,6 +613,7 @@ export namespace Decode {
          *     message: field('message').string,
          *     comments: field('message').lazy(() => list(commentDecoder))
          * });
+         * ```
          */
         lazy: RequiredLazy;
 
@@ -563,11 +623,13 @@ export namespace Decode {
          * @param name Name of the field.
          *
          * @example
+         * ```typescript
          * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": 3 }}')          // Right(3)
          * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": 3, "y": 4 }}')  // Right(3)
          * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": true }}')       // Left(..)
          * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": null }}')       // Left(..)
          * field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "y": 4 }}')          // Left(..)
+         * ```
          */
         field(name: string): Path;
 
@@ -577,6 +639,7 @@ export namespace Decode {
          * @param position Exact index of the decoding value.
          *
          * @example
+         * ```typescript
          * const json = '[{ "children": [ "alise", "bob", "chuck" ]}]';
          *
          * at(0, 'children').index(0).string.decodeJSON(json)   // Right('alise')
@@ -584,6 +647,7 @@ export namespace Decode {
          * at(0, 'children').index(2).string.decodeJSON(json)   // Right('chuck')
          * at(0, 'children').index(-1).string.decodeJSON(json)  // Right('chuck')
          * at(0, 'children').index(3).string.decodeJSON(json)   // Left(..)
+         * ```
          */
         index(position: number): Path;
 
@@ -593,6 +657,7 @@ export namespace Decode {
          * @param path Sequence of field names and index positions.
          *
          * @example
+         * ```typescript
          * const json = '[{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ]}}]';
          *
          * index(0).at([ 'person', 'name' ]).string.decodeJSON(json)         // Right('tom')
@@ -604,6 +669,7 @@ export namespace Decode {
          * index(0).field('person').field('name').string
          * index(0).field('person').field('age').int
          * index(0).field('person').field('accounts').index(0).string
+         * ```
          */
         at(path: Array<string | number>): Path;
     }
@@ -613,6 +679,7 @@ export namespace Decode {
          * Lets create nested optional `Decoder`.
          *
          * @example
+         * ```typescript
          * optional.field('name').optional.string.decodeJSON('null')               // Right(Nothing)
          * optional.field('name').optional.string.decodeJSON('{}')                 // Right(Nothing)
          * optional.field('name').optional.string.decodeJSON('{ "name": null }')   // Right(Nothing)
@@ -624,6 +691,7 @@ export namespace Decode {
          * optional.index(0).optional.string.decodeJSON('[ null ]')    // Right(Nothing)
          * optional.index(0).optional.string.decodeJSON('[ 1 ]')       // Left(..)
          * optional.index(0).optional.string.decodeJSON('[ "cats" ]')  // Right(Just('cats'))
+         * ```
          */
         optional: Optional;
 
@@ -631,6 +699,7 @@ export namespace Decode {
          * Decode a JSON into a `string`.
          *
          * @example
+         * ```typescript
          * optional.field('name').string.decodeJSON('{}')                 // Right(Nothing)
          * optional.field('name').string.decodeJSON('{ name: null }')     // Left(..)
          * optional.field('name').string.decodeJSON('{ "name": 1 }')      // Left(..)
@@ -639,6 +708,7 @@ export namespace Decode {
          * optional.index(0).string.decodeJSON('[]')          // Right(Nothing)
          * optional.index(0).string.decodeJSON('[ null ]')    // Left(..)
          * optional.index(0).string.decodeJSON('[ "cats" ]')  // Right(Just('cats'))
+         * ```
          */
         string: _.Decoder<Maybe<string>>;
 
@@ -646,6 +716,7 @@ export namespace Decode {
          * Decode a JSON into a `boolean`.
          *
          * @example
+         * ```typescript
          * optional.field('disabled').boolean.decodeJSON('{}')                    // Right(Nothing)
          * optional.field('disabled').boolean.decodeJSON('{ "disabled": null }')  // Left(..)
          * optional.field('disabled').boolean.decodeJSON('{ "disabled": 1 }')     // Left(..)
@@ -654,6 +725,7 @@ export namespace Decode {
          * optional.index(0).boolean.decodeJSON('[]')         // Right(Nothing)
          * optional.index(0).boolean.decodeJSON('[ null ]')   // Left(..)
          * optional.index(0).boolean.decodeJSON('[ false ]')  // Right(Just(false))
+         * ```
          */
         boolean: _.Decoder<Maybe<boolean>>;
 
@@ -661,6 +733,7 @@ export namespace Decode {
          * Decode a JSON into a `int` (`number` in fact).
          *
          * @example
+         * ```typescript
          * optional.field('age').int.decodeJSON('{}')               // Right(Nothing)
          * optional.field('age').int.decodeJSON('{ "age": null }')  // Left(..)
          * optional.field('age').int.decodeJSON('{ "age": true }')  // Left(..)
@@ -669,6 +742,7 @@ export namespace Decode {
          * optional.index(0).int.decodeJSON('[]')        // Right(Nothing)
          * optional.index(0).int.decodeJSON('[ null ]')  // Left(..)
          * optional.index(0).int.decodeJSON('[ 18 ]')    // Right(Just(18))
+         * ```
          */
         int: _.Decoder<Maybe<number>>;
 
@@ -676,6 +750,7 @@ export namespace Decode {
          * Decode a JSON into a `float` (`number` in fact).
          *
          * @example
+         * ```typescript
          * optional.field('weight').float.decodeJSON('{}')                    // Right(Nothing)
          * optional.field('weight').float.decodeJSON('{ "weight": null }')    // Left(..)
          * optional.field('weight').float.decodeJSON('{ "weight": true }')    // Left(..)
@@ -684,6 +759,7 @@ export namespace Decode {
          * optional.index(0).float.decodeJSON('[]')        // Right(Nothing)
          * optional.index(0).float.decodeJSON('[ null ]')  // Left(..)
          * optional.index(0).float.decodeJSON('[ 18.1 ]')  // Right(Just(18.1))
+         * ```
          */
         float: _.Decoder<Maybe<number>>;
 
@@ -699,6 +775,7 @@ export namespace Decode {
          * Decoding fails if at least one of the fields fails.
          *
          * @example
+         * ```typescript
          * optional.field('center').shape({
          *     x: field('_x_').float,
          *     y: field('_y_').float,
@@ -710,6 +787,7 @@ export namespace Decode {
          *     y: field('_y_').float,
          * }).decodeJSON('[]')
          * // Right(Nothing)
+         * ```
          */
         shape: OptionalShape;
 
@@ -717,11 +795,13 @@ export namespace Decode {
          * Decode a JSON into an `Array`.
          *
          * @example
+         * ```typescript
          * optional.field('sequence').list(int).decodeJSON('{ "sequence": [ 1, 2, 3 ]}')
          * // Right(Just([ 1, 2, 3 ]))
          *
          * optional.index(0).list(boolean).decodeJSON('[]')
          * // Right(Nothing)
+         * ```
          */
         list: OptionaldList;
 
@@ -729,11 +809,13 @@ export namespace Decode {
          * Decode a JSON into an `Array` of pairs.
          *
          * @example
+         * ```typescript
          * optional.field('keys').keyValue(number).decodeJSON('{ "keys": { "key_1": 2, "key_2": 1 }}')
          * // Right(Just([[ 'key_1', 2 ], [ 'key_2', 1 ]]))
          *
          * optional.index(0).keyValue(intFromString, boolean).decodeJSON('[')
          * // Right(Nothing)
+         * ```
          */
         keyValue: OptionalKeyValue;
 
@@ -741,11 +823,13 @@ export namespace Decode {
          * Decode a JSON into an object.
          *
          * @example
+         * ```typescript
          * optional.field('keys').dict(number).decodeJSON('{ "keys": { "key_1": 2, "key_2": 1 }}')
          * // Right(Just({ key_1: 2, key_2: 1 }))
          *
          * optional.index(0).dict(number).decodeJSON('[]')
          * // Right(Nothing)
+         * ```
          */
         dict: OptionalDict;
 
@@ -753,8 +837,10 @@ export namespace Decode {
          * Nest a decoder.
          *
          * @example
+         * ```typescript
          * optional.field('name').of(string) === optional.field('name').string
          * optional.index(0).of(int) === optional.index(0).int
+         * ```
          */
         of: OptionalOf;
 
@@ -764,6 +850,7 @@ export namespace Decode {
          * For example, say you want to read an array of int, but some of them are strings.
          *
          * @example
+         * ```typescript
          * list(
          *     optional.field('count').oneOf([
          *         int,
@@ -771,6 +858,7 @@ export namespace Decode {
          *     ])
          * ).decodeJSON('[{ "count": 0 }, { "count": "1" }, { "count": "2" }, { "count": 3 }, {}]')
          * // Right([ Just(0), Just(1), Just(2), Just(3), Nothing ])
+         * ```
          */
         oneOf: OptionalOneOf;
 
@@ -778,6 +866,7 @@ export namespace Decode {
          * Creates enum decoder based on variants.
          *
          * @example
+         * ```typescript
          * optional.field('currency').enums([
          *     [ 'USD', new USD(0) ],
          *     [ 'EUR', new EUR(0) ],
@@ -791,6 +880,7 @@ export namespace Decode {
          *     [ 'RUB', new RUB(0) ],
          * ]).decodeJSON('[]')
          * // Right(Nothing)
+         * ```
          */
         enums: OptionalEnums;
 
@@ -799,6 +889,7 @@ export namespace Decode {
          * You can use `lazy` to make sure your decoder unrolls lazily.
          *
          * @example
+         * ```typescript
          * interface Comment {
          *     message: string;
          *     comments: Maybe<Array<Comment>>;
@@ -808,6 +899,7 @@ export namespace Decode {
          *     message: field('message').string,
          *     comments: optional.field('message').lazy(() => list(commentDecoder))
          * });
+         * ```
          */
         lazy: OptionalLazy;
 
@@ -817,6 +909,7 @@ export namespace Decode {
          * @param name Name of the field.
          *
          * @example
+         * ```typescript
          * optional.field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "x": 3 }}')
          * // Right(Just(3))
          * optional.field('coordinates').field('x').int.decodeJSON('{}')
@@ -825,6 +918,7 @@ export namespace Decode {
          * // Left(..)
          * optional.field('coordinates').field('x').int.decodeJSON('{ "coordinates": { "y": 4 }}')
          * // Left(..)
+         * ```
          */
         field(name: string): OptionalPath;
 
@@ -834,6 +928,7 @@ export namespace Decode {
          * @param position Exact index of the decoding value.
          *
          * @example
+         * ```typescript
          * const json = '[{ "children": [ "alise", "bob", "chuck" ]}]';
          *
          * optional.at(0, 'children').index(0).string.decodeJSON('[]')
@@ -846,6 +941,7 @@ export namespace Decode {
          * // Left(..)
          * optional.at(0, 'children').index(0).string.decodeJSON('[{ "children": [ "chuck" ]}]')
          * // Right(Just('chuck'))
+         * ```
          */
         index(position: number): OptionalPath;
 
@@ -855,6 +951,7 @@ export namespace Decode {
          * @param path Sequence of field names and index positions.
          *
          * @example
+         * ```typescript
          * const json = '[{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ]}}]';
          *
          * optional.index(0).at([ 'person', 'name' ]).string.decodeJSON('[]')         // Right(Nothing)
@@ -867,6 +964,7 @@ export namespace Decode {
          * optional.index(0).field('person').field('name').string
          * optional.index(0).field('person').field('age').int
          * optional.index(0).field('person').field('accounts').index(0).string
+         * ```
          */
         at(path: Array<string | number>): OptionalPath;
     }
@@ -882,11 +980,13 @@ export namespace Decode {
      * Decode a JSON into a `string`.
      *
      * @example
+     * ```typescript
      * string.decodeJSON('true')              // Left(...)
      * string.decodeJSON('42')                // Left(...)
      * string.decodeJSON('3.14')              // Left(...)
      * string.decodeJSON('"hello"')           // Right('hello')
      * string.decodeJSON('{ "hello": 42 }')   // Left(..)
+     * ```
      */
     export const string: Decoder<string> = new _.Primitive('a', 'STRING', isString);
 
@@ -894,11 +994,13 @@ export namespace Decode {
      * Decode a JSON into a `boolean`.
      *
      * @example
+     * ```typescript
      * boolean.decodeJSON('true')             // Right(true)
      * boolean.decodeJSON('42')               // Left(..)
      * boolean.decodeJSON('3.14')             // Left(..)
      * boolean.decodeJSON('"hello"')          // Left(..)
      * boolean.decodeJSON('{ "hello": 42 }')  // Left(..)
+     * ```
      */
     export const boolean: Decoder<boolean> = new _.Primitive('a', 'BOOLEAN', isBoolean);
 
@@ -906,11 +1008,13 @@ export namespace Decode {
      * Decode a JSON into an `int` (`number` in fact).
      *
      * @example
+     * ```typescript
      * int.decodeJSON('true')              // Left(..)
      * int.decodeJSON('42')                // Right(42)
      * int.decodeJSON('3.14')              // Left(..)
      * int.decodeJSON('"hello"')           // Left(..)
      * int.decodeJSON('{ "hello": 42 }')   // Left(..)
+     * ```
      */
     export const int: Decoder<number> = new _.Primitive('an', 'INTEGER', isInt);
 
@@ -918,11 +1022,13 @@ export namespace Decode {
      * Decode a JSON into a `float` (`number` in fact).
      *
      * @example
+     * ```typescript
      * float.decodeJSON('true')             // Left(..)
      * float.decodeJSON('42')               // Right(42)
      * float.decodeJSON('3.14')             // Right(3.41)
      * float.decodeJSON('"hello"')          // Left(..)
      * float.decodeJSON('{ "hello": 42 }')  // Left(..)
+     * ```
      */
     export const float: Decoder<number> = new _.Primitive('a', 'FLOAT', isFloat);
 
@@ -933,12 +1039,14 @@ export namespace Decode {
      * @param message Custom error message
      *
      * @example
+     * ```typescript
      * string.chain((str: string): Decoder<Date> => {
      *     const date = new Date(str);
      *
      *     return isNaN(date.getTime()) ? Decode.fail('Expecting a DATE') : Decode.succeed(date);
      * }).decode('2010-01-02')
      * // Right(new Date('2010-01-02'))
+     * ```
      */
     export const fail = (message: string): Decoder<never> => new _.Fail(message);
 
@@ -949,12 +1057,14 @@ export namespace Decode {
      * @param value The certain value.
      *
      * @example
+     * ```typescript
      * string.chain((str: string): Decoder<Date> => {
      *     const date = new Date(str);
      *
      *     return isNaN(date.getTime()) ? Decode.fail('Expecting a DATE') : Decode.succeed(date);
      * }).decode('2010-01-02')
      * // Right(new Date('2010-01-02'))
+     * ```
      */
     export const succeed = <T>(value: T): Decoder<T> => new _.Succeed(value);
 
@@ -963,11 +1073,13 @@ export namespace Decode {
      * Decoding fails if at least one of the fields fails.
      *
      * @example
+     * ```typescript
      * shape({
      *     x: field('_x_').float,
      *     y: field('_y_').float,
      * }).decodeJSON('{ "_x_": 12.34, "_y_": 56.78 }')
      * // Right({ x: 12.34, y: 56.78 })
+     * ```
      */
     export const shape: RequiredShape = object => new _.Shape(object);
 
@@ -975,11 +1087,13 @@ export namespace Decode {
      * Decode a JSON into an `Array`.
      *
      * @example
+     * ```typescript
      * list(int).decodeJSON('[ 1, 2, 3 ]')
      * // Right([ 1, 2, 3 ])
      *
      * list(boolean).decodeJSON('[ true, false ]')
      * // Right([ true, false ])
+     * ```
      */
     export const list: RequiredList = decoder => new _.List(decoder);
 
@@ -987,11 +1101,13 @@ export namespace Decode {
      * Decode a JSON into an `Array` of pairs.
      *
      * @example
+     * ```typescript
      * keyValue(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
      * // Right([[ 'key_1', 2 ], [ 'key_2', 1 ]])
      *
      * keyValue(intFromString, boolean).decodeJSON('{ "1": true, "2": false }')
      * // Right([[ 1, true ], [ 2, false ]])
+     * ```
      */
     export const keyValue: RequiredKeyValue = <T, K>(
         ...args: [ Decoder<T> ] | [ (key: string) => Either<string, K>, Decoder<T> ]
@@ -1009,8 +1125,10 @@ export namespace Decode {
      * @param decoder Decoder of the object value.
      *
      * @example
+     * ```typescript
      * dict(number).decodeJSON('{ "key_1": 2, "key_2": 1 }')
      * // Right({ key_1: 2, key_2: 1 })
+     * ```
      */
     export const dict = <T>(decoder: Decoder<T>): Decoder<{[ key: string ]: T }> => {
         return keyValue(decoder).map((pairs: Array<[ string, T ]>): {[ key: string ]: T } => {
@@ -1038,6 +1156,7 @@ export namespace Decode {
      * You could use `chain` to be even more particular if you wanted.
      *
      * @example
+     * ```typescript
      * list(
      *     oneOf([
      *         int,
@@ -1045,6 +1164,7 @@ export namespace Decode {
      *     ])
      * ).decodeJSON('[ 0, 1, "2", 3, "4" ]')
      * // Right([ 0, 1, 2, 3, 4 ])
+     * ```
      */
     export const oneOf: RequiredOneOf = decoders => new _.OneOf(decoders);
 
@@ -1052,12 +1172,14 @@ export namespace Decode {
      * Creates enum decoder based on variants.
      *
      * @example
+     * ```typescript
      * enums([
      *     [ 'USD', new USD(0) ],
      *     [ 'EUR', new EUR(0) ],
      *     [ 'RUB', new RUB(0) ],
      * ]).decodeJSON('"RUB"')
      * // Right(new RUB(0))
+     * ```
      */
     export const enums: RequiredEnums = variants => new _.Enums(variants);
 
@@ -1066,6 +1188,7 @@ export namespace Decode {
      * You can use `lazy` to make sure your decoder unrolls lazily.
      *
      * @example
+     * ```typescript
      * interface Comment {
      *     message: string;
      *     comments: Array<Comment>;
@@ -1075,6 +1198,7 @@ export namespace Decode {
      *     message: field('message').string,
      *     comments: field('message').list(lazy(() => commentDecoder))
      * });
+     * ```
      */
     export const lazy: RequiredLazy = callDecoder => succeed(null).chain(callDecoder);
 
@@ -1084,11 +1208,13 @@ export namespace Decode {
      * @param name Name of the field.
      *
      * @example
+     * ```typescript
      * field('x').int.decodeJSON('{ "x": 3 }')          // Right(3)
      * field('x').int.decodeJSON('{ "x": 3, "y": 4 }')  // Right(3)
      * field('x').int.decodeJSON('{ "x": true }')       // Left(..)
      * field('x').int.decodeJSON('{ "x": null }')       // Left(..)
      * field('x').int.decodeJSON('{ "y": 4 }')          // Left(..)
+     * ```
      */
     export const field = (name: string): Path => new _.Path(
         <T>(decoder: Decoder<T>): Decoder<T> => _.Field.required(name, decoder)
@@ -1100,6 +1226,7 @@ export namespace Decode {
      * @param position Exact index of the decoding value.
      *
      * @example
+     * ```typescript
      * const json = '[ "alise", "bob", "chuck" ]';
      *
      * index(0).string.decodeJSON(json)   // Right('alise')
@@ -1107,6 +1234,7 @@ export namespace Decode {
      * index(2).string.decodeJSON(json)   // Right('chuck')
      * index(-1).string.decodeJSON(json)  // Right('chuck')
      * index(3).string.decodeJSON(json)   // Left(..)
+     * ```
      */
 
     export const index = (position: number): Path => new _.Path(
@@ -1119,6 +1247,7 @@ export namespace Decode {
      * @param path Sequence of field names and index positions.
      *
      * @example
+     * ```typescript
      * const json = '{ "person": { "name": "tom", "age": 42, "accounts": [ "tom_42" ] } }';
      *
      * at([ 'person', 'name' ]).string.decodeJSON(json)         // Right('tom')
@@ -1130,6 +1259,7 @@ export namespace Decode {
      * field('person').field('name').string
      * field('person').field('age').int
      * field('person').field('accounts').index(0).string
+     * ```
      */
     export const at = (path: Array<string | number>): Path => new _.Path(
         <T>(decoder: Decoder<T>): Decoder<T> => _.Path.at(path, decoder)
@@ -1139,8 +1269,10 @@ export namespace Decode {
      * Lets create an optional `Decoder`.
      *
      * @example
+     * ```typescript
      * optional.string.decodeJSON('null')        // Right(Nothing)
      * optional.string.decodeJSON('"anything"')  // Right(Just('anything))
+     * ```
      */
     export const optional: Optional = new _.Optional(
         <T>(decoder: Decoder<T>): Decoder<Maybe<T>> => decoder.map(Just)
@@ -1153,12 +1285,14 @@ export namespace Decode {
      * @param either Container to transform.
      *
      * @example
+     * ```typescript
      * const validateNumber = (num: number): Either<string, number> => {
      *     return num > 0 ? Either.Right(num) : Either.Left('Expecting a POSITIVE NUMBER');
      * };
      *
      * number.map(validateNumber).chain(fromEither).decodeJSON('1')   // Right(1)
      * number.map(validateNumber).chain(fromEither).decodeJSON('-1')  // Left(..)
+     * ```
      */
     export const fromEither = <T>(either: Either<string, T>): Decoder<T> => either.fold(fail, succeed);
 
@@ -1169,6 +1303,7 @@ export namespace Decode {
      * @param either Container to transform.
      *
      * @example
+     * ```typescript
      * const nonBlankString = (str: string): Maybe<string> => {
      *     return str.trim() === '' ? Maybe.Nothing : Maybe.Just(str.trim());
      * };
@@ -1179,6 +1314,7 @@ export namespace Decode {
      *
      * decoder.decodeJSON('" some string "')  // Right('some string')
      * decoder.decodeJSON('" "')              // Left(..)
+     * ```
      */
     export const fromMaybe = <T>(message: string, maybe: Maybe<T>): Decoder<T> => {
         return maybe.toEither(message).tap(fromEither);
@@ -1198,117 +1334,117 @@ export {
 } from './Decoder';
 
 /**
- * @alis `Decode.Path`
+ * @alias {@linkcode Decode.Path}
  */
 export interface Path extends Decode.Path {}
 
 /**
- * @alis `Decode.OptionalPath`
+ * @alias {@linkcode Decode.OptionalPath}
  */
 export interface OptionalPath extends Decode.OptionalPath {}
 
 /**
- * @alis `Decode.Optional`
+ * @alias {@linkcode Decode.Optional}
  */
 export interface Optional extends Decode.Optional {}
 
 /**
- * @alis `Decode.value`
+ * @alias {@linkcode Decode.value}
  */
 export const value = Decode.value;
 
 /**
- * @alis `Decode.string`
+ * @alias {@linkcode Decode.string}
  */
 export const string = Decode.string;
 
 /**
- * @alis `Decode.boolean`
+ * @alias {@linkcode Decode.boolean}
  */
 export const boolean = Decode.boolean;
 
 /**
- * @alis `Decode.int`
+ * @alias {@linkcode Decode.int}
  */
 export const int = Decode.int;
 
 /**
- * @alis `Decode.float`
+ * @alias {@linkcode Decode.float}
  */
 export const float = Decode.float;
 
 /**
- * @alis `Decode.fail`
+ * @alias {@linkcode Decode.fail}
  */
 export const fail = Decode.fail;
 
 /**
- * @alis `Decode.succeed`
+ * @alias {@linkcode Decode.succeed}
  */
 export const succeed = Decode.succeed;
 
 /**
- * @alis `Decode.shape`
+ * @alias {@linkcode Decode.shape}
  */
 export const shape = Decode.shape;
 
 /**
- * @alis `Decode.list`
+ * @alias {@linkcode Decode.list}
  */
 export const list = Decode.list;
 
 /**
- * @alis `Decode.keyValue`
+ * @alias {@linkcode Decode.keyValue}
  */
 export const keyValue = Decode.keyValue;
 
 /**
- * @alis `Decode.dict`
+ * @alias {@linkcode Decode.dict}
  */
 export const dict = Decode.dict;
 
 /**
- * @alis `Decode.oneOf`
+ * @alias {@linkcode Decode.oneOf}
  */
 export const oneOf = Decode.oneOf;
 
 /**
- * @alis `Decode.enums`
+ * @alias {@linkcode Decode.enums}
  */
 export const enums = Decode.enums;
 
 /**
- * @alis `Decode.lazy`
+ * @alias {@linkcode Decode.lazy}
  */
 export const lazy = Decode.lazy;
 
 /**
- * @alis `Decode.field`
+ * @alias {@linkcode Decode.field}
  */
 export const field = Decode.field;
 
 /**
- * @alis `Decode.index`
+ * @alias {@linkcode Decode.index}
  */
 export const index = Decode.index;
 
 /**
- * @alis `Decode.at`
+ * @alias {@linkcode Decode.at}
  */
 export const at = Decode.at;
 
 /**
- * @alis `Decode.optional`
+ * @alias {@linkcode Decode.optional}
  */
 export const optional = Decode.optional;
 
 /**
- * @alis `Decode.fromEither`
+ * @alias {@linkcode Decode.fromEither}
  */
 export const fromEither = Decode.fromEither;
 
 /**
- * @alis `Decode.fromMaybe`
+ * @alias {@linkcode Decode.fromMaybe}
  */
 export const fromMaybe = Decode.fromMaybe;
 

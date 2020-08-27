@@ -26,6 +26,9 @@ import {
     Optional as IOptional
 } from './index';
 
+/**
+ * @private
+ */
 const expecting = (type: string, source: unknown): Either<Error, never> => Left(
     Error.Failure(`Expecting ${type}`, source)
 );
