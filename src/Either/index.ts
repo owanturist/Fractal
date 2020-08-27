@@ -17,8 +17,10 @@ export interface Either<E, T> {
      * Conveniently check if a `Either` matches as `Left`.
      *
      * @example
+     * ```typescript
      * Left('error').isLeft() // true
      * Right(42).isLeft()     // false
+     * ```
      */
     isLeft(): boolean;
 
@@ -26,8 +28,10 @@ export interface Either<E, T> {
      * Conveniently check if a `Either` matches as `Right`.
      *
      * @example
+     * ```typescript
      * Left('error').isRight() // false
      * Right(42).isRight()     // true
+     * ```
      */
     isRight(): boolean;
 
@@ -37,12 +41,14 @@ export interface Either<E, T> {
      * @param another `Either` to check equality.
      *
      * @example
+     * ```typescript
      * Left('error').isEqual(Left('error'))   // true
      * Left('error').isEqual(Left('message')) // false
      * Left('error').isEqual(Right(42))       // false
      * Right(42).isEqual(Left('message'))     // false
      * Right(42).isEqual(Right(13))           // false
      * Right(42).isEqual(Right(42))           // true
+     * ```
      */
     isEqual<E_, T_>(another: Either<WhenNever<E, E_>, WhenNever<T, T_>>): boolean;
 
@@ -50,8 +56,10 @@ export interface Either<E, T> {
      * Swaps value and error.
      *
      * @example
+     * ```typescript
      * Left('error').swap() // Right('error')
      * Right(1).swap()      // Left(1)
+     * ```
      */
     swap(): Either<T, E>;
 
@@ -61,8 +69,10 @@ export interface Either<E, T> {
      * @param fn Transforming function.
      *
      * @example
+     * ```typescript
      * Left('error').map((a: number) => a > 0) // Left('error')
      * Right(3).map((a: number) => a > 0)    // Right(true)
+     * ```
      */
     map<R>(fn: (value: T) => R): Either<E, R>;
 
@@ -72,8 +82,10 @@ export interface Either<E, T> {
      * @param fn Transforming function.
      *
      * @example
+     * ```typescript
      * Left('error').mapLeft((a: string) => a.length) // Left(5)
      * Right(true).mapLeft((a: string) => a.length)   // Right(true)
+     * ```
      */
     mapLeft<S>(fn: (error: E) => S): Either<S, T>;
 
@@ -84,8 +96,10 @@ export interface Either<E, T> {
      * @param onLeft  Value transforming function.
      *
      * @example
+     * ```typescript
      * Left('error').mapBoth((a: number) => a > 0, (a: string) => a.length) // Left(5)
      * Right(3).mapBoth((a: number) => a > 0, (a: string) => a.length)      // Right(true)
+     * ```
      */
     mapBoth<S, R>(onLeft: (error: E) => S, onRight: (value: T) => R): Either<S, R>;
 
@@ -95,10 +109,12 @@ export interface Either<E, T> {
      * @param fn Chaining function.
      *
      * @example
+     * ```typescript
      * Left('error').chain((a: number) => a > 0 ? Right(a < 2) : Left('negate'))  // Left('error')
      * Just(3).chain((a: number) => a > 0 ? Right(a < 2) : Left('negate'))        // Right(false)
      * Just(1).chain((a: number) => a > 0 ? Right(a < 2) : Left('negate'))        // Right(true)
      * Just(-3).chain((a: number) => a > 0 ? Right(a < 2) : Left('negate'))       // Left('negate')
+     * ```
      */
     chain<E_, R>(fn: (value: T) => Either<WhenNever<E, E_>, R>): Either<WhenNever<E, E_>, R>;
 
@@ -108,10 +124,12 @@ export interface Either<E, T> {
      * @param fn The function to return next `Right`.
      *
      * @example
+     * ```typescript
      * Left('error').orElse(() => Left('message')) // Left('message')
      * Right(1).orElse(() => Left('message'))      // Right(1)
      * Left('error').orElse(() => Right(1))        // Right(1)
      * Right(1).orElse(() => Right(2))             // Right(1)
+     * ```
      */
     orElse<E_, T_>(
         fn: () => Either<WhenNever<E, E_>, WhenNever<T, T_>>
@@ -123,8 +141,10 @@ export interface Either<E, T> {
      * @param defaults The default `T`.
      *
      * @example
+     * ```typescript
      * Left('error').getOrElse(42) // 42
      * Right(13).getOrElse(42)     // 13
+     * ```
      */
     getOrElse<T_>(defaults: WhenNever<T, T_>): WhenNever<T, T_>;
 
@@ -134,8 +154,10 @@ export interface Either<E, T> {
      * @param fn Conversion function.
      *
      * @example
+     * ```typescript
      * Left('error').extract((e: string) => e.length) // 5
      * Right(0).extract((e: string) => e.length)      // 0
+     * ```
      */
     extract<T_>(fn: (error: E) => WhenNever<T, T_>): WhenNever<T, T_>;
 
@@ -146,8 +168,10 @@ export interface Either<E, T> {
      * @param onRight The function calls on the `Right` case.
      *
      * @example
+     * ```typescript
      * Left('error').fold((e: string) => e === 'err', (a: number) => a > 0) // false
      * Right(3).fold((e: string) => e === 'err', (a: number) => a > 0)      // true
+     * ```
      */
     fold<R>(onLeft: (error: E) => R, onRight: (value: T) => R): R;
 
@@ -157,6 +181,7 @@ export interface Either<E, T> {
      * @param pattern Pattern matching.
      *
      * @example
+     * ```typescript
      * Left('error').cata({
      *     Left: (e: string) => e === 'err'
      *     Right: (a: number) => a > 0
@@ -166,6 +191,7 @@ export interface Either<E, T> {
      *     Left: (e: string) => e === 'err'
      *     Right: (a: number) => a > 0
      * }) // true
+     * ```
      */
     cata<R>(pattern: Pattern<E, T, R>): R;
 
@@ -173,8 +199,10 @@ export interface Either<E, T> {
      * Convert to `Maybe`.
      *
      * @example
+     * ```typescript
      * Left('error').toMaybe() // Nothing
      * Right(42).toMaybe()     // Just(42)
+     * ```
      */
     toMaybe(): Maybe<T>;
 
@@ -185,6 +213,7 @@ export interface Either<E, T> {
      * @param fn Predicate function.
      *
      * @example
+     * ```typescript
      * const helperFunction = (validatedNumber: Either<string, number>): number => {
      *     return validatedNumber
      *         .chain((a: number) => a < 100 ? Right(a) : Left('The number is too big'))
@@ -202,6 +231,7 @@ export interface Either<E, T> {
      * helperFunction(
      *     Right(42).chain((a: number) => a > 0 ? Right(42 / 2) : Left('The number is negative'))
      * ).toFixed(2)
+     * ```
      */
     tap<R>(fn: (that: Either<E, T>) => R): R;
 }
@@ -237,9 +267,11 @@ export namespace Either {
      * @param value Nullable value.
      *
      * @example
+     * ```typescript
      * fromNullable('Error', null)                          // Left('Error')
      * fromNullable('undefined', JSON.stringify(undefined)) // Left('undefined')
      * fromNullable('undefined', JSON.stringify('valid'))   // Right('"valid"')
+     * ```
      */
     export const fromNullable = <E, T>(
         error: E,
@@ -256,8 +288,10 @@ export namespace Either {
      * @param either Converted `Either`.
      *
      * @example
+     * ```typescript
      * fromEither('error', Nothing) // Left('error')
      * fromEither(Just(42))         // Right(42)
+     * ```
      */
     export const fromMaybe = <E, T>(error: E, maybe: Maybe<T>): Either<E, T> => {
         return maybe.fold((): Either<E, T> => Left(error), Right);
@@ -269,10 +303,12 @@ export namespace Either {
      * @param either
      *
      * @example
+     * ```typescript
      * merge(Left('error'))                                    // 'error'
      * merge(Right('value'))                                   // 'value'
      * merge(Left('error').orElse(() => Right('value')))       // 'value'
      * Left('error').chain(() => Right('value')).tap(merge)   // 'error'
+     * ```
      */
     export const merge = <T>(either: Either<T, T>): T => either.fold(identity, identity);
 
@@ -283,6 +319,7 @@ export namespace Either {
      * @param object Object of `Either`s.
      *
      * @example
+     * ```typescript
      * props({
      *     id: Right(0),
      *     title: Left('error')
@@ -292,6 +329,7 @@ export namespace Either {
      *     id: Right(0),
      *     title: Right('name')
      * }) // Right({ id: 0, title: 'name' })
+     * ```
      *
      * @todo fix the `E` calculation. Now it's always `unknown`.
      */
@@ -320,8 +358,10 @@ export namespace Either {
      * @param array Array of `Either`s.
      *
      * @example
+     * ```typescript
      * combine([ Left('error'), Right(42) ]) // Left('error')
      * combine([ Right(1), Right(2) ])       // Right([ 1, 2 ])
+     * ```
      */
     export const combine = <E, T>(array: Array<Either<E, T>>): Either<
         unknown extends E ? never : E,
@@ -342,42 +382,42 @@ export namespace Either {
 }
 
 /**
- * @alias `Either.Pattern`
+ * @alias {@linkcode Either.Pattern}
  */
 export type Pattern<E, T, R> = Either.Pattern<E, T, R>;
 
 /**
- * @alias `Either.Left`
+ * @alias {@linkcode Either.Left}
  */
 export const Left = Either.Left;
 
 /**
- * @alias `Either.Right`
+ * @alias {@linkcode Either.Right}
  */
 export const Right = Either.Right;
 
 /**
- * @alias `Either.fromNullable`
+ * @alias {@linkcode Either.fromNullable}
  */
 export const fromNullable = Either.fromNullable;
 
 /**
- * @alias `Either.fromMaybe`
+ * @alias {@linkcode Either.fromMaybe}
  */
 export const fromMaybe = Either.fromMaybe;
 
 /**
- * @alias `Either.merge`
+ * @alias {@linkcode Either.merge}
  */
 export const merge = Either.merge;
 
 /**
- * @alias `Either.shape`
+ * @alias {@linkcode Either.shape}
  */
 export const shape = Either.shape;
 
 /**
- * @alias `Either.combine`
+ * @alias {@linkcode Either.combine}
  */
 export const combine = Either.combine;
 
